@@ -1,0 +1,17 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+install -d -m 0755 /usr/lib/ph4ntxm/hardware
+gcc -std=c11 -O2 -Wall -Wextra -Werror -fPIC -shared \
+    -Wl,-z,relro,-z,now,-z,noexecstack \
+    /usr/lib/ph4ntxm/hardware/query.c -ldl \
+    -o /usr/lib/ph4ntxm/hardware/query.so
+strip --strip-unneeded /usr/lib/ph4ntxm/hardware/query.so
+chmod 0755 /usr/lib/ph4ntxm/hardware/query.so
+sh /usr/lib/ph4ntxm/hardware/build-fastfetch
+rm -f /usr/lib/ph4ntxm/hardware/query.c
+rm -f /usr/lib/ph4ntxm/hardware/build-fastfetch \
+    /usr/lib/ph4ntxm/hardware/fastfetch-profile.patch

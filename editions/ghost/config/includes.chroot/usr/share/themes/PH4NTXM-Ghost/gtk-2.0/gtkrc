@@ -1,0 +1,70 @@
+gtk-color-scheme = "base_color:#ffffff
+text_color:#243748
+bg_color:#f3f6f8
+fg_color:#243748
+selected_bg_color:#d9f2f8
+selected_fg_color:#075d73
+tooltip_bg_color:#ffffff
+tooltip_fg_color:#243748"
+gtk-icon-sizes = "gtk-button=16,16"
+gtk-auto-mnemonics = 1
+
+style "ghost-default" {
+  xthickness = 2
+  ythickness = 2
+  bg[NORMAL] = @bg_color
+  bg[PRELIGHT] = "#e4f4f8"
+  bg[ACTIVE] = @selected_bg_color
+  bg[SELECTED] = @selected_bg_color
+  bg[INSENSITIVE] = "#edf2f5"
+  fg[NORMAL] = @fg_color
+  fg[PRELIGHT] = "#075d73"
+  fg[ACTIVE] = @selected_fg_color
+  fg[SELECTED] = @selected_fg_color
+  fg[INSENSITIVE] = "#8195a3"
+  base[NORMAL] = @base_color
+  base[PRELIGHT] = @base_color
+  base[ACTIVE] = @selected_bg_color
+  base[SELECTED] = @selected_bg_color
+  base[INSENSITIVE] = "#edf2f5"
+  text[NORMAL] = @text_color
+  text[PRELIGHT] = @text_color
+  text[ACTIVE] = @selected_fg_color
+  text[SELECTED] = @selected_fg_color
+  text[INSENSITIVE] = "#8195a3"
+  GtkWidget::focus-line-width = 1
+  GtkWidget::focus-padding = 1
+  GtkButton::default-border = { 0, 0, 0, 0 }
+  GtkRange::slider-width = 12
+  GtkScrollbar::min-slider-length = 32
+  GtkMenu::horizontal-padding = 4
+  GtkMenu::vertical-padding = 4
+  GtkTreeView::vertical-separator = 4
+  GtkTreeView::horizontal-separator = 4
+  engine "murrine" {
+    animation = FALSE
+    contrast = 0.8
+    glazestyle = 0
+    glowstyle = 0
+    gradient_shades = { 1.0, 1.0, 1.0, 1.0 }
+    highlight_shade = 1.0
+    lightborder_shade = 1.0
+    reliefstyle = 0
+    roundness = 4
+    textstyle = 0
+  }
+}
+
+style "ghost-panel" = "ghost-default" {
+  xthickness = 2
+  ythickness = 0
+}
+
+style "ghost-tooltip" = "ghost-default" {
+  bg[NORMAL] = @tooltip_bg_color
+  fg[NORMAL] = @tooltip_fg_color
+}
+
+class "GtkWidget" style "ghost-default"
+widget "*Xfce*Panel*" style "ghost-panel"
+widget "gtk-tooltip*" style "ghost-tooltip"

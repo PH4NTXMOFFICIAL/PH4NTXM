@@ -1,0 +1,292 @@
+#!/usr/bin/env python3
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+import argparse
+import os
+import subprocess
+import sys
+import threading
+import zlib
+from pathlib import Path
+
+sys.path.insert(0, "/usr/local/lib/ph4ntxm-document-airlock")
+from airlock import AirlockError, AirlockSession, check_ready, read_input
+
+CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
+ICON_FILE = "/usr/share/icons/Lyra-blue-dark/apps/scalable/ph4ntxm-document-airlock.svg"
+
+
+def desktop(document=None):
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gtk, Gdk, GdkPixbuf, GLib
+
+    def add_class(widget, name):
+        widget.get_style_context().add_class(name)
+        return widget
+
+    class AirlockWindow(Gtk.Window):
+        def __init__(self):
+            Gtk.Window.__init__(self, title="PH4NTXM Document Airlock")
+            self.set_default_size(720, 640)
+            self.set_position(Gtk.WindowPosition.CENTER)
+            if os.path.exists(ICON_FILE):
+                self.set_icon_from_file(ICON_FILE)
+            if os.path.exists(CSS_FILE):
+                provider = Gtk.CssProvider()
+                provider.load_from_path(CSS_FILE)
+                Gtk.StyleContext.add_provider_for_screen(
+                    Gdk.Screen.get_default(),
+                    provider,
+                    Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+                )
+            add_class(self, "ph4ntxm-window")
+            self.session = None
+            self.busy = False
+            self.closing = False
+            self.page = 0
+            self.cancelled = threading.Event()
+            root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+            self.add(root)
+            header = add_class(
+                Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6), "top-panel"
+            )
+            title = add_class(Gtk.Label(label="PH4NTXM Document Airlock"), "title")
+            title.set_halign(Gtk.Align.START)
+            subtitle = add_class(
+                Gtk.Label(label="Offline document conversion · Disposable session"),
+                "subtitle",
+            )
+            subtitle.set_halign(Gtk.Align.START)
+            header.pack_start(title, False, False, 0)
+            header.pack_start(subtitle, False, False, 0)
+            root.pack_start(header, False, False, 0)
+            content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+            content.set_border_width(18)
+            root.pack_start(content, True, True, 0)
+            description = Gtk.Label(
+                label=(
+                    "Convert a document or image into a PDF made from rendered pages. "
+                    "Review the result before exporting. Visible personal information remains."
+                )
+            )
+            description.set_line_wrap(True)
+            description.set_xalign(0)
+            content.pack_start(description, False, False, 0)
+            self.chooser = Gtk.FileChooserButton(
+                title="Choose a document", action=Gtk.FileChooserAction.OPEN
+            )
+            self.chooser.set_local_only(True)
+            content.pack_start(self.chooser, False, False, 0)
+            controls = Gtk.Box(spacing=10)
+            self.convert_button = Gtk.Button(label="Convert")
+            add_class(self.convert_button, "safe")
+            self.convert_button.connect("clicked", self.on_convert)
+            self.cancel_button = Gtk.Button(label="Cancel")
+            self.cancel_button.set_sensitive(False)
+            self.cancel_button.connect("clicked", lambda _: self.cancelled.set())
+            self.spinner = Gtk.Spinner()
+            controls.pack_start(self.convert_button, False, False, 0)
+            controls.pack_start(self.cancel_button, False, False, 0)
+            controls.pack_start(self.spinner, False, False, 0)
+            content.pack_start(controls, False, False, 0)
+            self.status = Gtk.Label(
+                label="Select a PDF, Office document or single-frame image."
+            )
+            self.status.set_line_wrap(True)
+            self.status.set_xalign(0)
+            content.pack_start(self.status, False, False, 0)
+            scrolled = Gtk.ScrolledWindow()
+            scrolled.set_min_content_height(300)
+            self.preview = Gtk.Image()
+            scrolled.add(self.preview)
+            content.pack_start(scrolled, True, True, 0)
+            navigation = Gtk.Box(spacing=10)
+            self.previous = Gtk.Button(label="Previous")
+            self.next = Gtk.Button(label="Next")
+            self.previous.connect("clicked", lambda _: self.show_page(self.page - 1))
+            self.next.connect("clicked", lambda _: self.show_page(self.page + 1))
+            self.page_label = Gtk.Label(label="No preview")
+            self.export_button = Gtk.Button(label="Export PDF")
+            add_class(self.export_button, "safe")
+            self.export_button.connect("clicked", self.on_export)
+            for widget in (self.previous, self.next, self.page_label):
+                navigation.pack_start(widget, False, False, 0)
+            navigation.pack_end(self.export_button, False, False, 0)
+            content.pack_start(navigation, False, False, 0)
+            self.set_result_enabled(False)
+            self.connect("delete-event", self.on_close)
+            self.connect("destroy", Gtk.main_quit)
+
+        def set_result_enabled(self, enabled):
+            self.previous.set_sensitive(enabled and self.page > 0)
+            self.next.set_sensitive(enabled and self.page + 1 < len(self.session.pages))
+            self.export_button.set_sensitive(enabled)
+
+        def on_convert(self, _, filename=None):
+            if self.busy:
+                return
+            if filename is None:
+                filename = self.chooser.get_filename()
+            if not filename:
+                self.status.set_text("Choose a document first.")
+                return
+            if self.session:
+                self.session.close()
+                self.session = None
+            self.preview.clear()
+            self.page_label.set_text("No preview")
+            self.set_result_enabled(False)
+            self.cancelled = threading.Event()
+            self.busy = True
+            self.chooser.set_sensitive(False)
+            self.convert_button.set_sensitive(False)
+            self.cancel_button.set_sensitive(True)
+            self.spinner.start()
+            self.status.set_text("Converting offline…")
+
+            def worker():
+                session = None
+                error = None
+                try:
+                    suffix, data = read_input(filename)
+                    runtime = check_ready(suffix)
+                    session = AirlockSession(runtime)
+                    session.cancelled = self.cancelled
+                    if self.cancelled.is_set():
+                        raise AirlockError("Conversion cancelled.")
+                    session.convert(suffix, data)
+                except (
+                    AirlockError,
+                    OSError,
+                    ValueError,
+                    subprocess.SubprocessError,
+                ) as exc:
+                    error = str(exc)
+                    if session:
+                        session.close()
+                    session = None
+                GLib.idle_add(self.finished, session, error)
+
+            threading.Thread(target=worker, daemon=False).start()
+
+        def finished(self, session, error):
+            self.busy = False
+            self.session = session
+            self.spinner.stop()
+            self.chooser.set_sensitive(True)
+            self.convert_button.set_sensitive(True)
+            self.cancel_button.set_sensitive(False)
+            if self.closing:
+                if self.session:
+                    self.session.close()
+                self.destroy()
+                return False
+            if error:
+                self.status.set_text(error)
+            else:
+                self.status.set_text(
+                    "Conversion complete. The isolated session has closed. Review and export your PDF."
+                )
+                self.show_page(0)
+            return False
+
+        def show_page(self, number):
+            if not self.session or not 0 <= number < len(self.session.pages):
+                return
+            self.page = number
+            width, height, path = self.session.pages[number]
+            pixels = GLib.Bytes.new(zlib.decompress(path.read_bytes()))
+            picture = GdkPixbuf.Pixbuf.new_from_bytes(
+                pixels, GdkPixbuf.Colorspace.RGB, False, 8, width, height, width * 3
+            )
+            scale = min(1, 640 / width, 400 / height)
+            picture = picture.scale_simple(
+                max(1, int(width * scale)),
+                max(1, int(height * scale)),
+                GdkPixbuf.InterpType.BILINEAR,
+            )
+            self.preview.set_from_pixbuf(picture)
+            self.page_label.set_text(
+                "Page %d of %d" % (number + 1, len(self.session.pages))
+            )
+            self.set_result_enabled(True)
+
+        def on_export(self, _):
+            dialog = Gtk.FileChooserDialog(
+                title="Export converted PDF",
+                transient_for=self,
+                action=Gtk.FileChooserAction.SAVE,
+            )
+            dialog.add_buttons(
+                "Cancel", Gtk.ResponseType.CANCEL, "Export", Gtk.ResponseType.ACCEPT
+            )
+            dialog.set_local_only(True)
+            dialog.set_current_name("airlock.pdf")
+            if dialog.run() == Gtk.ResponseType.ACCEPT:
+                try:
+                    self.session.export(dialog.get_filename())
+                    self.status.set_text("Converted PDF exported.")
+                except FileExistsError:
+                    self.status.set_text(
+                        "That filename already exists. Choose a new filename."
+                    )
+                except (AirlockError, OSError) as exc:
+                    self.status.set_text(str(exc))
+            dialog.destroy()
+
+        def on_close(self, *_):
+            if self.busy:
+                self.closing = True
+                self.cancelled.set()
+                self.status.set_text("Closing the isolated session…")
+                return True
+            if self.session:
+                self.session.close()
+            return False
+
+    window = AirlockWindow()
+    window.show_all()
+    if document is not None:
+        filename = os.path.abspath(document)
+        window.chooser.set_filename(filename)
+        GLib.idle_add(window.on_convert, None, filename)
+    Gtk.main()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="PH4NTXM Document Airlock")
+    parser.add_argument("document", nargs="?")
+    parser.add_argument("--output", help="Export to a new PDF filename")
+    parser.add_argument(
+        "--check", action="store_true", help="Check isolation prerequisites"
+    )
+    arguments = parser.parse_args()
+    session = None
+    try:
+        if arguments.check:
+            check_ready()
+            print("Document Airlock prerequisites verified.")
+        elif arguments.document and arguments.output:
+            suffix, data = read_input(arguments.document)
+            session = AirlockSession(check_ready(suffix))
+            session.convert(suffix, data)
+            session.export(arguments.output)
+            print("Converted PDF exported.")
+        elif arguments.output:
+            parser.error("--output requires a document")
+        else:
+            desktop(arguments.document)
+    except (AirlockError, OSError, ValueError, subprocess.SubprocessError) as exc:
+        print("Document Airlock: " + str(exc), file=sys.stderr)
+        return 1
+    finally:
+        if session:
+            session.close()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,2 @@
+SUBSYSTEM=="usb", ATTR{bInterfaceClass}=="01", ATTR{authorized}="0"
+SUBSYSTEM=="usb", ATTR{bInterfaceClass}=="0e", ATTR{authorized}="0"

@@ -1,0 +1,14 @@
+[Unit]
+Description=PH4NTXM Lone Wolf Display Spoof
+After=ph4ntxm-lonewolf-gpu-randomization.service ph4ntxm-lonewolf-cores-randomization.service
+Requires=ph4ntxm-lonewolf-gpu-randomization.service ph4ntxm-lonewolf-cores-randomization.service
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Service]
+Type=oneshot
+Environment=DISPLAY=:0
+ExecStart=/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-screen-randomization.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=ph4ntxm-lonewolf-multi-user.target

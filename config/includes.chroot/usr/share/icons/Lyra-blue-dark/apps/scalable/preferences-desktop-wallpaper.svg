@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" width="64" height="64" viewBox="0 0 64 64" version="1.1"><g transform="translate(2.97975708502 2.97975708502) scale(1.22813260551)"><svg height="47.259136" viewBox="0 0 47.259136 47.259136" width="47.259136" version="1.1" id="svg29" overflow="hidden">
+
+  <defs id="defs33">
+    
+    <style type="text/css" id="style872"/>
+    <style id="style4" type="text/css"/>
+    <style id="style6" type="text/css"/>
+    <style id="style8" type="text/css"/>
+    <style type="text/css" id="style872-0"/>
+    <style type="text/css" id="style874"/>
+    <style type="text/css" id="style876"/>
+    <style type="text/css" id="style4-3"/>
+    <style type="text/css" id="style6-6"/>
+    <style type="text/css" id="style913"/>
+    
+    <filter style="color-interpolation-filters:sRGB" id="filter6" x="-0.026999998" y="-0.026999999" width="1.054" height="1.054">
+      <feGaussianBlur stdDeviation="0.50442627" id="feGaussianBlur6"/>
+    </filter>
+  </defs>
+  
+  <g id="g6" transform="translate(-0.437814,-1.0510959)">
+    <path id="path2" style="display:inline;opacity:0.6;fill:#00abff;fill-opacity:1;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers;filter:url(#filter6)" d="m -62.02325,10.019719 c -3.342747,0 -6.070313,2.729518 -6.070313,6.072265 v 32.695313 c 0,3.342748 2.727566,6.070312 6.070313,6.070312 h 32.695312 c 3.342747,0 6.072266,-2.727564 6.072266,-6.070312 V 16.091984 c 0,-3.342747 -2.729519,-6.072265 -6.072266,-6.072265 z m 0,2.802734 h 32.695312 c 1.839392,0 3.269532,1.430139 3.269532,3.269531 v 28.63086 l -9.892578,-14.457031 a 0.93421842,0.93421842 0 0 0 -1.410157,-0.154297 l -9.24414,8.628906 -8.867188,-16.855469 a 0.93421842,0.93421842 0 0 0 -1.488281,-0.226562 l -8.332031,8.333984 V 16.091984 c 0,-1.839392 1.43014,-3.269531 3.269531,-3.269531 z m 5.25,12.611328 14.005859,26.623047 H -62.02325 c -1.839391,0 -3.269531,-1.430139 -3.269531,-3.269531 V 33.953313 Z m 19.736328,8.208985 10.820313,15.814453 c -0.319337,1.476359 -1.519754,2.599609 -3.111329,2.599609 h -10.271484 l -5.652344,-10.746094 z" transform="translate(69.742,-7.7580001)"/>
+    <path id="path3" style="display:inline;fill:#00abff;fill-opacity:1;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers" d="m -62.02325,10.019719 c -3.342747,0 -6.070313,2.729518 -6.070313,6.072265 v 32.695313 c 0,3.342748 2.727566,6.070312 6.070313,6.070312 h 32.695312 c 3.342747,0 6.072266,-2.727564 6.072266,-6.070312 V 16.091984 c 0,-3.342747 -2.729519,-6.072265 -6.072266,-6.072265 z m 0,2.802734 h 32.695312 c 1.839392,0 3.269532,1.430139 3.269532,3.269531 v 28.63086 l -9.892578,-14.457031 a 0.93421842,0.93421842 0 0 0 -1.410157,-0.154297 l -9.24414,8.628906 -8.867188,-16.855469 a 0.93421842,0.93421842 0 0 0 -1.488281,-0.226562 l -8.332031,8.333984 V 16.091984 c 0,-1.839392 1.43014,-3.269531 3.269531,-3.269531 z m 5.25,12.611328 14.005859,26.623047 H -62.02325 c -1.839391,0 -3.269531,-1.430139 -3.269531,-3.269531 V 33.953313 Z m 19.736328,8.208985 10.820313,15.814453 c -0.319337,1.476359 -1.519754,2.599609 -3.111329,2.599609 h -10.271484 l -5.652344,-10.746094 z" transform="translate(69.742,-7.7580001)"/>
+  </g>
+</svg></g></svg>

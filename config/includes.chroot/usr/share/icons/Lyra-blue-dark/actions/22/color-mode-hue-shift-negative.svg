@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 22 22">
+ <defs>
+  <path fill="#ff3dfb" id="H" d="m24 8c-8.863992 0-16 7.136008-16 16h16v-16"/>
+  <path fill="#ff3dfb" id="I" d="m408.57143 539.798c8.86399 0 16-7.13601 16-16h-16v16"/>
+  <path fill="#ff3dfb" id="J" d="m408.57143 539.798c-8.86399 0-16-7.13601-16-16h16v16"/>
+  
+  
+  
+  
+  <style type="text/css" id="current-color-scheme">
+   .ColorScheme-Text {
+    color:#dedede;
+   }
+  </style>
+ </defs>
+ <g transform="matrix(1.093343,0,0,1.0933518,-1.0272637,-1128.5694)">
+  <g transform="matrix(0.38637 0.10353 -0.10353 0.38637 -92.63 796.68)">
+   <use xlink:href="#H" clip-path="url(#5)" transform="matrix(1 0 0 1 384.57 499.8)"/>
+   <use xlink:href="#J" clip-path="url(#6)"/>
+   <path fill="#00abff" d="m408.57143 507.798c8.86399 0 16 7.13601 16 16h-16v-16" clip-path="url(#7)"/>
+   <use xlink:href="#I" clip-path="url(#8)"/>
+  </g>
+  <g opacity="0.7" transform="matrix(0.4 0 0 0.4 -152.43 831.84)">
+   <use filter="url(#4)" xlink:href="#H" clip-path="url(#9)" transform="matrix(1 0 0 1 384.57 499.8)"/>
+   <use filter="url(#4)" xlink:href="#J" clip-path="url(#A)"/>
+   <use filter="url(#4)" xlink:href="#I" clip-path="url(#B)"/>
+   <path fill="#00abff" filter="url(#4)" d="m408.57143 507.798c8.86399 0 16 7.13601 16 16h-16v-16" clip-path="url(#C)"/>
+  </g>
+  <use opacity="0.35" xlink:href="#H" clip-path="url(#9)" transform="matrix(0.28284 0.28284 -0.28284 0.28284 11 1027.79)"/>
+  <path opacity="0.35" fill="#ff3dfb" d="m408.57143 539.798c-8.86399 0-16-7.13601-16-16h16v16" clip-path="url(#A)" transform="matrix(0.28284 0.28284 -0.28284 0.28284 43.591 777.65)"/>
+  <use opacity="0.35" xlink:href="#I" clip-path="url(#B)" transform="matrix(0.28284 0.28284 -0.28284 0.28284 43.591 777.65)"/>
+  <path opacity="0.35" fill="#00abff" d="m408.57143 507.798c8.86399 0 16 7.13601 16 16h-16v-16" clip-path="url(#C)" transform="matrix(0.28284 0.28284 -0.28284 0.28284 43.591 777.65)"/>
+  <g transform="matrix(0.10353 0.38637 -0.38637 0.10353 171.08 829.27)">
+   <use opacity="0.3" xlink:href="#H" clip-path="url(#D)" transform="matrix(1 0 0 1 384.57 499.8)"/>
+   <use opacity="0.3" xlink:href="#J" clip-path="url(#E)"/>
+   <use opacity="0.3" xlink:href="#I" clip-path="url(#F)"/>
+   <path opacity="0.3" fill="#00abff" d="m408.57143 507.798c8.86399 0 16 7.13601 16 16h-16v-16" clip-path="url(#G)"/>
+  </g>
+ </g>
+ <path d="M 21 15.7075 L 17.5 19.2075 L 14 15.7075 L 14.707 15.0005 L 17 17.2935 L 17 9.99997 C 17 6.68627 14.3137 3.99997 11 3.99997 C 7.68628 3.99997 5 6.68627 5 9.99997 L 4 9.99997 C 4 6.13397 7.134 2.99997 11 2.99997 C 14.866 2.99997 18 6.13397 18 9.99997 L 18 17.2935 L 20.293 15.0005 L 21 15.7075 Z" class="ColorScheme-Text" style="fill:currentColor; fill-opacity:1; stroke:none"/>
+</svg>

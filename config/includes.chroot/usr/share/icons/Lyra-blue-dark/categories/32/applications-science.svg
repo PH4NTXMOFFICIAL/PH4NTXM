@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="64" viewBox="0 0 64 64" version="1.1"><g transform="translate(2.13333333333 2.13333333333) scale(1.86666666667)"><svg width="32" height="32" version="1.1" viewBox="0 0 32 32" overflow="hidden">
+
+ <defs>
+  
+  
+  
+  <filter id="f" x="-.038571" y="-.03375" width="1.0771" height="1.0675" color-interpolation-filters="sRGB">
+   <feGaussianBlur stdDeviation="0.22500022"/>
+  </filter>
+  <filter id="e" x="-.019286" y="-.27" width="1.0386" height="1.54" color-interpolation-filters="sRGB">
+   <feGaussianBlur stdDeviation="0.225"/>
+  </filter>
+  
+ </defs>
+ <rect x="1" y=".99997" width="30" height="30" rx="8" ry="8" fill="#444c52"/>
+ <path d="m9 22v1h14v-1l-5-8v-6h1v-1h-6v0.99973h1v6.0003z" fill-rule="evenodd" filter="url(#f)" opacity=".25"/>
+ <path d="m9 22v1h14v-1l-5-8v-6h1v-1h-6v0.99973h1v6.0003z" fill="#d3d9dc" fill-rule="evenodd"/>
+ <rect x="2" y="22.99" width="28" height="2" color="#000000" color-rendering="auto" filter="url(#e)" image-rendering="auto" opacity=".25" shape-rendering="auto"/>
+ <rect x="2" y="22.99" width="28" height="2" color="#000000" color-rendering="auto" fill="#ff3dfb" image-rendering="auto" shape-rendering="auto"/>
+ <path d="m14 16-3.7 6h11.4l-3.7-6h-2z" fill="#00abff" fill-rule="evenodd"/>
+</svg></g></svg>

@@ -1,0 +1,9 @@
+/* XPM */
+static char * image[] = {
+"6 4 2 1",
+". c #f3f6f8",
+"b c #e6edf1",
+"b.....",
+"b.....",
+"b.....",
+"bbbbbb"};

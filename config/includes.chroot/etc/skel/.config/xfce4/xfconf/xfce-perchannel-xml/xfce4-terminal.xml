@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<channel name="xfce4-terminal" version="1.0">
+  <property name="title-mode" type="string" value="TERMINAL_TITLE_HIDE"/>
+  <property name="title-initial" type="string" value="PH4NTXM Terminal"/>
+  <property name="background-mode" type="string" value="TERMINAL_BACKGROUND_TRANSPARENT"/>
+  <property name="background-darkness" type="double" value="0.84999999999999998"/>
+  <property name="command-login-shell" type="bool" value="true"/>
+  <property name="color-use-theme" type="bool" value="true"/>
+  <property name="color-background-vary" type="bool" value="false"/>
+  <property name="use-custom-command" type="bool" value="true"/>
+  <property name="custom-command" type="string" value="zsh -l"/>
+  <property name="font-use-system" type="bool" value="false"/>
+  <property name="font-allow-bold" type="bool" value="true"/>
+  <property name="font-name" type="string" value="MesloLGS NF Bold 12"/>
+</channel>

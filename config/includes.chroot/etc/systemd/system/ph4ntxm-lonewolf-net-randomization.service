@@ -1,0 +1,14 @@
+[Unit]
+Description=PH4NTXM Lone Wolf Network Randomization
+DefaultDependencies=no
+After=systemd-sysctl.service ph4ntxm-lonewolf-identity-randomization.service
+Requires=systemd-sysctl.service ph4ntxm-lonewolf-identity-randomization.service
+Before=network-pre.target NetworkManager.service ph4ntxm-link-unblock.service
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Service]
+ExecStart=/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-net-randomization.sh
+Type=oneshot
+
+[Install]
+WantedBy=network-pre.target

@@ -1,0 +1,7 @@
+--- a/src/detection/cpu/cpu_linux.c
++++ b/src/detection/cpu/cpu_linux.c
+@@ -467 +467,3 @@
+-    ffCPUDetectSpeedByCpuid(cpu);
++    const char* inventoryRoot = getenv("PH4_INVENTORY_ROOT");
++    if (!inventoryRoot || !*inventoryRoot)
++        ffCPUDetectSpeedByCpuid(cpu);

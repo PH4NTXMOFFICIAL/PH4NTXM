@@ -1,0 +1,15 @@
+[Unit]
+Description=PH4NTXM Hardware Randomization
+DefaultDependencies=no
+After=systemd-udevd.service local-fs.target ph4ntxm-identity-randomization.service
+Requires=ph4ntxm-identity-randomization.service
+ConditionPathExists=/run/ph4ntxm/mode-normal
+
+Before=network-pre.target network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-hardware-randomization.sh
+
+[Install]
+WantedBy=network-pre.target

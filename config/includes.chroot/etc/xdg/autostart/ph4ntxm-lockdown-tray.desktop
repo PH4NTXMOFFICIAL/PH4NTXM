@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Lockdown Tray
+Comment=Shows Lockdown Mode status in the tray
+Exec=/usr/local/bin/ph4ntxm-lockdown-tray
+Icon=ph4ntxm-lockdown
+Terminal=false
+X-GNOME-Autostart-enabled=true

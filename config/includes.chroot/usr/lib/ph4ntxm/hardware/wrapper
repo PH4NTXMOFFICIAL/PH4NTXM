@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -euo pipefail
+
+tool=${0##*/}
+real="$0-real"
+if [[ "$tool" == "hwloc-ls" ]]; then
+    real="${0%/*}/lstopo-real"
+fi
+if (($# == 1)); then
+    case "$1" in
+        --help | --version | -help | -version)
+            exec -a "$tool" "$real" "$@"
+            ;;
+    esac
+fi
+if [[ -n "${PH4_INVENTORY_ROOT:-}" && -r "$PH4_INVENTORY_ROOT/proc/cpuinfo" ]]; then
+    if [[ "$tool" == "lshw" ]]; then
+        exec -a "$tool" "$real" "$@" -disable cpuid
+    fi
+    if [[ "$tool" == "lscpu" ]]; then
+        exec -a "$tool" "$real" --sysroot "$PH4_INVENTORY_ROOT" "$@"
+    fi
+    exec -a "$tool" "$real" "$@"
+fi
+if [[ ! -r /run/ph4ntxm/cores_env ]]; then
+    printf '%s: session hardware profile is unavailable\n' "$tool" >&2
+    exit 1
+fi
+set -a
+source /run/ph4ntxm/cores_env
+set +a
+exec /usr/bin/python3 /usr/lib/ph4ntxm/hardware/inventory.py "$tool" "$real" "$@"

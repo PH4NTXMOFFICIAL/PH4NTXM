@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Lockdown
+Comment=Toggle Lockdown
+Exec=/usr/local/bin/ph4ntxm-lockdown
+Icon=ph4ntxm-lockdown
+Terminal=false
+Categories=System;X-PH4NTXMApps;
+StartupNotify=false

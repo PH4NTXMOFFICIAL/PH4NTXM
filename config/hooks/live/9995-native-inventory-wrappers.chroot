@@ -1,0 +1,23 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+chmod 0755 /usr/lib/ph4ntxm/hardware/wrapper
+
+for tool in lshw hwinfo inxi fastfetch screenfetch neofetch free lscpu nproc dmidecode getconf vmstat lsmem lstopo lstopo-no-graphics hwloc-info hwloc-calc hwloc-distrib; do
+    for directory in /usr/bin /usr/sbin; do
+        path="$directory/$tool"
+        [ -x "$path" ] || [ -x "$path-real" ] || continue
+        diversion=$(dpkg-divert --truename "$path")
+        if [ "$diversion" = "$path" ]; then
+            dpkg-divert --add --rename --divert "$path-real" "$path"
+        elif [ "$diversion" != "$path-real" ]; then
+            printf 'Conflicting diversion: %s\n' "$path" >&2
+            exit 1
+        fi
+        [ -x "$path-real" ]
+        ln -sf /usr/lib/ph4ntxm/hardware/wrapper "$path"
+    done
+done

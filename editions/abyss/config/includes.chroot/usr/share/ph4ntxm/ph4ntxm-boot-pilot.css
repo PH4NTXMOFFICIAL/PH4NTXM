@@ -1,0 +1,68 @@
+window {
+    background: #101b2a;
+    color: #e2eaf2;
+}
+
+.top-panel,
+.section,
+.wifi-panel {
+    background: #172638;
+    border-color: #2b4056;
+}
+
+.subtitle,
+.dot-info,
+.text-info {
+    color: #98aabd;
+}
+
+.section-title {
+    color: #00abff;
+}
+
+.dot-pass,
+.dot-ready,
+.text-pass,
+.text-ready {
+    color: #56d89a;
+}
+
+.dot-warn,
+.dot-pending,
+.text-warn,
+.text-pending {
+    color: #e7b96c;
+}
+
+.dot-fail,
+.dot-unsafe,
+.text-fail,
+.text-unsafe {
+    color: #ff6b88;
+}
+
+.status-pill {
+    background: #123b55;
+}
+
+.wifi-title {
+    color: #e2eaf2;
+}
+
+.network-list {
+    background: #080f19;
+    color: #e2eaf2;
+}
+
+.network-list row {
+    border-color: #2b4056;
+}
+
+.network-list row:selected {
+    background: #123b55;
+}
+
+.footer {
+    background: #101b2a;
+    border-color: #2b4056;
+}

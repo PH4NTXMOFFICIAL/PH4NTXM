@@ -1,0 +1,148 @@
+window {
+    background-color: #f3f6f8;
+    color: #163042;
+}
+
+.ph4ntxm-window {
+    background-color: #f3f6f8;
+}
+
+.top-panel {
+    background-color: #ffffff;
+    border-bottom: 1px solid #d3e0e7;
+    padding: 20px 22px;
+}
+
+.title {
+    color: #163042;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.subtitle {
+    color: #566d7e;
+    font-size: 13px;
+}
+
+.section {
+    background-color: #ffffff;
+    border: 1px solid #d3e0e7;
+    border-radius: 8px;
+    padding: 14px;
+}
+
+.section-title {
+    color: #007b99;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.data-row {
+    padding: 7px 2px;
+}
+
+.data-label {
+    color: #566d7e;
+}
+
+.data-value {
+    color: #163042;
+    font-family: monospace;
+}
+
+.status-pill {
+    background-color: #e8f0f5;
+    border-radius: 12px;
+    padding: 6px 12px;
+    font-weight: 700;
+}
+
+.status-enabled,
+.status-active,
+.status-armed {
+    color: #167344;
+}
+
+.status-disabled,
+.status-inactive,
+.status-disarmed {
+    color: #566d7e;
+}
+
+.status-danger {
+    color: #b62443;
+}
+
+.status-dot {
+    font-size: 38px;
+}
+
+.dot-active {
+    color: #167344;
+}
+
+.dot-inactive {
+    color: #667b8b;
+}
+
+.dot-danger {
+    color: #b62443;
+}
+
+.danger-panel {
+    background-color: #fff2f4;
+    border: 1px solid #dfafbc;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.danger-title {
+    color: #b62443;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.danger-text {
+    color: #813044;
+}
+
+button {
+    background-image: none;
+    background-color: #e8f0f5;
+    color: #163042;
+    border: 1px solid #c4d5df;
+    border-radius: 6px;
+    padding: 8px 16px;
+}
+
+button:hover {
+    background-color: #dff3f8;
+    border-color: #79bcca;
+}
+
+button.primary {
+    background-color: #ddf4fa;
+    border-color: #008ca9;
+    color: #00647c;
+}
+
+button.safe {
+    background-color: #e4f6eb;
+    border-color: #84b99a;
+    color: #12673b;
+}
+
+button.danger {
+    background-color: #ffe8ed;
+    border-color: #cd8091;
+    color: #a51937;
+}
+
+button.danger:hover {
+    background-color: #fbd4de;
+    border-color: #b62443;
+}
+
+separator {
+    background-color: #d3e0e7;
+}

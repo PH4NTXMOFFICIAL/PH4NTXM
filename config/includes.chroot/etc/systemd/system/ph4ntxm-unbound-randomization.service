@@ -1,0 +1,37 @@
+[Unit]
+Description=PH4NTXM Encrypted DNS Rotation and Watchdog
+DefaultDependencies=no
+After=ph4ntxm-mode.service local-fs.target
+Requires=ph4ntxm-mode.service
+Before=network-pre.target unbound.service
+ConditionPathExists=/run/ph4ntxm/mode-normal
+
+[Service]
+Type=notify
+NotifyAccess=all
+ExecStart=/usr/local/sbin/ph4ntxm-unbound-randomization.sh
+Restart=always
+RestartSec=2
+UMask=0027
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ReadWritePaths=/etc
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=network-pre.target

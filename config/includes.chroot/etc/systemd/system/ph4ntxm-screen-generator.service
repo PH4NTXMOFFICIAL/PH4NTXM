@@ -1,0 +1,14 @@
+[Unit]
+Description=PH4NTXM Screen Generator
+After=ph4ntxm-screen-randomization.service ph4ntxm-cores-randomization.service ph4ntxm-cpu-spoof.service
+Requires=ph4ntxm-screen-randomization.service ph4ntxm-cores-randomization.service ph4ntxm-cpu-spoof.service
+Before=display-manager.service
+ConditionPathExists=/run/ph4ntxm/mode-normal
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-screen-generator.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target

@@ -1,0 +1,21 @@
+[Unit]
+Description=PH4NTXM Document Airlock AppArmor Policy
+DefaultDependencies=no
+After=local-fs.target
+Before=sysinit.target
+ConditionSecurity=apparmor
+ConditionPathExists=/sys/kernel/security/apparmor/.load
+
+[Service]
+Type=oneshot
+ExecStart=/sbin/apparmor_parser -r -K /etc/apparmor.d/ph4ntxm-document-airlock-bwrap
+RemainAfterExit=yes
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX
+
+[Install]
+WantedBy=sysinit.target

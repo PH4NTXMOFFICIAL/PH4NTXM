@@ -1,0 +1,84 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+source_version='2.40.4+dfsg-1'
+package_version="${source_version}+ph4ntxm1"
+installed_version=$(dpkg-query -W -f='${source:Version}' fastfetch)
+case "$installed_version" in
+    "$source_version" | "$package_version") ;;
+    *)
+        printf '%s\n' "Unsupported fastfetch source version: $installed_version" >&2
+        exit 1
+        ;;
+esac
+
+hardware=/usr/lib/ph4ntxm/hardware
+workspace=$(mktemp -d /tmp/ph4ntxm-fastfetch.XXXXXX)
+restore_packages() {
+    apt-mark showmanual >"$workspace/manual-after" \
+        && LC_ALL=C sort -o "$workspace/manual-after" "$workspace/manual-after" \
+        && LC_ALL=C comm -13 "$workspace/manual-before" "$workspace/manual-after" >"$workspace/manual-added" \
+        && awk '$0 != "fastfetch"' "$workspace/manual-added" >"$workspace/build-dependencies" \
+        && xargs -r apt-mark auto <"$workspace/build-dependencies"
+}
+cleanup() {
+    cleanup_status=$?
+    trap - EXIT
+    if [ -f "$workspace/manual-before" ]; then
+        if ! restore_packages; then
+            [ "$cleanup_status" -ne 0 ] || cleanup_status=1
+        fi
+    fi
+    if ! rm -rf "$workspace"; then
+        [ "$cleanup_status" -ne 0 ] || cleanup_status=1
+    fi
+    exit "$cleanup_status"
+}
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+apt-mark showmanual >"$workspace/manual-before.tmp"
+LC_ALL=C sort "$workspace/manual-before.tmp" >"$workspace/manual-before"
+cd "$workspace"
+
+source_base=https://deb.debian.org/debian/pool/main/f/fastfetch
+for archive in \
+    fastfetch_2.40.4+dfsg-1.dsc \
+    fastfetch_2.40.4+dfsg.orig.tar.xz \
+    fastfetch_2.40.4+dfsg-1.debian.tar.xz; do
+    curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+        --output "$archive" "$source_base/$archive"
+done
+sha256sum --check <<'SUMS'
+7c29e80a0e469bf2004c1848501eed9348c8b63f3c28ae1eb1d2c89bcc6a5936  fastfetch_2.40.4+dfsg-1.dsc
+b911f8d802bd79efc6d15d6c9f3e032fe65d7a9eaaf14e1728d873bfc3f15ee0  fastfetch_2.40.4+dfsg.orig.tar.xz
+c3ef26fc85790b2cdd2dbd4f05489c2234942284a3f536064ed456d1a8b4acf5  fastfetch_2.40.4+dfsg-1.debian.tar.xz
+SUMS
+
+dpkg-source -x fastfetch_2.40.4+dfsg-1.dsc source
+patch --batch --fuzz=0 -d source -p1 <"$hardware/fastfetch-profile.patch"
+export DEBIAN_FRONTEND=noninteractive
+apt-get build-dep -y --no-remove --no-install-recommends "$workspace/source"
+cd source
+python3 - <<'PY'
+from datetime import datetime, timezone
+from email.utils import format_datetime
+from pathlib import Path
+
+path = Path('debian/changelog')
+entry = (
+    'fastfetch (2.40.4+dfsg-1+ph4ntxm1) unstable; urgency=medium\n\n'
+    '  * Read CPU frequencies from the active PH4NTXM inventory view.\n\n'
+    ' -- PH4NTXM <PH4NTXMOFFICIAL@proton.me>  '
+    + format_datetime(datetime.now(timezone.utc))
+    + '\n\n'
+)
+path.write_text(entry + path.read_text())
+PY
+dpkg-buildpackage --build=binary --unsigned-changes --unsigned-source -j2
+cd "$workspace"
+architecture=$(dpkg --print-architecture)
+dpkg -i "fastfetch_${package_version}_${architecture}.deb"
+apt-mark manual fastfetch

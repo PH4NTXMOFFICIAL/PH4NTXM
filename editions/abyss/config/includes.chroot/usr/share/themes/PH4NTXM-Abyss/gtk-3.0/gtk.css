@@ -1,0 +1,1059 @@
+@import url("../../../ph4ntxm/themes/whiskermenu.css");
+
+@define-color abyss_deep #080f19;
+@define-color abyss_surface #101b2a;
+@define-color abyss_raised #172638;
+@define-color abyss_hover #1c3045;
+@define-color abyss_border #2b4056;
+@define-color ph4ntxm_outline_color alpha(black, 0.2);
+@define-color abyss_outline alpha(@ph4ntxm_outline_color, 0.4);
+@define-color abyss_selection #123b55;
+@define-color abyss_cyan #00abff;
+@define-color abyss_magenta #ff3dfb;
+@define-color theme_bg_color #101b2a;
+@define-color theme_fg_color #e2eaf2;
+@define-color theme_base_color #080f19;
+@define-color theme_text_color #e2eaf2;
+@define-color theme_selected_bg_color #123b55;
+@define-color theme_selected_fg_color #e2f4ff;
+@define-color insensitive_bg_color #101b2a;
+@define-color insensitive_fg_color #71869b;
+@define-color insensitive_base_color #101b2a;
+@define-color theme_unfocused_bg_color #101b2a;
+@define-color theme_unfocused_fg_color #98aabd;
+@define-color theme_unfocused_base_color #080f19;
+@define-color theme_unfocused_text_color #98aabd;
+@define-color theme_unfocused_selected_bg_color #1c3045;
+@define-color theme_unfocused_selected_fg_color #c5d5e4;
+@define-color borders #2b4056;
+@define-color unfocused_borders #223347;
+@define-color theme_tooltip_bg_color #172638;
+@define-color theme_tooltip_fg_color #e2eaf2;
+@define-color link_color #00abff;
+@define-color warning_color #e7b96c;
+@define-color error_color #ff6b88;
+@define-color success_color #56d89a;
+
+* {
+    padding: 0;
+    -gtk-icon-shadow: none;
+    text-shadow: none;
+    outline-color: alpha(@abyss_cyan, 0.8);
+    outline-style: solid;
+    outline-width: 0;
+    outline-offset: -3px;
+}
+
+.background {
+    color: @theme_fg_color;
+    background-color: @abyss_surface;
+}
+
+.background:backdrop {
+    color: @theme_unfocused_fg_color;
+}
+
+label {
+    padding: 0;
+}
+
+label:disabled,
+image:disabled {
+    color: @insensitive_fg_color;
+}
+
+label selection,
+entry selection,
+textview text selection {
+    color: @theme_selected_fg_color;
+    background-color: @abyss_selection;
+}
+
+.dim-label,
+.subtitle {
+    color: #98aabd;
+    opacity: 1;
+}
+
+.title {
+    font-weight: bold;
+}
+
+.link,
+*:link {
+    color: @abyss_cyan;
+}
+
+*:visited {
+    color: @abyss_magenta;
+}
+
+.view,
+iconview,
+textview text {
+    color: @theme_text_color;
+    background-color: @abyss_deep;
+}
+
+.view:selected,
+.view:selected:focus,
+.view:selected:hover,
+row:selected,
+row:selected:focus,
+row:selected:hover {
+    color: @theme_selected_fg_color;
+    background-color: @abyss_selection;
+}
+
+.view:selected:backdrop,
+row:selected:backdrop {
+    color: @theme_unfocused_selected_fg_color;
+    background-color: @theme_unfocused_selected_bg_color;
+}
+
+.view:disabled {
+    color: @insensitive_fg_color;
+    background-color: @insensitive_base_color;
+}
+
+rubberband,
+.rubberband {
+    border: 1px solid @abyss_cyan;
+    background-color: alpha(@abyss_cyan, 0.12);
+}
+
+button {
+    min-height: 24px;
+    min-width: 16px;
+    padding: 5px 12px;
+    color: @theme_fg_color;
+    background-color: @abyss_raised;
+    background-image: none;
+    border: 1px solid @abyss_border;
+    border-radius: 5px;
+    box-shadow: none;
+}
+
+button:hover {
+    background-color: @abyss_hover;
+    border-color: #426581;
+}
+
+button:active,
+button:checked {
+    color: @theme_selected_fg_color;
+    background-color: @abyss_selection;
+    border-color: #357292;
+}
+
+button:focus,
+button.default {
+    border-color: @abyss_cyan;
+}
+
+button:disabled {
+    color: @insensitive_fg_color;
+    background-color: @abyss_surface;
+    border-color: #223347;
+    box-shadow: none;
+}
+
+button.flat,
+button.link {
+    background-color: transparent;
+    border-color: transparent;
+}
+
+button.flat:hover {
+    background-color: @abyss_hover;
+}
+
+button.flat:checked {
+    background-color: @abyss_selection;
+}
+
+button.flat:focus {
+    border-color: @abyss_cyan;
+}
+
+button.image-button {
+    min-width: 24px;
+    padding: 5px;
+}
+
+button.text-button image {
+    margin-right: 6px;
+}
+
+button.suggested-action {
+    color: @abyss_deep;
+    background-color: @abyss_cyan;
+    border-color: @abyss_cyan;
+}
+
+button.suggested-action:hover {
+    background-color: #53c7ff;
+    border-color: #53c7ff;
+}
+
+button.suggested-action:active {
+    background-color: #008ad1;
+    border-color: #008ad1;
+}
+
+button.destructive-action {
+    color: #ffdce4;
+    background-color: #442033;
+    border-color: #ad4c69;
+}
+
+button.destructive-action:hover {
+    background-color: #602840;
+    border-color: @error_color;
+}
+
+button.suggested-action:disabled,
+button.destructive-action:disabled {
+    color: @insensitive_fg_color;
+    background-color: @abyss_surface;
+    border-color: #223347;
+}
+
+.linked:not(.vertical) > button,
+.linked:not(.vertical) > entry,
+.linked:not(.vertical) > combobox > box > button {
+    border-radius: 0;
+    margin-left: -1px;
+}
+
+.linked:not(.vertical) > :first-child,
+.linked:not(.vertical) > combobox:first-child > box > button {
+    border-radius: 5px 0 0 5px;
+    margin-left: 0;
+}
+
+.linked:not(.vertical) > :last-child,
+.linked:not(.vertical) > combobox:last-child > box > button {
+    border-radius: 0 5px 5px 0;
+}
+
+.linked:not(.vertical) > :only-child {
+    border-radius: 5px;
+}
+
+.linked.vertical > button {
+    border-radius: 0;
+    margin-top: -1px;
+}
+
+.linked.vertical > button:first-child {
+    border-radius: 5px 5px 0 0;
+    margin-top: 0;
+}
+
+.linked.vertical > button:last-child {
+    border-radius: 0 0 5px 5px;
+}
+
+entry,
+spinbutton:not(.vertical) {
+    min-height: 24px;
+    padding: 5px 9px;
+    color: @theme_text_color;
+    caret-color: @abyss_cyan;
+    background-color: @abyss_deep;
+    background-image: none;
+    border: 1px solid @abyss_border;
+    border-radius: 5px;
+    box-shadow: none;
+}
+
+entry:focus,
+spinbutton:focus {
+    border-color: @abyss_cyan;
+    box-shadow: inset 0 -1px @abyss_cyan;
+}
+
+entry:disabled,
+spinbutton:disabled {
+    color: @insensitive_fg_color;
+    background-color: @abyss_surface;
+    border-color: #223347;
+    box-shadow: none;
+}
+
+entry image {
+    color: #98aabd;
+}
+
+entry image:hover {
+    color: @abyss_cyan;
+}
+
+entry image.left {
+    padding-right: 7px;
+}
+
+entry image.right {
+    padding-left: 7px;
+}
+
+entry.error,
+entry.error:focus {
+    border-color: @error_color;
+    box-shadow: inset 0 -1px @error_color;
+}
+
+entry.warning,
+entry.warning:focus {
+    border-color: @warning_color;
+    box-shadow: inset 0 -1px @warning_color;
+}
+
+entry progress {
+    border-bottom: 2px solid @abyss_cyan;
+    background-color: transparent;
+}
+
+entry.flat,
+treeview entry {
+    border-radius: 0;
+}
+
+spinbutton:not(.vertical) {
+    padding: 0;
+}
+
+spinbutton:not(.vertical) > entry {
+    min-width: 32px;
+    padding: 5px 9px;
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+spinbutton button {
+    min-width: 16px;
+    padding: 5px 6px;
+    border: none;
+    border-left: 1px solid @abyss_border;
+    border-radius: 0;
+    background-color: transparent;
+}
+
+spinbutton button:last-child {
+    border-radius: 0 4px 4px 0;
+}
+
+spinbutton button:hover {
+    background-color: @abyss_hover;
+}
+
+spinbutton.vertical button {
+    border: 1px solid @abyss_border;
+    border-radius: 5px;
+}
+
+combobox arrow {
+    min-width: 12px;
+    min-height: 12px;
+    margin-left: 9px;
+    -gtk-icon-source: -gtk-icontheme("pan-down-symbolic");
+}
+
+checkbutton,
+radiobutton {
+    min-height: 24px;
+    padding: 3px 0;
+}
+
+checkbutton:focus,
+radiobutton:focus {
+    outline-width: 1px;
+}
+
+check,
+radio {
+    min-width: 16px;
+    min-height: 16px;
+    margin: 0 7px 0 0;
+    border: 1px solid #536c84;
+    border-radius: 4px;
+    background-color: @abyss_deep;
+    -gtk-icon-source: none;
+}
+
+radio {
+    border-radius: 50%;
+}
+
+check:hover,
+radio:hover {
+    border-color: @abyss_cyan;
+}
+
+check:checked,
+check:indeterminate,
+radio:checked {
+    background-color: @abyss_cyan;
+    border-color: @abyss_cyan;
+}
+
+check:checked {
+    -gtk-icon-source: url("assets/check.svg");
+}
+
+check:indeterminate {
+    -gtk-icon-source: url("assets/dash.svg");
+}
+
+radio:checked {
+    -gtk-icon-source: url("assets/radio.svg");
+}
+
+check:disabled,
+radio:disabled {
+    opacity: 0.45;
+}
+
+switch {
+    min-width: 42px;
+    min-height: 22px;
+    border: 1px solid @abyss_border;
+    border-radius: 12px;
+    background-color: @abyss_deep;
+    color: transparent;
+}
+
+switch:checked {
+    background-color: @abyss_selection;
+    border-color: @abyss_cyan;
+}
+
+switch slider {
+    min-width: 18px;
+    min-height: 18px;
+    margin: 2px;
+    border-radius: 50%;
+    background-color: #98aabd;
+}
+
+switch:checked slider {
+    background-color: @abyss_cyan;
+}
+
+switch:hover slider {
+    background-color: @theme_fg_color;
+}
+
+switch:disabled {
+    opacity: 0.45;
+}
+
+scale {
+    padding: 10px;
+}
+
+scale trough {
+    min-height: 4px;
+    min-width: 4px;
+    border-radius: 3px;
+    background-color: @abyss_deep;
+}
+
+scale highlight {
+    border-radius: 3px;
+    background-color: @abyss_cyan;
+}
+
+scale slider {
+    min-width: 14px;
+    min-height: 14px;
+    margin: -6px;
+    border: 1px solid #53c7ff;
+    border-radius: 50%;
+    background-color: @abyss_cyan;
+}
+
+scale slider:hover {
+    background-color: #b0e4ff;
+}
+
+scale:disabled {
+    opacity: 0.45;
+}
+
+scale value,
+scale marks {
+    color: #98aabd;
+}
+
+progressbar trough,
+levelbar trough {
+    min-height: 5px;
+    min-width: 5px;
+    border-radius: 3px;
+    background-color: @abyss_deep;
+}
+
+progressbar progress,
+levelbar block.filled {
+    min-height: 5px;
+    min-width: 5px;
+    border-radius: 3px;
+    background-color: @abyss_cyan;
+}
+
+levelbar block {
+    margin: 1px;
+    background-color: @abyss_deep;
+}
+
+progressbar text {
+    margin-bottom: 5px;
+    color: #98aabd;
+}
+
+scrollbar {
+    background-color: transparent;
+}
+
+scrollbar trough {
+    min-width: 10px;
+    min-height: 10px;
+    background-color: transparent;
+}
+
+scrollbar slider {
+    min-width: 6px;
+    min-height: 6px;
+    margin: 2px;
+    border-radius: 5px;
+    background-color: #354c63;
+}
+
+scrollbar.vertical slider {
+    min-height: 32px;
+}
+
+scrollbar.horizontal slider {
+    min-width: 32px;
+}
+
+scrollbar slider:hover,
+scrollbar slider:active {
+    background-color: #63849f;
+}
+
+scrollbar button {
+    min-height: 0;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    background-color: transparent;
+}
+
+scrollbar:disabled slider {
+    background-color: transparent;
+}
+
+menu,
+.menu,
+.context-menu {
+    padding: 5px;
+    color: @theme_fg_color;
+    background-color: @abyss_raised;
+    border: 1px solid @abyss_outline;
+    border-radius: 5px;
+}
+
+menuitem {
+    min-height: 22px;
+    padding: 5px 10px;
+    border-radius: 3px;
+}
+
+menuitem:hover {
+    color: @theme_selected_fg_color;
+    background-color: @abyss_selection;
+}
+
+menuitem:disabled {
+    color: @insensitive_fg_color;
+}
+
+menuitem accelerator {
+    color: #98aabd;
+    margin-left: 18px;
+}
+
+menuitem arrow {
+    min-width: 12px;
+    min-height: 12px;
+    margin-left: 12px;
+    -gtk-icon-source: -gtk-icontheme("pan-end-symbolic");
+}
+
+menuitem check,
+menuitem radio {
+    min-height: 14px;
+    min-width: 14px;
+}
+
+menubar {
+    padding: 2px 4px;
+    color: @theme_fg_color;
+    background-color: @abyss_surface;
+}
+
+menubar > menuitem {
+    padding: 4px 8px;
+}
+
+separator {
+    min-height: 1px;
+    min-width: 1px;
+    background-color: @abyss_outline;
+}
+
+menu separator {
+    margin: 5px 6px;
+}
+
+popover,
+popover.background {
+    padding: 8px;
+    color: @theme_fg_color;
+    background-color: @abyss_raised;
+    border: 1px solid @abyss_outline;
+    border-radius: 7px;
+    box-shadow: 0 5px 16px alpha(black, 0.28);
+}
+
+popover modelbutton {
+    min-height: 24px;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+popover modelbutton:hover {
+    background-color: @abyss_selection;
+}
+
+tooltip,
+tooltip.background {
+    color: @theme_tooltip_fg_color;
+    background-color: @theme_tooltip_bg_color;
+    border: 1px solid @abyss_outline;
+    border-radius: 5px;
+}
+
+tooltip box {
+    padding: 6px 9px;
+}
+
+headerbar,
+.titlebar {
+    min-height: 36px;
+    padding: 5px 7px;
+    color: @theme_fg_color;
+    background-color: @abyss_surface;
+    border-bottom: 1px solid @abyss_outline;
+    border-radius: 7px 7px 0 0;
+}
+
+headerbar:backdrop,
+.titlebar:backdrop {
+    color: @theme_unfocused_fg_color;
+}
+
+headerbar .title,
+.titlebar .title {
+    font-weight: bold;
+}
+
+headerbar .subtitle {
+    font-size: 90%;
+}
+
+headerbar button,
+.titlebar button {
+    margin: 1px;
+}
+
+headerbar button.titlebutton,
+.titlebar button.titlebutton {
+    min-width: 20px;
+    min-height: 20px;
+    padding: 4px;
+    background-color: transparent;
+    border-color: transparent;
+    border-radius: 4px;
+}
+
+headerbar button.titlebutton:hover,
+.titlebar button.titlebutton:hover {
+    color: @abyss_cyan;
+    background-color: @abyss_hover;
+}
+
+headerbar button.titlebutton.close:hover,
+.titlebar button.titlebutton.close:hover {
+    color: @abyss_magenta;
+    background-color: #352139;
+}
+
+.csd decoration {
+    margin: 8px;
+    border: 1px solid alpha(@ph4ntxm_outline_color, 0.3);
+    border-radius: 7px 7px 0 0;
+    box-shadow: 0 6px 18px alpha(black, 0.32);
+}
+
+.csd decoration:backdrop {
+    border-color: alpha(@ph4ntxm_outline_color, 0.25);
+    box-shadow: 0 4px 12px alpha(black, 0.22);
+}
+
+.maximized headerbar,
+.fullscreen headerbar,
+.tiled headerbar,
+.maximized decoration,
+.fullscreen decoration,
+.tiled decoration {
+    border-radius: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+toolbar,
+.inline-toolbar,
+actionbar {
+    padding: 5px;
+    background-color: @abyss_surface;
+    border-color: @abyss_border;
+}
+
+actionbar {
+    border-top: 1px solid @abyss_outline;
+}
+
+toolbar button {
+    min-height: 22px;
+    padding: 4px 7px;
+}
+
+notebook > header {
+    padding: 2px;
+    background-color: @abyss_surface;
+    border-color: @abyss_border;
+}
+
+notebook > header.top {
+    border-bottom: 1px solid @abyss_border;
+}
+
+notebook > header.bottom {
+    border-top: 1px solid @abyss_outline;
+}
+
+notebook > header > tabs > tab {
+    min-height: 26px;
+    padding: 5px 13px;
+    color: #98aabd;
+    border: 2px solid transparent;
+}
+
+notebook > header > tabs > tab:hover {
+    color: @theme_fg_color;
+    background-color: @abyss_raised;
+}
+
+notebook > header > tabs > tab:checked {
+    color: @theme_fg_color;
+    background-color: @abyss_raised;
+    border-bottom-color: @abyss_cyan;
+}
+
+notebook > header.bottom > tabs > tab:checked {
+    border-bottom-color: transparent;
+    border-top-color: @abyss_cyan;
+}
+
+notebook > header.left > tabs > tab:checked {
+    border-bottom-color: transparent;
+    border-right-color: @abyss_cyan;
+}
+
+notebook > header.right > tabs > tab:checked {
+    border-bottom-color: transparent;
+    border-left-color: @abyss_cyan;
+}
+
+notebook tab button {
+    min-width: 16px;
+    min-height: 16px;
+    padding: 1px;
+    margin-left: 8px;
+    background-color: transparent;
+    border-color: transparent;
+}
+
+notebook stack {
+    background-color: @abyss_surface;
+}
+
+frame > border,
+.frame {
+    border: 1px solid @abyss_outline;
+    border-radius: 5px;
+}
+
+scrolledwindow > junction {
+    background-color: @abyss_surface;
+}
+
+scrolledwindow overshoot {
+    background-color: alpha(@abyss_cyan, 0.08);
+}
+
+list {
+    color: @theme_fg_color;
+    background-color: @abyss_deep;
+}
+
+row {
+    padding: 6px 9px;
+    border-radius: 3px;
+}
+
+row:hover {
+    background-color: @abyss_raised;
+}
+
+row:focus {
+    outline-width: 1px;
+}
+
+treeview.view {
+    padding: 3px 5px;
+    -GtkTreeView-vertical-separator: 7;
+    -GtkTreeView-horizontal-separator: 8;
+    -GtkTreeView-grid-line-width: 0;
+}
+
+treeview.view header button {
+    padding: 5px 9px;
+    border-radius: 0;
+    border-width: 0 0 1px;
+    background-color: @abyss_surface;
+    color: #98aabd;
+}
+
+treeview.view expander,
+expander arrow {
+    min-width: 12px;
+    min-height: 12px;
+    color: #98aabd;
+    -gtk-icon-source: -gtk-icontheme("pan-end-symbolic");
+}
+
+treeview.view expander:checked,
+expander arrow:checked {
+    -gtk-icon-transform: rotate(90deg);
+}
+
+.sidebar,
+placessidebar,
+.sidebar .view {
+    color: #b8c9d8;
+    background-color: @abyss_surface;
+}
+
+.sidebar row,
+placessidebar row {
+    min-height: 24px;
+    padding: 5px 9px;
+}
+
+.sidebar row:selected {
+    background-color: @abyss_selection;
+    color: @theme_selected_fg_color;
+}
+
+paned > separator {
+    min-width: 4px;
+    min-height: 4px;
+    background-color: @abyss_surface;
+}
+
+paned > separator:hover {
+    background-color: @abyss_border;
+}
+
+calendar {
+    padding: 5px;
+    border: 1px solid @abyss_border;
+    border-radius: 5px;
+}
+
+calendar:selected {
+    color: @theme_selected_fg_color;
+    background-color: @abyss_selection;
+}
+
+calendar.header {
+    color: @abyss_cyan;
+}
+
+infobar {
+    padding: 8px;
+    background-color: @abyss_raised;
+    border-bottom: 1px solid @abyss_border;
+}
+
+infobar.error {
+    border-color: @error_color;
+}
+
+infobar.warning {
+    border-color: @warning_color;
+}
+
+infobar.info {
+    border-color: @abyss_cyan;
+}
+
+spinner {
+    color: @abyss_cyan;
+    -gtk-icon-source: -gtk-icontheme("process-working-symbolic");
+}
+
+spinner:checked {
+    animation: abyss-spin 1s linear infinite;
+}
+
+@keyframes abyss-spin {
+    to { -gtk-icon-transform: rotate(1turn); }
+}
+
+vte-terminal {
+    color: @theme_text_color;
+    background-color: @abyss_deep;
+}
+
+.xfce4-panel,
+.xfce4-panel.background {
+    color: #b8c9d8;
+    background-color: @abyss_deep;
+    border: none;
+}
+
+.xfce4-panel button {
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 2px 5px;
+    color: #b8c9d8;
+    background-color: transparent;
+    border-color: transparent;
+    border-radius: 0;
+}
+
+.xfce4-panel button:hover {
+    color: @theme_fg_color;
+    background-color: @abyss_raised;
+}
+
+.xfce4-panel button:checked {
+    color: @abyss_cyan;
+    background-color: @abyss_selection;
+    box-shadow: none;
+}
+
+.xfce4-panel separator {
+    margin: 5px 3px;
+    background-color: @abyss_border;
+}
+
+#whiskermenu-window {
+    color: @theme_fg_color;
+    background-color: @abyss_surface;
+    border: 1px solid @abyss_outline;
+}
+
+#whiskermenu-window .view,
+#whiskermenu-window scrolledwindow {
+    background-color: @abyss_surface;
+}
+
+#whiskermenu-window .view:selected,
+#whiskermenu-window .view:selected:focus,
+#whiskermenu-window .view:selected:hover {
+    color: @theme_selected_fg_color;
+    background-color: @abyss_selection;
+}
+
+
+.xfdesktop.view {
+    color: #d5e4f0;
+    background-color: transparent;
+    text-shadow: 0 1px 2px @abyss_deep;
+}
+
+.xfdesktop.view:selected {
+    background-color: alpha(@abyss_selection, 0.85);
+    color: @theme_selected_fg_color;
+}
+
+.lightdm.entry,
+.lightdm-combo .entry {
+    color: @theme_text_color;
+    background-color: @abyss_deep;
+    border-color: @abyss_border;
+}
+
+.lightdm.entry:focus,
+.lightdm-combo .entry:focus {
+    border-color: @abyss_cyan;
+}
+
+.lightdm.entry:disabled,
+.lightdm-combo .entry:disabled {
+    color: @insensitive_fg_color;
+    background-color: @abyss_surface;
+}
+
+frame > border.flat,
+.frame.flat {
+    border: none;
+}
+
+#login_window {
+    background-color: @abyss_surface;
+    border: 1px solid @abyss_outline;
+    border-radius: 7px;
+}
+
+#login_window #content_frame > border,
+#login_window #buttonbox_frame > border,
+#login_window #user_image_border > border {
+    border: none;
+}
+
+#login_button {
+    color: @abyss_deep;
+    background-color: @abyss_cyan;
+    border-color: @abyss_cyan;
+}
+
+#login_button:hover {
+    background-color: #53c7ff;
+    border-color: #53c7ff;
+}
+
+#login_button:disabled {
+    color: @insensitive_fg_color;
+    background-color: @abyss_surface;
+    border-color: #223347;
+}

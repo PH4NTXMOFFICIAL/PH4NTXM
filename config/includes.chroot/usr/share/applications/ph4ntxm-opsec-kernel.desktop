@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM OpSec Kernel
+Comment=PH4NTXM Operational Security Kernel Report
+Exec=xfce4-terminal --disable-server --class=PH4NTXM-OpSec-Kernel --title="PH4NTXM OpSec Kernel" --hold --command="/usr/local/bin/ph4ntxm-opsec-kernel"
+StartupWMClass=PH4NTXM-OpSec-Kernel
+Icon=ph4ntxm-opsec-kernel
+Terminal=false
+Categories=System;Security;X-PH4NTXMOpSecSuite;
+StartupNotify=false

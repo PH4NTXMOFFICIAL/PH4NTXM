@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" width="64" height="64" viewBox="0 0 64 64" version="1.1"><g transform="translate(9.71430766285 3.09677419355) scale(1.44324714771)"><svg width="30.491568" height="40.053051" version="1" id="svg8" viewBox="0 0 30.491568 40.053051" overflow="hidden">
+
+  <defs id="defs12">
+    
+    <filter style="color-interpolation-filters:sRGB" id="filter3" x="-0.0315" y="-0.023625" width="1.063" height="1.04725">
+      <feGaussianBlur stdDeviation="0.118125" id="feGaussianBlur3"/>
+    </filter>
+    
+  </defs>
+  <g id="g3" transform="matrix(3.1871609,0,0,3.1871609,-8.6579226,-5.4707617)">
+    <path style="color:#dedede;display:inline;opacity:0.6;fill:#00abff;fill-opacity:1;stroke:none;filter:url(#filter3)" d="M 8,2 V 7 H 5 v 1 h 7 V 7 H 9 V 2 Z M 5,9 c 0,2.76142 -0.89543,5 -2,5 h 4 1 2 c 1.10456,0 2,-2.23858 2,-5 H 10 8 7 Z" class="ColorScheme-Text" id="path1"/>
+    <path style="color:#dedede;fill:#00abff;fill-opacity:1;stroke:none" d="M 8,2 V 7 H 5 v 1 h 7 V 7 H 9 V 2 Z M 5,9 c 0,2.76142 -0.89543,5 -2,5 h 4 1 2 c 1.10456,0 2,-2.23858 2,-5 H 10 8 7 Z" class="ColorScheme-Text" id="path2"/>
+  </g>
+</svg></g></svg>

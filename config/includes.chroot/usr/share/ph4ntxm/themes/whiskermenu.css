@@ -1,0 +1,36 @@
+#whiskermenu-window button {
+    min-height: 22px;
+    min-width: 20px;
+    padding: 2px 6px;
+}
+
+#whiskermenu-window button.image-button {
+    min-width: 24px;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+#whiskermenu-window entry {
+    min-height: 22px;
+    padding: 2px 8px;
+    margin: 0;
+}
+
+#whiskermenu-window entry image.left {
+    padding-right: 5px;
+}
+
+#whiskermenu-window entry image.right {
+    padding-left: 5px;
+}
+
+#whiskermenu-window treeview.view {
+    padding: 0;
+    -GtkTreeView-vertical-separator: 2;
+    -GtkTreeView-horizontal-separator: 4;
+}
+
+#whiskermenu-window scrolledwindow viewport.frame {
+    border-color: alpha(@ph4ntxm_outline_color, 0.15);
+    border-radius: 0;
+}

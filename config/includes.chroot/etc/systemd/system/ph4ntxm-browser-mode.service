@@ -1,0 +1,19 @@
+[Unit]
+Description=PH4NTXM Browser Mode Gate
+Requires=ph4ntxm-mode.service
+After=local-fs.target ph4ntxm-mode.service
+Before=display-manager.service graphical.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-browser-mode.sh
+RemainAfterExit=yes
+TimeoutStartSec=120
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_SYS_ADMIN
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=yes
+RestrictRealtime=yes
+
+[Install]
+WantedBy=graphical.target

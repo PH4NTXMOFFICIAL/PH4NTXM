@@ -1,0 +1,36 @@
+abi <abi/4.0>,
+include <tunables/global>
+
+profile ph4ntxm-document-airlock-bwrap /usr/local/libexec/ph4ntxm-document-airlock/bwrap flags=(attach_disconnected,mediate_deleted) {
+  allow capability,
+  allow file rwlkm /{**,},
+  allow network,
+  allow unix,
+  allow ptrace,
+  allow signal,
+  allow mqueue,
+  allow io_uring,
+  allow userns,
+  allow mount,
+  allow umount,
+  allow pivot_root,
+  allow dbus,
+  allow pix /** -> &ph4ntxm-document-airlock-bwrap//&ph4ntxm-document-airlock-child,
+}
+
+profile ph4ntxm-document-airlock-child flags=(attach_disconnected,mediate_deleted) {
+  allow file rwlkm /{**,},
+  allow network,
+  allow unix,
+  allow ptrace,
+  allow signal,
+  allow mqueue,
+  allow io_uring,
+  allow userns,
+  allow mount,
+  allow umount,
+  allow pivot_root,
+  allow dbus,
+  allow pix /** -> &ph4ntxm-document-airlock-child,
+  audit deny capability,
+}

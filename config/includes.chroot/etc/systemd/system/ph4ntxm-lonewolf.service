@@ -1,0 +1,17 @@
+[Unit]
+Description=PH4NTXM Lone Wolf Enforcement
+DefaultDependencies=no
+Requires=systemd-sysctl.service ph4ntxm-mode.service
+After=systemd-sysctl.service ph4ntxm-mode.service
+Before=network-pre.target
+Before=tor.service tor@default.service
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=ph4ntxm-lonewolf-multi-user.target
+WantedBy=network-pre.target

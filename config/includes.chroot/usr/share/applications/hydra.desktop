@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Hydra
+Comment=Launch Hydra in a terminal
+Exec=xfce4-terminal --disable-server --class=Hydra --title="Hydra" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review Hydra options.\033[0m\"; hydra; exec zsh'"
+StartupWMClass=Hydra
+Icon=ph4ntxm-hydra
+Terminal=false
+Categories=X-PentestingPH4NTXM;

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Name=PH4NTXM Terminal
+Comment=Open zsh
+Exec=xfce4-terminal --disable-server --class=PH4NTXM-Terminal --title="PH4NTXM Terminal"
+StartupWMClass=PH4NTXM-Terminal
+Icon=org.xfce.terminal
+Terminal=false
+Type=Application
+Categories=X-PH4NTXMApps;
+StartupNotify=true

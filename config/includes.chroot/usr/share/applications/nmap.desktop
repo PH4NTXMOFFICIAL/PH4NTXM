@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Nmap
+Comment=Launch Nmap in a terminal
+Exec=xfce4-terminal --disable-server --class=Nmap --title="Nmap" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review Nmap options.\033[0m\"; nmap --help; exec zsh'"
+StartupWMClass=Nmap
+Icon=ph4ntxm-nmap
+Terminal=false
+Categories=X-PentestingPH4NTXM;

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -e
+
+chmod +x /usr/local/bin/ph4ntxm-usb-nuke
+
+update-desktop-database
+gtk-update-icon-cache /usr/share/icons/Lyra-blue-dark

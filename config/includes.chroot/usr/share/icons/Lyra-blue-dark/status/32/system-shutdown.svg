@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg:svg xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" version="1.1"><svg:g transform="translate(2.13333333333 2.13333333333) scale(1.86666666667)"><svg:svg width="32" height="32" version="1.1" id="svg12" viewBox="0 0 32 32" overflow="hidden">
+  <svg:defs id="defs16"/>
+
+
+  <svg:path d="m20.621 1.0002c9.081 0 10.379 1.387 10.379 11.108v7.7845c0 9.7205-1.2978 11.108-10.379 11.108h-9.2423c-9.081 0-10.379-1.387-10.379-11.108v-7.7845c0-9.7205 1.2978-11.108 10.379-11.108z" enable-background="new" fill="#fff" stroke-width="2.0615" id="path4" style="opacity:0.6"/>
+  <svg:g id="g1242" transform="translate(44.99985,87.00045)">
+    <svg:rect id="rect75" style="opacity:1;fill:#323232;fill-opacity:1;fill-rule:evenodd;stroke-width:3.77952766;paint-order:stroke fill markers" ry="0.49999374" height="8.9998112" width="0.99998748" y="-80" x="-29.499994"/>
+    <svg:path d="m -24.749959,-78.361286 a 8.5000811,8.5000811 0 0 1 3.960407,9.561269 8.5000811,8.5000811 0 0 1 -8.210448,6.300098 8.5000811,8.5000811 0 0 1 -8.210448,-6.300098 8.5000811,8.5000811 0 0 1 3.960407,-9.561269" id="path1238" style="opacity:1;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#323232;stroke-width:0.99983799;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:3;stroke-opacity:1;paint-order:stroke fill markers"/>
+  </svg:g>
+</svg:svg></svg:g></svg:svg>

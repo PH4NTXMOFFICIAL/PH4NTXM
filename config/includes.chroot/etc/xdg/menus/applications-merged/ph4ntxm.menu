@@ -1,0 +1,53 @@
+<!DOCTYPE Menu PUBLIC "-//freedesktop//DTD Menu 1.0//EN"
+ "http://www.freedesktop.org/standards/menu-spec/1.0/menu.dtd">
+
+<Menu>
+    <Name>Applications</Name>
+
+    <MergeFile type="parent">/etc/xdg/menus/xfce-applications.menu</MergeFile>
+
+    <Menu>
+        <Name>PH4NTXM Apps</Name>
+        <Directory>ph4ntxm-apps.directory</Directory>
+
+        <Include>
+            <Category>X-PH4NTXMApps</Category>
+        </Include>
+    </Menu>
+
+    <Menu>
+        <Name>PH4NTXM OpSec Suite</Name>
+        <Directory>ph4ntxm-opsec-suite.directory</Directory>
+
+        <Include>
+            <Category>X-PH4NTXMOpSecSuite</Category>
+        </Include>
+    </Menu>
+
+    <Menu>
+        <Name>Pentesting</Name>
+        <Directory>pentesting.directory</Directory>
+
+        <Include>
+            <Category>X-PentestingPH4NTXM</Category>
+        </Include>
+    </Menu>
+
+    <Menu>
+        <Name>Security</Name>
+        <Directory>security.directory</Directory>
+
+        <Include>
+            <Category>X-SecurityPH4NTXM</Category>
+        </Include>
+    </Menu>
+
+    <Menu>
+        <Name>Anonymity</Name>
+        <Directory>anonymity.directory</Directory>
+
+        <Include>
+            <Category>X-AnonymityPH4NTXM</Category>
+        </Include>
+    </Menu>
+</Menu>
