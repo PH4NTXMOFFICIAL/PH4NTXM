@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   version="1.1"
+   viewBox="0 0 22 22"
+   id="svg7">
+
+
+  <defs
+     id="defs3">
+    <style
+       id="current-color-scheme"
+       type="text/css">.ColorScheme-Text {
+        color:#dedede;
+      }</style>
+  </defs>
+  <path
+     class="ColorScheme-Text"
+     d="M 7,0 C 5.892,0 5,0.892 5,2 v 16 l 6,-3 6,3 V 2 C 17,0.892 16.108,0 15,0 Z m 0,1 h 8 c 0.554,0 1,0.446 1,1 V 16.419 L 11,13.8253 6,16.419 V 2 C 6,1.446 6.446,1 7,1 Z"
+     fill="currentColor"
+     id="path5" />
+</svg>

@@ -1,0 +1,13 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+umask 077
+export PATH=/usr/bin:/bin
+/bin/busybox hostname ph4ntxm-airlock
+/usr/bin/python3 -I /usr/local/lib/ph4ntxm-document-airlock/guest.py \
+    3<>/dev/ph4ntxm-airlock <&3 >&3 3>&- 2>/dev/null
+/bin/busybox poweroff -f
+/bin/busybox sleep 1
+echo o >/proc/sysrq-trigger
+while :; do /bin/busybox sleep 1; done

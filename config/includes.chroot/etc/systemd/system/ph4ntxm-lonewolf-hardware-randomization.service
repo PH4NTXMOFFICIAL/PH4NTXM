@@ -1,0 +1,14 @@
+[Unit]
+Description=PH4NTXM Lone Wolf Hardware Randomization
+DefaultDependencies=no
+After=systemd-udevd.service local-fs.target ph4ntxm-lonewolf-identity-randomization.service
+Requires=ph4ntxm-lonewolf-identity-randomization.service
+Before=network-pre.target network.target
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-hardware-randomization.sh
+
+[Install]
+WantedBy=network-pre.target

@@ -1,0 +1,18 @@
+[Unit]
+Description=PH4NTXM Unblock Network Interfaces
+DefaultDependencies=no
+StartLimitIntervalSec=0
+After=systemd-sysctl.service ph4ntxm-arm-nuke.service ph4ntxm-clock-fuzz.service ph4ntxm-link-jitter.service ph4ntxm-net-randomization.service ph4ntxm-lonewolf-net-randomization.service ph4ntxm-dhcp-session-generator.service ph4ntxm-lonewolf-dhcp-session-generator.service ph4ntxm-nft-rules.service ph4ntxm-lonewolf.service ph4ntxm-lonewolf-firewall-guard.service ph4ntxm-packet-transformation-engine.service ph4ntxm-unbound-randomization.service ph4ntxm-lonewolf-sysctl.service
+Requires=systemd-sysctl.service ph4ntxm-arm-nuke.service ph4ntxm-clock-fuzz.service ph4ntxm-link-jitter.service ph4ntxm-net-randomization.service ph4ntxm-lonewolf-net-randomization.service ph4ntxm-dhcp-session-generator.service ph4ntxm-lonewolf-dhcp-session-generator.service ph4ntxm-nft-rules.service ph4ntxm-lonewolf.service ph4ntxm-lonewolf-firewall-guard.service ph4ntxm-packet-transformation-engine.service ph4ntxm-unbound-randomization.service ph4ntxm-lonewolf-sysctl.service
+Before=network-pre.target NetworkManager.service ph4ntxm-packet-transformation-engine-guard.service
+OnSuccess=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-link-unblock.sh
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=network-pre.target

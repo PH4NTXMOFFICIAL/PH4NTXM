@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Panic Button Tray
+Exec=/usr/local/bin/ph4ntxm-panic-button-tray
+Icon=ph4ntxm-panic-button
+Comment=Emergency shutdown tray control
+X-GNOME-Autostart-enabled=true

@@ -1,0 +1,14 @@
+[Unit]
+Description=PH4NTXM CPUInfo Spoof
+After=ph4ntxm-cores-randomization.service
+Requires=ph4ntxm-cores-randomization.service
+Before=display-manager.service
+ConditionPathExists=/run/ph4ntxm/mode-normal
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-cpu-spoof.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target

@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" version="1.1"><g transform="translate(14.5049642681 2.86178861789) scale(4.65727026007)"><svg viewBox="0 0 7.513 12.513" version="1.1" id="svg1" width="7.513" height="12.513" overflow="hidden">
+  <defs id="defs3051">
+    
+    <style type="text/css" id="current-color-scheme">
+      .ColorScheme-Text {
+        color:#dedede;
+      }
+      </style>
+    
+    <filter style="color-interpolation-filters:sRGB" id="filter2" x="-0.036642858" y="-0.021375" width="1.0732857" height="1.04275">
+      <feGaussianBlur stdDeviation="0.106875" id="feGaussianBlur2"/>
+    </filter>
+  </defs>
+  <g transform="translate(-426.45779,-533.53424)" id="g1">
+    <path style="display:inline;opacity:0.6;fill:#00abff;fill-opacity:1;stroke:none;filter:url(#filter2)" d="m 426.71429,539.79074 1.95349,-1.875 4.29767,-4.125 0.13024,0.125 0.39069,0.375 0.22791,0.21875 -4.29768,4.125 -1.23721,1.15625 1.23721,1.15625 4.29768,4.125 -0.74884,0.71875 -4.29767,-4.125 z" id="rect4176" class="ColorScheme-Text"/>
+    <path style="fill:#00abff;fill-opacity:1;stroke:none" d="m 426.71429,539.79074 1.95349,-1.875 4.29767,-4.125 0.13024,0.125 0.39069,0.375 0.22791,0.21875 -4.29768,4.125 -1.23721,1.15625 1.23721,1.15625 4.29768,4.125 -0.74884,0.71875 -4.29767,-4.125 z" id="path1" class="ColorScheme-Text"/>
+  </g>
+</svg></g></svg>

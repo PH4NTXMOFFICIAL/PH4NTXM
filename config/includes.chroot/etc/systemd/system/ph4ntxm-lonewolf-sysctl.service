@@ -1,0 +1,15 @@
+[Unit]
+Description=PH4NTXM Lone Wolf Kernel Profile
+DefaultDependencies=no
+After=systemd-sysctl.service ph4ntxm-mode.service
+Requires=systemd-sysctl.service ph4ntxm-mode.service
+Before=network-pre.target
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/sysctl -p /usr/lib/ph4ntxm/lonewolf/lonewolf.conf
+RemainAfterExit=yes
+
+[Install]
+WantedBy=ph4ntxm-lonewolf-multi-user.target

@@ -1,0 +1,15 @@
+[Unit]
+Description=PH4NTXM Network Prep
+DefaultDependencies=no
+After=ph4ntxm-mode.service ph4ntxm-link-block.service
+Requires=ph4ntxm-mode.service ph4ntxm-link-block.service
+Before=network-pre.target NetworkManager.service
+ConditionPathExists=/usr/local/sbin/ph4ntxm-net-prep.sh
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-net-prep.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=ph4ntxm-init.target

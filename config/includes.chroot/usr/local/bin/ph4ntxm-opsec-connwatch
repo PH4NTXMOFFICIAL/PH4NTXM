@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -u
+
+RESET="\033[0m"
+BOLD="\033[1m"
+PH4NTXM_CYAN="\033[38;2;0;171;255m"
+PH4NTXM_MAGENTA="\033[38;2;255;61;251m"
+GREEN="\033[38;2;68;209;122m"
+AMBER="\033[38;2;255;176;32m"
+RED="\033[38;2;255;77;90m"
+GRAY="\033[38;2;165;175;195m"
+LINE_WIDTH=78
+
+separator() { printf "${GRAY}$(printf '─%.0s' $(seq 1 $LINE_WIDTH))${RESET}\n"; }
+section() {
+    printf "\n"
+    separator
+    printf "${PH4NTXM_CYAN}[ $1 ]${RESET}\n"
+    separator
+}
+status_tag() {
+    case $1 in
+        "good") echo -ne "${GREEN}[OK]${RESET}" ;;
+        "warn") echo -ne "${AMBER}[Warn]${RESET}" ;;
+        "bad") echo -ne "${RED}[Crit]${RESET}" ;;
+        "live") echo -ne "${PH4NTXM_MAGENTA}[Live]${RESET}" ;;
+        *) echo -ne "${GRAY}[Info]${RESET}" ;;
+    esac
+}
+
+while true; do
+    output=$(
+        section "PH4NTXM OpSec ConnWatch"
+        MONITOR_ACTIVE=0
+        if systemctl is-active --quiet ph4ntxm-opsec-connwatch.service 2>/dev/null; then
+            MONITOR_ACTIVE=1
+            echo -e "$(status_tag "live") Status: ${GREEN}Monitoring active${RESET}"
+        else
+            echo -e "$(status_tag "warn") Status: ${AMBER}Monitor service inactive${RESET}"
+        fi
+        echo -e "$(status_tag "info") Log: ${GRAY}/run/ph4ntxm-opsec-connwatch/connwatch-stats.log${RESET}"
+
+        section "Inbound Connection Attempts"
+
+        HIGH_VOLUME_COUNT=0
+        TOTAL_IPS=0
+
+        STATS_FILE="/run/ph4ntxm-opsec-connwatch/connwatch-stats.log"
+        if [ -r "$STATS_FILE" ] && [ -s "$STATS_FILE" ]; then
+            printf "${BOLD}%-15s | %-7s | %-22s | %-10s${RESET}\n" "IP Address" "5m Hits" "Target Ports" "Status"
+            echo -e "${BOLD}----------------|-------|------------------------|------------${RESET}"
+
+            while IFS='|' read -r ip hits ports _rest; do
+                ip=${ip//[[:space:]]/}
+                hits=${hits//[[:space:]]/}
+                ports=${ports#${ports%%[![:space:]]*}}
+                ports=${ports%${ports##*[![:space:]]}}
+                if [[ -n "$ip" && "$hits" =~ ^[0-9]+$ ]]; then
+                    ((++TOTAL_IPS))
+
+                    if [ ${#ip} -gt 15 ]; then
+                        ip="${ip:0:12}..."
+                    fi
+
+                    display_hits=$hits
+                    if ((hits > 99999)); then
+                        display_hits="99k+"
+                    fi
+
+                    if [ ${#ports} -gt 22 ]; then
+                        ports="${ports:0:19}..."
+                    fi
+
+                    if ((hits > 50)); then
+                        ((++HIGH_VOLUME_COUNT))
+                        printf "${AMBER}%-15s${RESET} ${BOLD}|${RESET} ${AMBER}%-7s${RESET} ${BOLD}|${RESET} ${PH4NTXM_CYAN}%-22s${RESET} ${BOLD}|${RESET} ${AMBER}[High]${RESET}\n" "$ip" "$display_hits" "$ports"
+                    else
+                        printf "${GREEN}%-15s${RESET} ${BOLD}|${RESET} ${AMBER}%-7s${RESET} ${BOLD}|${RESET} ${PH4NTXM_CYAN}%-22s${RESET} ${BOLD}|${RESET} $(status_tag "good")\n" "$ip" "$display_hits" "$ports"
+                    fi
+                fi
+            done < <(tail -n +3 "$STATS_FILE" | sort -rn -t '|' -k 2 | head -n 15)
+        elif ((MONITOR_ACTIVE == 0)); then
+            echo -e "$(status_tag "warn") Finding: No reliable data while monitor is inactive"
+        else
+            echo -e "$(status_tag "good") Finding: No inbound SYN attempts recorded yet"
+        fi
+
+        section "System Assessment"
+        if ((MONITOR_ACTIVE == 0)); then
+            echo -e "$(status_tag "warn") Activity Score: Unavailable"
+            echo -e "$(status_tag "warn") Verdict: Monitoring unavailable"
+        elif ((HIGH_VOLUME_COUNT > 0)); then
+            ACTIVITY_SCORE=$((100 - HIGH_VOLUME_COUNT * 10))
+            ((ACTIVITY_SCORE >= 0)) || ACTIVITY_SCORE=0
+            echo -e "$(status_tag "warn") Activity Score: $ACTIVITY_SCORE / 100"
+            echo -e "$(status_tag "warn") Verdict: High inbound attempt volume"
+        elif ((TOTAL_IPS > 0)); then
+            echo -e "$(status_tag "warn") Activity Score: 85 / 100"
+            echo -e "$(status_tag "warn") Verdict: Inbound attempts observed"
+        else
+            echo -e "$(status_tag "good") Activity Score: 100 / 100"
+            echo -e "$(status_tag "good") Verdict: No attempts recorded"
+        fi
+
+        section "Findings"
+        if ((MONITOR_ACTIVE == 0)); then
+            echo -e "$(status_tag "warn") Finding: Start or inspect ph4ntxm-opsec-connwatch.service"
+        elif ((TOTAL_IPS == 0)); then
+            echo -e "$(status_tag "good") Finding: None"
+        else
+            if ((HIGH_VOLUME_COUNT > 0)); then
+                echo -e "$(status_tag "warn") Finding: $HIGH_VOLUME_COUNT host(s) exceeded volume threshold"
+            fi
+            echo -e "$(status_tag "warn") Finding: $TOTAL_IPS source(s) recorded"
+            echo -e "$(status_tag "info") Finding: Counts may include routine network noise"
+        fi
+
+        separator
+        echo -e "${GRAY}Press Ctrl+C to exit.${RESET}"
+    )
+
+    clear
+    echo -e "$output"
+
+    sleep 1
+done

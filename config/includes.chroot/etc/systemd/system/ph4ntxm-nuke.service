@@ -1,0 +1,16 @@
+[Unit]
+Description=PH4NTXM Shutdown Data Containment
+DefaultDependencies=no
+Before=shutdown.target reboot.target halt.target poweroff.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-nuke.sh
+TimeoutStartSec=infinity
+OOMScoreAdjust=-1000
+
+[Install]
+WantedBy=shutdown.target
+WantedBy=reboot.target
+WantedBy=halt.target
+WantedBy=poweroff.target

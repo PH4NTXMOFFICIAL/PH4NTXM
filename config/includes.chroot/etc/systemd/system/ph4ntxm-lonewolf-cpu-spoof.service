@@ -1,0 +1,14 @@
+[Unit]
+Description=PH4NTXM Lone Wolf CPUInfo Spoof
+After=ph4ntxm-lonewolf-cores-randomization.service
+Requires=ph4ntxm-lonewolf-cores-randomization.service
+Before=display-manager.service
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-cpu-spoof.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=ph4ntxm-lonewolf-graphical.target

@@ -1,0 +1,42 @@
+# [ BUILD EDITIONS ]
+
+## [ OVERVIEW ]
+
+Abyss is the default dark navy edition; Ghost is the light pearl-white edition. Both use the same packages, protection settings, and Linux, Windows and Lone Wolf boot modes. The edition selects appearance at build time.
+
+## [ SOURCE ]
+
+| Source | Purpose |
+| --- | --- |
+| `config/` | Shared packages, hooks, services and session components. |
+| `editions/abyss/config/` | PH4NTXM-Abyss theme, artwork and appearance settings. |
+| `editions/ghost/config/` | PH4NTXM-Ghost theme, artwork and appearance settings. |
+| `editions/<name>/edition.json` | Edition name and required theme/background paths. |
+| `build.sh`, `auto/build`, `tools/` | Build entry points and preparation. |
+
+Preparation copies the shared configuration and selected edition into `build/<edition>/config/`. Each ISO includes only its selected PH4NTXM theme and backgrounds; both editions remain in the repository. Shared icons, cursors and distribution fallback themes are retained.
+
+Keep source, artwork, build tools and required tests in Git. Generated build trees, package caches and exported images are excluded.
+
+## [ BUILD ]
+
+Run the chosen command from the repository root:
+
+ABYSS: `sudo ./build.sh --edition abyss`  
+GHOST: `sudo ./build.sh --edition ghost`
+
+Omitting `--edition` selects Abyss. Repository-root `sudo lb config` followed by `sudo lb build` also selects Abyss through `auto/build`. Add `--prepare-only` to inspect configuration without building, or pass extra live-build options after `--`.
+
+The wrapper runs `lb config` and `lb build` in the selected workspace. Rebuilds clean that edition's previous build while retaining its package cache. Checks reject unsafe workspaces, leftover mounts and concurrent builds of the same edition.
+
+Successful builds export `ph4ntxm-<edition>-amd64.hybrid.iso`, manifests and `SHA256SUMS` into a new directory under `output/`. Existing exports and the other edition's build are preserved. See [INSTALLATION](../../INSTALLATION.md#-cleanup-and-outputs-) for cleanup details and [DISTRIBUTION](../../DISTRIBUTION.md) for source verification and distribution policy.
+
+## [ APPEARANCE ]
+
+Abyss pairs deep navy surfaces and pale text with anthracite hexagons. Ghost pairs pearl-white surfaces and dark text with light hexagons. Both use cyan and magenta accents across GTK 2, GTK 3, XFWM, LightDM, the panel and PH4NTXM applications.
+
+Each edition supplies matching desktop, login and bootloader artwork. Both keep Lyra-blue-dark icons, LyraB cursors and terminal backgrounds at 85% opacity. Selecting another XFCE theme manually does not switch the complete edition; build the desired edition to apply all appearance settings together.
+
+## [ VALIDATION ]
+
+The build runs Airlock unit tests and Packet Transformation Engine Rust, differential, fuzz-smoke and native self-tests. Before a release, build both editions and check their UEFI and BIOS menus, LightDM, panel, terminal and application dialogs.

@@ -1,0 +1,9 @@
+PRETTY_NAME="PH4NTXM GNU/Linux (Most Wanted)"
+NAME="PH4NTXM GNU/Linux"
+VERSION="Most Wanted"
+VERSION_CODENAME=most-wanted
+ID=ph4ntxm
+ID_LIKE=debian
+HOME_URL="https://www.ph4ntxmofficial.github.io"
+SUPPORT_URL="https://www.ph4ntxmofficial.github.io"
+BUG_REPORT_URL="https://www.ph4ntxmofficial.github.io"

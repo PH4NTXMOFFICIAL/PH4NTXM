@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Name=PH4NTXM Terminal
+Comment=Open zsh
+Exec=xfce4-terminal
+Icon=ph4ntxm-terminal
+Terminal=false
+Type=Application
+StartupNotify=true
+Categories=System;TerminalEmulator;X-XFCE;X-Xfce-Toplevel;
+X-XFCE-Source=file:///usr/share/applications/xfce4-terminal.desktop

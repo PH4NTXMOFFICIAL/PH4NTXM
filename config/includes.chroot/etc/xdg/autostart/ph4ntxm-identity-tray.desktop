@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Identity Tray
+Exec=/usr/local/bin/ph4ntxm-identity-tray
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true

@@ -1,0 +1,8 @@
+[Unit]
+Description=PH4NTXM Emergency Containment and Poweroff
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-panic.sh
+TimeoutStartSec=infinity

@@ -1,0 +1,11 @@
+[Configuration]
+CommandLoginShell=TRUE
+UseCustomCommand=FALSE
+MiscAlwaysShowTabs=FALSE
+MiscBell=FALSE
+MiscConfirmClose=FALSE
+MiscCursorBlinks=FALSE
+MiscUseShiftArrowsToScroll=TRUE
+MiscShowRelaunchDialog=FALSE
+ScrollingUnlimited=TRUE
+FontName=MesloLGS NF Bold 12

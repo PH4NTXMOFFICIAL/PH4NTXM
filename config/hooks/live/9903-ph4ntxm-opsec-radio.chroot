@@ -1,0 +1,9 @@
+#!/bin/bash
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -e
+
+cd /opt/ph4ntxm/ph4ntxm-opsec-radio
+
+python3 -m pip install . --break-system-packages --no-user --use-pep517 --no-build-isolation

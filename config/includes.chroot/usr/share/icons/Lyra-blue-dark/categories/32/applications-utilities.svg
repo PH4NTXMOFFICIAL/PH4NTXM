@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="64" viewBox="0 0 64 64" version="1.1"><g transform="translate(2.13333333333 2.13333333333) scale(1.86666666667)"><svg width="32" height="32" version="1.1" viewBox="0 0 32 32" overflow="hidden">
+
+ <defs>
+  
+  
+  <filter id="j" x="-.04125" y="-.11" width="1.0825" height="1.22" color-interpolation-filters="sRGB">
+   <feGaussianBlur stdDeviation="0.275"/>
+  </filter>
+  
+  
+  <filter id="i" x="-.06" y="-.06" width="1.12" height="1.12" color-interpolation-filters="sRGB">
+   <feGaussianBlur stdDeviation="0.125"/>
+  </filter>
+  <filter id="h" x="-.06" y="-.06" width="1.12" height="1.12" color-interpolation-filters="sRGB">
+   <feGaussianBlur stdDeviation="0.125"/>
+  </filter>
+  
+  
+ </defs>
+ <rect x="1" y=".99997" width="30" height="30" rx="8" ry="8" fill="#ff3dfb"/>
+ <g stroke-linecap="square" stroke-width=".1">
+  <path d="m11 4c-1.662 0-3 1.338-3 3v3h2v-3c0-0.55401 0.44598-1 1-1h10c0.55402 0 1 0.44599 1 1v3h2v-3c0-1.662-1.338-3-3-3h-10z" filter="url(#j)" opacity=".25"/>
+  <path d="m11 4c-1.662 0-3 1.338-3 3v3h2v-3c0-0.55401 0.44598-1 1-1h10c0.55402 0 1 0.44599 1 1v3h2v-3c0-1.662-1.338-3-3-3h-10z" fill="#eef1f2"/>
+ </g>
+ <g fill-rule="evenodd">
+  <path d="m7.5 12a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5zm0 1a1.5 1.5 0 0 1 1.5 1.5 1.5 1.5 0 0 1-1.5 1.5 1.5 1.5 0 0 1-1.5-1.5 1.5 1.5 0 0 1 1.5-1.5z" filter="url(#i)" opacity=".25" style="paint-order:normal"/>
+  <path d="m7.5 12a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5zm0 1a1.5 1.5 0 0 1 1.5 1.5 1.5 1.5 0 0 1-1.5 1.5 1.5 1.5 0 0 1-1.5-1.5 1.5 1.5 0 0 1 1.5-1.5z" fill="#f4f6f6" style="paint-order:normal"/>
+  <path d="m24.5 12a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5zm0 1a1.5 1.5 0 0 1 1.5 1.5 1.5 1.5 0 0 1-1.5 1.5 1.5 1.5 0 0 1-1.5-1.5 1.5 1.5 0 0 1 1.5-1.5z" filter="url(#h)" opacity=".25" style="paint-order:normal"/>
+  <path d="m24.5 12a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5zm0 1a1.5 1.5 0 0 1 1.5 1.5 1.5 1.5 0 0 1-1.5 1.5 1.5 1.5 0 0 1-1.5-1.5 1.5 1.5 0 0 1 1.5-1.5z" fill="#f4f6f6" style="paint-order:normal"/>
+ </g>
+ <path d="m16 1a15 15 0 0 0-13.74 9h27.469a15 15 0 0 0-13.729-9z" fill="rgba(0,0,0,0.313725)" opacity=".35" style="paint-order:fill markers stroke"/>
+</svg></g></svg>

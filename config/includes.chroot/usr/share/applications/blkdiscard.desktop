@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Block Discard
+Comment=Secure block discard tool (SSD/TRIM)
+Exec=xfce4-terminal --disable-server --class=Block-Discard --title="Block Discard" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review Block Discard options.\033[0m\"; blkdiscard --help; exec zsh'"
+StartupWMClass=Block-Discard
+Icon=ph4ntxm-blkdiscard
+Terminal=false
+Categories=X-SecurityPH4NTXM;
+

@@ -1,0 +1,9 @@
+#!/bin/bash
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -e
+
+update-icon-caches /usr/share/icons/* || true
+update-alternatives --install /usr/share/icons/default/index.theme x-cursor-theme /usr/share/icons/LyraB-cursors/index.theme 100
+update-alternatives --set x-cursor-theme /usr/share/icons/LyraB-cursors/index.theme

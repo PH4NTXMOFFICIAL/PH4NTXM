@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=WFuzz
+Comment=Launch WFuzz in a terminal
+Exec=xfce4-terminal --disable-server --class=WFuzz --title="WFuzz" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review WFuzz options.\033[0m\"; wfuzz; exec zsh'"
+StartupWMClass=WFuzz
+Icon=ph4ntxm-wfuzz
+Terminal=false
+Categories=X-PentestingPH4NTXM;

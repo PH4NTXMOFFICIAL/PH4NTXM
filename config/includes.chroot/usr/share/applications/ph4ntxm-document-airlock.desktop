@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Document Airlock
+Comment=Convert documents and images offline in a disposable virtual machine
+Exec=/usr/local/bin/ph4ntxm-document-airlock -- %f
+Icon=ph4ntxm-document-airlock
+Terminal=false
+MimeType=application/pdf;image/png;image/jpeg;image/tiff;application/msword;application/vnd.ms-word;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/vnd.oasis.opendocument.text;application/vnd.ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.oasis.opendocument.spreadsheet;application/vnd.ms-powerpoint;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.oasis.opendocument.presentation;application/vnd.oasis.opendocument.graphics;application/rtf;text/rtf;
+Categories=Utility;X-PH4NTXMApps;
+StartupNotify=true

@@ -1,0 +1,44 @@
+#!/bin/busybox sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+export PATH=/bin
+/bin/busybox --install -s /bin
+
+fail() {
+    poweroff -f
+    sleep 1
+    echo o >/proc/sysrq-trigger
+    while :; do sleep 1; done
+}
+
+mount -t proc proc /proc || fail
+mount -t sysfs sysfs /sys || fail
+mount -t devtmpfs devtmpfs /dev || fail
+exec </dev/console >/dev/console 2>&1
+modprobe virtio_pci || fail
+modprobe virtio_blk || fail
+modprobe virtio_console || fail
+modprobe squashfs || fail
+
+attempt=0
+while [ ! -b /dev/vda ] || [ ! -c /dev/ph4ntxm-airlock ]; do
+    for name_file in /sys/class/virtio-ports/*/name; do
+        [ -f "$name_file" ] || continue
+        [ "$(cat "$name_file")" = "org.ph4ntxm.airlock" ] || continue
+        port_path=${name_file%/name}
+        port_name=${port_path##*/}
+        ln -sf "/dev/$port_name" /dev/ph4ntxm-airlock
+    done
+    attempt=$((attempt + 1))
+    [ "$attempt" -lt 100 ] || fail
+    sleep 0.1
+done
+
+mount -t squashfs -o ro /dev/vda /root || fail
+mount -t tmpfs -o size=70%,mode=1777,nosuid,nodev tmpfs /root/tmp || fail
+mount -t tmpfs -o size=4m,mode=0755,nosuid,nodev tmpfs /root/run || fail
+mount --move /proc /root/proc || fail
+mount --move /sys /root/sys || fail
+mount --move /dev /root/dev || fail
+exec switch_root /root /usr/local/sbin/ph4ntxm-airlock-init

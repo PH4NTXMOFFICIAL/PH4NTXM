@@ -1,0 +1,13 @@
+[Unit]
+Description=PH4NTXM Lone Wolf GPU Randomization
+Before=multi-user.target
+After=ph4ntxm-lonewolf-hardware-randomization.service
+Requires=ph4ntxm-lonewolf-hardware-randomization.service
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-gpu-randomization.sh
+
+[Install]
+WantedBy=ph4ntxm-lonewolf-multi-user.target

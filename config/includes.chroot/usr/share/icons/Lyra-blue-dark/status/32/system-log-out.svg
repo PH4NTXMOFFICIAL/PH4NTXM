@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg:svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="64" height="64" viewBox="0 0 64 64" version="1.1"><svg:g transform="translate(2.13333333333 2.13333333333) scale(1.86666666667)"><svg:svg width="32" height="32" version="1.1" id="svg8" viewBox="0 0 32 32" overflow="hidden">
+  <svg:defs id="defs12"/>
+
+
+  <svg:path d="m20.621 1.0002c9.081 0 10.379 1.387 10.379 11.108v7.7845c0 9.7205-1.2978 11.108-10.379 11.108h-9.2423c-9.081 0-10.379-1.387-10.379-11.108v-7.7845c0-9.7205 1.2978-11.108 10.379-11.108z" enable-background="new" fill="#fff" stroke-width="2.0615" id="path4" style="opacity:0.6"/>
+  <svg:g id="g1290" transform="translate(-42.60411,81.000449)">
+    <svg:rect id="rect135" style="fill:#323232;fill-opacity:1;fill-rule:evenodd;stroke-width:3.77952766;paint-order:stroke fill markers" ry="0.49999374" height="0.99998748" width="12" y="-90.651978" x="-13.264277" transform="rotate(45)"/>
+    <svg:rect id="rect137" style="fill:#323232;fill-opacity:1;fill-rule:evenodd;stroke-width:3.77954483;paint-order:stroke fill markers" ry="0.49999601" height="0.99999201" width="12.000054" y="1.2810915" x="78.650414" transform="matrix(0.70710678,-0.70710678,-0.70710678,-0.70710678,0,0)"/>
+  </svg:g>
+</svg:svg></svg:g></svg:svg>

@@ -1,0 +1,83 @@
+gtk-color-scheme = "bg_color:#101b2a\nfg_color:#e2eaf2\nbase_color:#080f19\ntext_color:#e2eaf2\nselected_bg_color:#123b55\nselected_fg_color:#e2f4ff\ntooltip_bg_color:#172638\ntooltip_fg_color:#e2eaf2"
+gtk-icon-sizes = "gtk-button=16,16"
+gtk-auto-mnemonics = 1
+
+style "abyss-default" {
+    xthickness = 2
+    ythickness = 2
+    bg[NORMAL] = @bg_color
+    bg[PRELIGHT] = "#1c3045"
+    bg[ACTIVE] = "#123b55"
+    bg[SELECTED] = @selected_bg_color
+    bg[INSENSITIVE] = "#101b2a"
+    fg[NORMAL] = @fg_color
+    fg[PRELIGHT] = "#e2f4ff"
+    fg[ACTIVE] = @selected_fg_color
+    fg[SELECTED] = @selected_fg_color
+    fg[INSENSITIVE] = "#71869b"
+    base[NORMAL] = @base_color
+    base[PRELIGHT] = @base_color
+    base[ACTIVE] = @selected_bg_color
+    base[SELECTED] = @selected_bg_color
+    base[INSENSITIVE] = "#101b2a"
+    text[NORMAL] = @text_color
+    text[PRELIGHT] = @text_color
+    text[ACTIVE] = @selected_fg_color
+    text[SELECTED] = @selected_fg_color
+    text[INSENSITIVE] = "#71869b"
+    GtkWidget::focus-line-width = 1
+    GtkWidget::focus-padding = 2
+    GtkButton::default-border = { 0, 0, 0, 0 }
+    GtkButton::inner-border = { 7, 7, 4, 4 }
+    GtkEntry::inner-border = { 6, 6, 4, 4 }
+    GtkRange::slider-width = 12
+    GtkScrollbar::min-slider-length = 32
+    GtkTreeView::vertical-separator = 6
+    GtkTreeView::horizontal-separator = 8
+    GtkMenu::horizontal-padding = 5
+    GtkMenu::vertical-padding = 5
+    engine "murrine" {
+        animation = FALSE
+        contrast = 0.8
+        glazestyle = 0
+        glowstyle = 0
+        gradient_shades = { 1.0, 1.0, 1.0, 1.0 }
+        highlight_shade = 1.0
+        lightborder_shade = 1.0
+        reliefstyle = 0
+        roundness = 5
+        textstyle = 0
+        focus_color = "#00abff"
+    }
+}
+
+style "abyss-button" = "abyss-default" {
+    bg[NORMAL] = "#172638"
+}
+
+style "abyss-check" = "abyss-default" {
+    bg[SELECTED] = "#00abff"
+    fg[SELECTED] = "#080f19"
+}
+
+style "abyss-menu" = "abyss-default" {
+    bg[NORMAL] = "#172638"
+}
+
+style "abyss-panel" = "abyss-default" {
+    ythickness = 0
+    bg[NORMAL] = "#080f19"
+}
+
+style "abyss-tooltip" = "abyss-default" {
+    bg[NORMAL] = @tooltip_bg_color
+    fg[NORMAL] = @tooltip_fg_color
+}
+
+class "GtkWidget" style "abyss-default"
+class "GtkButton" style "abyss-button"
+class "GtkCheckButton" style "abyss-check"
+class "GtkRadioButton" style "abyss-check"
+class "GtkMenu" style "abyss-menu"
+widget "*Xfce*Panel*" style "abyss-panel"
+widget "gtk-tooltip*" style "abyss-tooltip"
