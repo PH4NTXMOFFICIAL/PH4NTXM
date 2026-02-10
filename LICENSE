@@ -1,0 +1,162 @@
+PH4NTXM LICENSE — PH4NTXM © 2026
+
+
+1. DOCUMENTATION & GUIDES
+
+All PH4NTXM documentation, manuals, release notes, and accompanying
+text files (the “Documentation”) are proprietary.
+
+The Documentation may be used for internal operational purposes only,
+including internal reference, training, screenshots, and internal
+technical documentation.
+
+You may not:
+- reproduce the Documentation in whole or in substantial part for
+  public distribution,
+- publish or redistribute it externally,
+- commercially exploit it,
+
+without explicit prior written consent from the PH4NTXM.
+
+Creation of derivative works of the Documentation for external or
+public use is strictly prohibited.
+
+
+2. BRANDING & ARTWORK
+
+All PH4NTXM logos, banners, icons, visual themes, wallpapers, login
+screens, and other branding or visual assets (“Branding Assets”) are
+proprietary works protected by copyright.
+
+Branding Assets may only be used for the purpose of identifying
+PH4NTXM on systems you are licensed to use.
+
+You may not:
+- reuse, adapt, modify, or redistribute Branding Assets,
+- use them in marketing, derivative projects, or third-party products,
+- represent modified systems as official PH4NTXM builds.
+
+
+3. CUSTOM SCRIPTS, CONFIGURATIONS & PROPRIETARY COMPONENTS
+
+All PH4NTXM custom scripts, system modifications, kernel-level changes,
+configuration files, automation logic, and other proprietary software
+components developed for PH4NTXM (the “Proprietary Components”) are
+Proprietary Software.
+
+Unless explicitly authorized in writing, you are not permitted to:
+- copy, extract, or reuse Proprietary Components,
+- modify or create derivative works based on them,
+- redistribute them in original or modified form.
+
+Access to source code for Proprietary Components may be granted to
+verified licensees solely for audit, transparency, or security review
+purposes.
+
+Such access:
+- does not transfer ownership or intellectual property rights,
+- does not grant any right to reuse, redistribute, or derive works
+  from the source code.
+
+Reverse Engineering:
+Reverse engineering of Proprietary Components is permitted only for
+personal analysis, security research, or audit purposes, provided that
+it does not result in:
+- copying or extraction of code,
+- creation of derivative works,
+- reproduction of functionality in other projects,
+- redistribution in any form.
+
+
+4. LICENSE SCOPE & PERMITTED USE
+
+Individuals:
+A license granted to an individual permits use of PH4NTXM on multiple
+machines or virtual environments controlled by that individual,
+provided no access is granted to third parties.
+
+Organizations:
+A license granted to an organization permits use only within the same
+legal entity and strictly for internal operational purposes.
+
+Organizations must ensure that:
+- access is limited to authorized personnel,
+- no uncontrolled internal redistribution occurs,
+- no sharing with contractors, partners, affiliates, or third parties
+  takes place unless explicitly authorized in writing.
+
+
+5. PROHIBITED REDISTRIBUTION & COMMERCIAL EXPLOITATION
+
+Without explicit prior written consent from PH4NTXM, you
+may not:
+
+- repackage or redistribute PH4NTXM, in whole or in part,
+- sell, sublicense, or provide PH4NTXM as part of a hosted service,
+  lab environment, or training platform,
+- distribute PH4NTXM preinstalled on hardware, virtual machines,
+  or appliances,
+- bundle PH4NTXM with other operating systems, toolkits, or
+  distributions.
+
+Exceptions are permitted only through a separate written commercial
+agreement.
+
+
+6. UPSTREAM SOFTWARE
+
+PH4NTXM GNU/Linux includes software packages provided by Debian and
+other upstream projects.
+
+PH4NTXM does not claim ownership of upstream software.
+
+Each upstream package is distributed under its original license
+(GPL, LGPL, MIT, BSD, or others), and users are responsible for
+complying with the terms of those licenses.
+
+Nothing in this License limits or overrides rights granted by
+applicable open-source licenses.
+
+
+7. THIRD-PARTY / EULA-BOUND SOFTWARE
+
+Certain included software components are governed by their respective
+upstream licenses or end-user license agreements, including but not
+limited to:
+
+- Brave Browser
+- Burp Suite
+- Metasploit (Docker)
+
+Use of such components is subject to acceptance of the applicable
+upstream terms.
+
+
+8. ACQUISITION, INTEGRITY & ENFORCEMENT
+
+Official PH4NTXM builds and licenses are distributed exclusively.
+
+PH4NTXM is provided under a commercial license.
+
+Serious violations of this License, including unauthorized
+redistribution, extraction of Proprietary Components, impersonation
+of official builds, or commercial exploitation, may result in:
+
+- termination of the license,
+- revocation of update access and future releases.
+
+
+9. GOVERNING LAW
+
+This License shall be governed by and construed in accordance with
+European Union law, without regard to conflict-of-law principles.
+
+
+10. DISCLAIMER
+
+PH4NTXM is provided “as is”, without warranty of any kind, express or
+implied, including but not limited to merchantability, fitness for a
+particular purpose, and non-infringement.
+
+In no event shall the authors or contributors be liable for any claim,
+damages, or other liability arising from the use of PH4NTXM.
