@@ -5,6 +5,8 @@ It is designed for security professionals operating under the assumption of **in
 
 > **EXIT EQUALS ERASURE.**
 
+---
+
 ## 📄 Documentation
 
 - Technical Overview → TECHNICAL-OVERVIEW.md
