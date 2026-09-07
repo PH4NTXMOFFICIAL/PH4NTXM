@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ "$#" -ge 2 ]] || exit 1
+IFACE=$1
+ACTION=$2
+
+case "$ACTION" in
+    dhcp4-change|up) ;;
+    *) exit 0 ;;
+esac
+
+[[ "$IFACE" =~ ^[a-zA-Z0-9_.:-]{1,64}$ ]]
+[[ -e "/sys/class/net/$IFACE" ]]
+
+SESSION_FILE=/run/ph4ntxm/session_dhcp
+[[ -f "$SESSION_FILE" && ! -L "$SESSION_FILE" && -r "$SESSION_FILE" ]] || exit 1
+[[ "$(stat -c '%u' "$SESSION_FILE")" == 0 ]]
+SESSION_MODE=$(stat -c '%a' "$SESSION_FILE")
+[[ "$SESSION_MODE" =~ ^[0-7]{3,4}$ ]]
+(( (8#$SESSION_MODE & 0022) == 0 ))
+
+source "$SESSION_FILE"
+
+command -v nmcli >/dev/null 2>&1 || exit 1
+
+MAC="$(cat "/sys/class/net/$IFACE/address" 2>/dev/null || true)"
+[[ "$MAC" =~ ^[0-9a-f]{2}(:[0-9a-f]{2}){5}$ ]] || exit 1
+
+CID="01:${MAC}"
+
+if [[ "${MODE:-}" == lonewolf ]]; then
+    [[ "${TIMEOUT:-}" == 60 && "${TOR:-}" == enabled ]]
+    if ! nmcli device modify "$IFACE" \
+        ipv4.dhcp-client-id "$CID" \
+        ipv4.dhcp-vendor-class-identifier "" \
+        ipv4.dhcp-send-hostname no \
+        ipv4.dhcp-hostname "" \
+        ipv4.dhcp-timeout "$TIMEOUT" \
+        ipv6.method disabled \
+        >/dev/null 2>&1; then
+        nmcli device disconnect "$IFACE" >/dev/null 2>&1 || true
+        exit 1
+    fi
+else
+    nmcli device modify "$IFACE" \
+        ipv4.dhcp-client-id "$CID" \
+        ipv4.dhcp-vendor-class-identifier "$VENDOR" \
+        ipv4.dhcp-send-hostname yes \
+        ipv4.dhcp-hostname "$HOSTNAME" \
+        ipv4.dhcp-timeout "$TIMEOUT" \
+        ipv6.dhcp-duid "$DUID" \
+        >/dev/null 2>&1 || true
+fi
+
+exit 0

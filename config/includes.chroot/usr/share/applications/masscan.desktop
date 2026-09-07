@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Masscan
+Comment=Launch Masscan in a terminal
+Exec=xfce4-terminal --disable-server --class=Masscan --title="Masscan" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review Masscan options.\033[0m\"; masscan --help; exec zsh'"
+StartupWMClass=Masscan
+Icon=ph4ntxm-masscan
+Terminal=false
+Categories=X-PentestingPH4NTXM;

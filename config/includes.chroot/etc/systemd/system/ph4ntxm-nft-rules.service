@@ -1,0 +1,15 @@
+[Unit]
+Description=PH4NTXM NFT Rules
+DefaultDependencies=no
+After=local-fs.target ph4ntxm-mode.service
+Requires=ph4ntxm-mode.service
+Before=network-pre.target
+ConditionPathExists=/run/ph4ntxm/mode-normal
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-nft-rules.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=network-pre.target

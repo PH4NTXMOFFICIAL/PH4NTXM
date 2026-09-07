@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Wireshark
+Comment=Launch Wireshark
+Exec=wireshark
+StartupWMClass=Wireshark
+Icon=org.wireshark.Wireshark
+Terminal=false
+Categories=X-PentestingPH4NTXM;

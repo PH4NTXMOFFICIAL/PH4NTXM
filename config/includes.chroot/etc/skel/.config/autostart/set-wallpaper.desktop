@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Exec=sh -c "~/.config/autostart/set-wallpaper.sh"
+Hidden=false
+X-GNOME-Autostart-enabled=true
+Name=Set PH4NTXM Wallpaper
+Comment=Force wallpaper on ALL monitors

@@ -1,0 +1,205 @@
+#!/bin/sh
+set -e
+
+if [ ! -e /usr/bin/free-real ]; then
+    dpkg-divert --add --rename --divert /usr/bin/free-real /usr/bin/free
+fi
+
+cat << 'EOF' > /usr/bin/free
+#!/usr/bin/env bash
+set -euo pipefail
+
+CORES_FILE=/run/ph4ntxm/cores_env
+
+PH4_REPORTED_RAM=4
+if [[ -r "$CORES_FILE" ]]; then
+    source "$CORES_FILE"
+fi
+[[ "${PH4_REPORTED_RAM:-}" =~ ^[0-9]+$ ]] || {
+    printf 'free: invalid PH4NTXM memory profile\n' >&2
+    exit 1
+}
+
+human=0
+human_base=1024
+divisor=1024
+wide=0
+show_total=0
+show_lohi=0
+line_mode=0
+show_committed=0
+interval=
+count=1
+count_set=0
+
+while (($#)); do
+    case "$1" in
+        --help|--version|-V)
+            exec /usr/bin/free-real "$1"
+            ;;
+        -b|--bytes) divisor=1 ;;
+        -k|--kibi) divisor=1024 ;;
+        --kilo) divisor=1000 ;;
+        -m|--mebi) divisor=$((1024**2)) ;;
+        --mega) divisor=$((1000**2)) ;;
+        -g|--gibi) divisor=$((1024**3)) ;;
+        --giga) divisor=$((1000**3)) ;;
+        --tebi) divisor=$((1024**4)) ;;
+        --tera) divisor=$((1000**4)) ;;
+        --pebi) divisor=$((1024**5)) ;;
+        --peta) divisor=$((1000**5)) ;;
+        -h|--human) human=1 ;;
+        --si) human_base=1000 ;;
+        -w|--wide) wide=1 ;;
+        -t|--total) show_total=1 ;;
+        -l|--lohi) show_lohi=1 ;;
+        -L|--line) line_mode=1 ;;
+        -v|--committed) show_committed=1 ;;
+        -s|--seconds)
+            (($# >= 2)) || { printf 'free: missing seconds value\n' >&2; exit 2; }
+            interval=$2
+            shift
+            ;;
+        --seconds=*) interval=${1#*=} ;;
+        -c|--count)
+            (($# >= 2)) || { printf 'free: missing count value\n' >&2; exit 2; }
+            count=$2
+            count_set=1
+            shift
+            ;;
+        --count=*) count=${1#*=}; count_set=1 ;;
+        --)
+            shift
+            (($# == 0)) || { printf 'free: unexpected argument: %s\n' "$1" >&2; exit 2; }
+            break
+            ;;
+        *)
+            printf 'free: option %s is unavailable in the protected memory view\n' "$1" >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+[[ "$count" =~ ^[1-9][0-9]*$ ]] || { printf 'free: invalid count: %s\n' "$count" >&2; exit 2; }
+if [[ -n "$interval" ]]; then
+    [[ "$interval" =~ ^([0-9]+([.][0-9]*)?|[.][0-9]+)$ ]] || {
+        printf 'free: invalid seconds value: %s\n' "$interval" >&2
+        exit 2
+    }
+fi
+
+mem_kib() {
+    awk -v key="$1" '$1 == key ":" {print $2; exit}' /proc/meminfo
+}
+
+scale_bytes() {
+    local value=$1 real_total=$2 fake_total=$3
+    awk -v value="$value" -v real="$real_total" -v fake="$fake_total" \
+        'BEGIN {if (real <= 0) print 0; else printf "%.0f\n", value * fake / real}'
+}
+
+format_value() {
+    local bytes=$1
+    if (( human )); then
+        awk -v value="$bytes" -v base="$human_base" 'BEGIN {
+            if (base == 1000) split("B K M G T P", suffix, " ");
+            else split("B Ki Mi Gi Ti Pi", suffix, " ");
+            idx=1;
+            while (value >= base && idx < 6) {value /= base; idx++}
+            if (idx == 1) printf "%.0f%s", value, suffix[idx];
+            else if (value < 10) printf "%.1f%s", value, suffix[idx];
+            else printf "%.0f%s", value, suffix[idx];
+        }'
+    else
+        printf '%d' "$((bytes / divisor))"
+    fi
+}
+
+print_snapshot() {
+    local real_total fake_total mem_free mem_available buffers cached shared used
+    local swap_total swap_free swap_used
+    local commit_limit committed commit_free
+
+    real_total=$(( $(mem_kib MemTotal) * 1024 ))
+    fake_total=$(( PH4_REPORTED_RAM * 1024 * 1024 * 1024 ))
+
+    mem_free=$(scale_bytes "$(( $(mem_kib MemFree) * 1024 ))" "$real_total" "$fake_total")
+    mem_available=$(scale_bytes "$(( $(mem_kib MemAvailable) * 1024 ))" "$real_total" "$fake_total")
+    buffers=$(scale_bytes "$(( $(mem_kib Buffers) * 1024 ))" "$real_total" "$fake_total")
+    cached=$(scale_bytes "$(( ($(mem_kib Cached) + $(mem_kib SReclaimable)) * 1024 ))" "$real_total" "$fake_total")
+    shared=$(scale_bytes "$(( $(mem_kib Shmem) * 1024 ))" "$real_total" "$fake_total")
+    used=$((fake_total - mem_available))
+    (( used >= 0 )) || used=0
+
+    swap_total=$(( $(mem_kib SwapTotal) * 1024 ))
+    swap_free=$(( $(mem_kib SwapFree) * 1024 ))
+    swap_used=$((swap_total - swap_free))
+
+    if (( line_mode )); then
+        printf 'SwapUse %11s CachUse %11s MemUse %11s MemFree %11s \n' \
+            "$(format_value "$swap_used")" "$(format_value "$((buffers + cached))")" \
+            "$(format_value "$used")" "$(format_value "$mem_free")"
+        return
+    fi
+
+    if (( wide )); then
+        printf '%-7s %12s %12s %12s %12s %12s %12s %12s\n' \
+            '' total used free shared buffers cache available
+        printf '%-7s %12s %12s %12s %12s %12s %12s %12s\n' 'Mem:' \
+            "$(format_value "$fake_total")" "$(format_value "$used")" \
+            "$(format_value "$mem_free")" "$(format_value "$shared")" \
+            "$(format_value "$buffers")" "$(format_value "$cached")" \
+            "$(format_value "$mem_available")"
+    else
+        printf '%-7s %12s %12s %12s %12s %12s %12s\n' \
+            '' total used free shared buff/cache available
+        printf '%-7s %12s %12s %12s %12s %12s %12s\n' 'Mem:' \
+            "$(format_value "$fake_total")" "$(format_value "$used")" \
+            "$(format_value "$mem_free")" "$(format_value "$shared")" \
+            "$(format_value "$((buffers + cached))")" "$(format_value "$mem_available")"
+    fi
+
+    if (( show_lohi )); then
+        printf '%-7s %12s %12s %12s\n' 'Low:' \
+            "$(format_value "$fake_total")" "$(format_value "$((fake_total - mem_free))")" \
+            "$(format_value "$mem_free")"
+        printf '%-7s %12s %12s %12s\n' 'High:' \
+            "$(format_value 0)" "$(format_value 0)" "$(format_value 0)"
+    fi
+
+    printf '%-7s %12s %12s %12s\n' 'Swap:' \
+        "$(format_value "$swap_total")" "$(format_value "$swap_used")" \
+        "$(format_value "$swap_free")"
+
+    if (( show_committed )); then
+        commit_limit=$(scale_bytes "$(( $(mem_kib CommitLimit) * 1024 ))" "$real_total" "$fake_total")
+        committed=$(scale_bytes "$(( $(mem_kib Committed_AS) * 1024 ))" "$real_total" "$fake_total")
+        commit_free=$((commit_limit - committed))
+        printf '%-7s %12s %12s %12s\n' 'Comm:' \
+            "$(format_value "$commit_limit")" "$(format_value "$committed")" \
+            "$(format_value "$commit_free")"
+    fi
+
+    if (( show_total )); then
+        printf '%-7s %12s %12s %12s\n' 'Total:' \
+            "$(format_value "$((fake_total + swap_total))")" \
+            "$(format_value "$((used + swap_used))")" \
+            "$(format_value "$((mem_free + swap_free))")"
+    fi
+}
+
+continuous=0
+[[ -n "$interval" && "$count_set" == 0 ]] && continuous=1
+iteration=1
+while (( continuous || iteration <= count )); do
+    (( iteration == 1 )) || printf '\n'
+    print_snapshot
+    if (( continuous || iteration < count )); then
+        sleep "${interval:-1}"
+    fi
+    ((iteration++))
+done
+EOF
+
+chmod 0755 /usr/bin/free

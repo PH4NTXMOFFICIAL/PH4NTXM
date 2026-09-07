@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+chmod +x /usr/local/bin/ph4ntxm-identity
+chmod +x /usr/local/bin/ph4ntxm-identity-tray
+chmod +x /usr/local/bin/ph4ntxm-boot-pilot
+chmod +x /usr/local/sbin/ph4ntxm-lonewolf-dns-bridge.sh
+
+update-desktop-database
+gtk-update-icon-cache /usr/share/icons/Lyra-blue-dark

@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+
+install -d -m 0755 /usr/local/lib
+gcc -std=c11 -O2 -Wall -Wextra -Werror -fPIC -shared \
+    -Wl,-z,relro,-z,now,-z,noexecstack \
+    -Wl,--version-script=/dev/stdin \
+    /usr/local/lib/ph4ntxm-gl-spoof.c -ldl \
+    -o /usr/local/lib/libph4ntxm-gl-spoof.so <<'EOF'
+{
+global:
+    glGetString;
+    eglQueryString;
+    glXGetClientString;
+    glXQueryServerString;
+local:
+    *;
+};
+EOF
+strip --strip-unneeded /usr/local/lib/libph4ntxm-gl-spoof.so
+chmod 0755 /usr/local/lib/libph4ntxm-gl-spoof.so
+rm -f /usr/local/lib/ph4ntxm-gl-spoof.c

@@ -1,0 +1,13 @@
+[Unit]
+Description=PH4NTXM Fonts Randomization
+After=local-fs.target ph4ntxm-mode.service ph4ntxm-hardware-randomization.service ph4ntxm-lonewolf-hardware-randomization.service
+Requires=ph4ntxm-mode.service
+Before=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-fonts-randomization.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target

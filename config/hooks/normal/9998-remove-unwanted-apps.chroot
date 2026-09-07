@@ -1,0 +1,47 @@
+#!/bin/bash
+
+set -e
+export DEBIAN_FRONTEND=noninteractive
+
+PACKAGES=(
+    dictionary
+    exfalso
+    quodlibet
+    parole
+    plymouth
+    avahi-daemon
+    libnss-mdns
+    avahi-utils
+    cups
+    cups-daemon
+    cups-client
+    cups-browsed
+    bluez
+    atril
+    synaptic
+    xsane
+    xfburn
+    system-config-printer
+)
+
+for pkg in "${PACKAGES[@]}"; do
+    if dpkg -s "$pkg" >/dev/null 2>&1; then
+        apt-get purge -y --no-auto-remove --no-install-recommends "$pkg" || true
+    fi
+done
+
+dpkg -l 'libreoffice*' 2>/dev/null | awk '/^ii/ {print $2}' | while read -r pkg; do
+    apt-get purge -y --no-auto-remove "$pkg" || true
+done
+
+dpkg -l 'plymouth-theme-*' 2>/dev/null | awk '/^ii/ {print $2}' | while read -r pkg; do
+    apt-get purge -y --no-auto-remove "$pkg" || true
+done
+
+rm -rf /usr/share/man/*
+rm -rf /usr/share/info/*
+rm -rf /usr/share/locale/*
+mkdir -p /usr/share/locale/en /usr/share/locale/en_US
+
+apt-get autoremove -y || true
+apt-get clean || true

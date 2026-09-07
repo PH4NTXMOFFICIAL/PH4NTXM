@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export LC_ALL=C
+
+[[ "$(dpkg --print-architecture)" == amd64 ]]
+
+MANIFEST_URL=https://aus1.torproject.org/torbrowser/update_3/release/download-linux-x86_64.json
+KEY_URL=https://openpgpkey.torproject.org/.well-known/openpgpkey/torproject.org/hu/kounek7zrdx745qydx6p59t9mqjpuhdf
+PRIMARY_FINGERPRINT=EF6E286DDA85EA2A4BA7DE684E2C6E8793298290
+WORK_DIR=$(mktemp -d /tmp/ph4ntxm-tor-browser.XXXXXX)
+GNUPGHOME="$WORK_DIR/gnupg"
+STAGE_DIR="$WORK_DIR/stage"
+TARGET_DIR=/opt/ph4ntxm/tor-browser
+METADATA_DIR=/usr/lib/ph4ntxm/browser-mode
+
+cleanup() {
+    rm -rf -- "$WORK_DIR"
+}
+trap cleanup EXIT INT TERM HUP
+
+install -d -m 0700 "$GNUPGHOME"
+install -d -m 0755 "$STAGE_DIR"
+
+curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --tlsv1.2 --retry 3 --retry-all-errors --connect-timeout 20 --max-time 120 -o "$WORK_DIR/manifest.json" "$MANIFEST_URL"
+
+VERSION=$(jq -er '.version | select(type == "string")' "$WORK_DIR/manifest.json")
+BINARY_URL=$(jq -er '.binary | select(type == "string")' "$WORK_DIR/manifest.json")
+SIGNATURE_URL=$(jq -er '.sig | select(type == "string")' "$WORK_DIR/manifest.json")
+[[ "$VERSION" =~ ^[0-9]+([.][0-9]+)+$ ]]
+dpkg --compare-versions "$VERSION" ge 15.0.21
+EXPECTED_BINARY_URL="https://dist.torproject.org/torbrowser/$VERSION/tor-browser-linux-x86_64-$VERSION.tar.xz"
+[[ "$BINARY_URL" == "$EXPECTED_BINARY_URL" ]]
+[[ "$SIGNATURE_URL" == "$EXPECTED_BINARY_URL.asc" ]]
+
+curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --tlsv1.2 --retry 3 --retry-all-errors --connect-timeout 20 --max-time 600 -o "$WORK_DIR/tor-browser.tar.xz" "$BINARY_URL"
+curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --tlsv1.2 --retry 3 --retry-all-errors --connect-timeout 20 --max-time 120 -o "$WORK_DIR/tor-browser.tar.xz.asc" "$SIGNATURE_URL"
+curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --tlsv1.2 --retry 3 --retry-all-errors --connect-timeout 20 --max-time 120 -o "$WORK_DIR/tor-browser-developers.key" "$KEY_URL"
+
+mapfile -t KEY_RECORDS < <(gpg --homedir "$GNUPGHOME" --batch --with-colons --import-options show-only --import "$WORK_DIR/tor-browser-developers.key")
+PUB_COUNT=$(printf '%s\n' "${KEY_RECORDS[@]}" | awk -F: '$1 == "pub" {count++} END {print count + 0}')
+KEY_FINGERPRINT=$(printf '%s\n' "${KEY_RECORDS[@]}" | awk -F: '$1 == "pub" {want=1; next} want && $1 == "fpr" {print $10; exit}')
+[[ "$PUB_COUNT" == 1 ]]
+[[ "$KEY_FINGERPRINT" == "$PRIMARY_FINGERPRINT" ]]
+gpg --homedir "$GNUPGHOME" --batch --import "$WORK_DIR/tor-browser-developers.key" >/dev/null
+VERIFY_STATUS=$(gpg --homedir "$GNUPGHOME" --batch --status-fd=1 --verify "$WORK_DIR/tor-browser.tar.xz.asc" "$WORK_DIR/tor-browser.tar.xz" 2>/dev/null)
+printf '%s\n' "$VERIFY_STATUS" | awk -v primary="$PRIMARY_FINGERPRINT" '$1 == "[GNUPG:]" && $2 == "VALIDSIG" && $12 == primary {valid=1} END {exit !valid}'
+
+python3 - "$WORK_DIR/tor-browser.tar.xz" <<'PY'
+import pathlib
+import sys
+import tarfile
+
+archive = pathlib.Path(sys.argv[1])
+with tarfile.open(archive, mode="r:xz") as handle:
+    members = handle.getmembers()
+    if not members:
+        raise SystemExit(1)
+    for member in members:
+        path = pathlib.PurePosixPath(member.name)
+        if path.is_absolute() or not path.parts or path.parts[0] != "tor-browser":
+            raise SystemExit(1)
+        if any(part in ("", ".", "..") for part in path.parts):
+            raise SystemExit(1)
+        if path.as_posix() != member.name.rstrip("/"):
+            raise SystemExit(1)
+        if not (member.isdir() or member.isfile()):
+            raise SystemExit(1)
+PY
+
+tar --extract --xz --file "$WORK_DIR/tor-browser.tar.xz" --directory "$STAGE_DIR" --no-same-owner --no-same-permissions
+SOURCE_DIR="$STAGE_DIR/tor-browser"
+[[ -x "$SOURCE_DIR/Browser/start-tor-browser" ]]
+[[ -x "$SOURCE_DIR/Browser/firefox" ]]
+[[ -x "$SOURCE_DIR/Browser/firefox.real" ]]
+[[ -x "$SOURCE_DIR/Browser/TorBrowser/Tor/tor" ]]
+[[ -f "$SOURCE_DIR/Browser/browser/chrome/icons/default/default128.png" ]]
+grep -Fq 'is-packaged-app' "$SOURCE_DIR/Browser/start-tor-browser"
+
+install -d -m 0755 /opt/ph4ntxm "$METADATA_DIR"
+rm -rf -- "$TARGET_DIR"
+mv "$SOURCE_DIR" "$TARGET_DIR"
+touch "$TARGET_DIR/Browser/is-packaged-app"
+chown -R root:root "$TARGET_DIR"
+find "$TARGET_DIR" -type d -exec chmod 0755 {} +
+find "$TARGET_DIR" -type f -perm /0100 -exec chmod 0755 {} +
+find "$TARGET_DIR" -type f ! -perm /0100 -exec chmod 0644 {} +
+find "$TARGET_DIR" -type l -print -quit | grep -q . && exit 1
+
+MANIFEST_TMP=$(mktemp "$METADATA_DIR/.tor-browser.sha256.XXXXXX")
+(
+    cd /opt/ph4ntxm
+    find tor-browser -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum
+) > "$MANIFEST_TMP"
+chmod 0644 "$MANIFEST_TMP"
+mv -f "$MANIFEST_TMP" "$METADATA_DIR/tor-browser.sha256"
+printf '%s\n' "$VERSION" > "$METADATA_DIR/tor-browser.version"
+chown root:root "$METADATA_DIR/tor-browser.sha256" "$METADATA_DIR/tor-browser.version"
+chmod 0644 "$METADATA_DIR/tor-browser.sha256" "$METADATA_DIR/tor-browser.version"

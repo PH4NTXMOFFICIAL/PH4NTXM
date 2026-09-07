@@ -1,0 +1,14 @@
+[Unit]
+Description=PH4NTXM Lone Wolf DHCP Session Generator
+DefaultDependencies=no
+After=ph4ntxm-mode.service ph4ntxm-lonewolf-identity-randomization.service
+Requires=ph4ntxm-lonewolf-identity-randomization.service
+Before=network-pre.target
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-dhcp-session-generator.sh
+
+[Install]
+WantedBy=network-pre.target

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+set -e
+
+cd /opt/ph4ntxm/ph4ntxm-opsec-net
+
+python3 -m pip install . --break-system-packages --no-user --use-pep517 --no-build-isolation

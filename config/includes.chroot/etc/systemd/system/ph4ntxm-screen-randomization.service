@@ -1,0 +1,14 @@
+[Unit]
+Description=PH4NTXM Display Spoof
+After=ph4ntxm-gpu-randomization.service ph4ntxm-cores-randomization.service
+Requires=ph4ntxm-gpu-randomization.service ph4ntxm-cores-randomization.service
+ConditionPathExists=/run/ph4ntxm/mode-normal
+
+[Service]
+Type=oneshot
+Environment=DISPLAY=:0
+ExecStart=/usr/local/sbin/ph4ntxm-screen-randomization.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target

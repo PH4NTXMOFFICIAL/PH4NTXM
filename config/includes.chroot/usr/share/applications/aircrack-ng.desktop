@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Aircrack-NG
+Comment=Launch Aircrack-NG in a terminal
+Exec=xfce4-terminal --disable-server --class=Aircrack-NG --title="Aircrack-NG" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review Aircrack-NG options.\033[0m\"; aircrack-ng --help; exec zsh'"
+StartupWMClass=Aircrack-NG
+Icon=ph4ntxm-aircrack-ng
+Terminal=false
+Categories=X-PentestingPH4NTXM;

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="61.591068"
+   height="61.591068"
+   version="1.1"
+   viewBox="0 0 16.295649 16.295649"
+   id="svg30"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs10">
+    <linearGradient
+       id="linearGradient35">
+      <stop
+         style="stop-color:#00abff;stop-opacity:0;"
+         offset="0"
+         id="stop36" />
+      <stop
+         style="stop-color:#00abff;stop-opacity:1;"
+         offset="1"
+         id="stop35" />
+    </linearGradient>
+    <linearGradient
+       xlink:href="#linearGradient35"
+       id="linearGradient36"
+       x1="8.806551"
+       y1="17.916777"
+       x2="8.806551"
+       y2="6.941124"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       style="color-interpolation-filters:sRGB"
+       id="filter36"
+       x="-0.027"
+       y="-0.027000001"
+       width="1.054"
+       height="1.054">
+      <feGaussianBlur
+         stdDeviation="0.17393364"
+         id="feGaussianBlur36" />
+    </filter>
+  </defs>
+  <g
+     id="g36"
+     transform="translate(-0.37474336,-0.37577688)">
+    <path
+       id="path1"
+       style="color:#dedede;display:inline;opacity:0.6;fill:#00abff;fill-opacity:1;stroke-width:1.10433;filter:url(#filter36)"
+       class="ColorScheme-Text"
+       d="M 8.5223094,0.79321762 A 7.7303109,7.7303109 0 0 0 0.79218411,8.523343 7.7303109,7.7303109 0 0 0 8.5223094,16.253985 7.7303109,7.7303109 0 0 0 16.252952,8.523343 7.7303109,7.7303109 0 0 0 8.5223094,0.79321762 Z m 0,1.10430358 A 6.6259807,6.6259807 0 0 1 15.148648,8.523343 6.6259807,6.6259807 0 0 1 8.5223094,15.149681 6.6259807,6.6259807 0 0 1 1.8964877,8.523343 6.6259807,6.6259807 0 0 1 8.5223094,1.8975212 Z m 0,1.1043037 V 8.523343 H 14.044344 A 5.5216507,5.5216507 0 0 0 8.5223094,3.0018249 Z" />
+    <path
+       id="path35"
+       style="color:#dedede;fill:url(#linearGradient36);fill-opacity:1;stroke-width:1.10433"
+       class="ColorScheme-Text"
+       d="M 8.5223094,0.79321762 A 7.7303109,7.7303109 0 0 0 0.79218411,8.523343 7.7303109,7.7303109 0 0 0 8.5223094,16.253985 7.7303109,7.7303109 0 0 0 16.252952,8.523343 7.7303109,7.7303109 0 0 0 8.5223094,0.79321762 Z m 0,1.10430358 A 6.6259807,6.6259807 0 0 1 15.148648,8.523343 6.6259807,6.6259807 0 0 1 8.5223094,15.149681 6.6259807,6.6259807 0 0 1 1.8964877,8.523343 6.6259807,6.6259807 0 0 1 8.5223094,1.8975212 Z m 0,1.1043037 V 8.523343 H 14.044344 A 5.5216507,5.5216507 0 0 0 8.5223094,3.0018249 Z" />
+  </g>
+</svg>

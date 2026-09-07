@@ -1,0 +1,13 @@
+[Unit]
+Description=PH4NTXM Browser Policy
+After=local-fs.target ph4ntxm-mode.service
+Requires=ph4ntxm-mode.service
+Before=display-manager.service
+ConditionPathExists=/run/ph4ntxm/mode-normal
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-browser-policy.sh
+
+[Install]
+WantedBy=multi-user.target

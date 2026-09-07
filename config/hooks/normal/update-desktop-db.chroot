@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+
+update-desktop-database
+
+gtk-update-icon-cache /usr/share/icons/hicolor
+gtk-update-icon-cache /usr/share/icons/gnome

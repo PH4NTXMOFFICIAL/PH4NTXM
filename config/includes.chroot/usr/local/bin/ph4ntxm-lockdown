@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+import json
+import os
+import subprocess
+import sys
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, Gdk
+
+STATUS_FILE = "/run/ph4ntxm-lockdown-status.json"
+CONTROL = "/usr/local/sbin/ph4ntxm-firewall-control"
+CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
+ICON_FILE = "/usr/share/icons/Lyra-blue-dark/apps/scalable/ph4ntxm-lockdown.svg"
+
+
+def add_class(widget, name):
+    widget.get_style_context().add_class(name)
+    return widget
+
+
+def install_style():
+    provider = Gtk.CssProvider()
+    provider.load_from_path(CSS_FILE)
+    Gtk.StyleContext.add_provider_for_screen(
+        Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+    )
+
+
+def read_status():
+    try:
+        with open(STATUS_FILE, "r", encoding="utf-8") as handle:
+            return bool(json.load(handle).get("enabled", False))
+    except (OSError, TypeError, ValueError):
+        return False
+
+
+def set_lockdown(action):
+    return subprocess.run(["/usr/bin/sudo", CONTROL, action], check=False).returncode == 0
+
+
+def show_error(parent):
+    dialog = Gtk.Dialog(title="PH4NTXM Lockdown", transient_for=parent, flags=Gtk.DialogFlags.MODAL)
+    dialog.set_default_size(460, 220)
+    dialog.set_resizable(False)
+    dialog.set_position(Gtk.WindowPosition.CENTER_ON_PARENT)
+    content = dialog.get_content_area()
+    content.set_spacing(12)
+    content.set_border_width(18)
+    panel = add_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8), "danger-panel")
+    title = add_class(Gtk.Label(label="LOCKDOWN UPDATE FAILED"), "danger-title")
+    title.set_halign(Gtk.Align.START)
+    body = add_class(Gtk.Label(label="The network isolation request could not be completed."), "danger-text")
+    body.set_halign(Gtk.Align.START)
+    body.set_line_wrap(True)
+    panel.pack_start(title, False, False, 0)
+    panel.pack_start(body, False, False, 0)
+    content.pack_start(panel, True, True, 0)
+    close = dialog.add_button("Close", Gtk.ResponseType.CLOSE)
+    add_class(close, "danger")
+    dialog.show_all()
+    dialog.run()
+    dialog.destroy()
+
+
+class LockdownWindow(Gtk.Window):
+    def __init__(self):
+        Gtk.Window.__init__(self, title="PH4NTXM Lockdown")
+        self.set_default_size(520, 330)
+        self.set_resizable(False)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        if os.path.exists(ICON_FILE):
+            self.set_icon_from_file(ICON_FILE)
+        install_style()
+        add_class(self, "ph4ntxm-window")
+        self.enabled = read_status()
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.add(root)
+        header = add_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3), "top-panel")
+        title = add_class(Gtk.Label(label="PH4NTXM LOCKDOWN"), "title")
+        title.set_halign(Gtk.Align.START)
+        subtitle = add_class(Gtk.Label(label="Emergency network isolation"), "subtitle")
+        subtitle.set_halign(Gtk.Align.START)
+        header.pack_start(title, False, False, 0)
+        header.pack_start(subtitle, False, False, 0)
+        root.pack_start(header, False, False, 0)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        content.set_border_width(18)
+        section = add_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10), "section")
+        status_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
+        dot = add_class(Gtk.Label(label="●"), "status-dot")
+        dot.get_style_context().add_class("dot-active" if self.enabled else "dot-inactive")
+        status_row.pack_start(dot, False, False, 0)
+        labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        name = add_class(Gtk.Label(label="NETWORK LOCKDOWN"), "section-title")
+        name.set_halign(Gtk.Align.START)
+        state = "ENABLED" if self.enabled else "DISABLED"
+        state_label = add_class(Gtk.Label(label=state), "status-pill")
+        state_label.get_style_context().add_class("status-enabled" if self.enabled else "status-disabled")
+        state_label.set_halign(Gtk.Align.START)
+        labels.pack_start(name, False, False, 0)
+        labels.pack_start(state_label, False, False, 0)
+        status_row.pack_start(labels, True, True, 0)
+        section.pack_start(status_row, False, False, 0)
+        description = Gtk.Label(
+            label=(
+                "All incoming and outgoing network traffic is currently blocked."
+                if self.enabled
+                else "Enable immediate isolation of all incoming and outgoing network traffic."
+            )
+        )
+        description.set_halign(Gtk.Align.START)
+        description.set_line_wrap(True)
+        add_class(description, "subtitle")
+        section.pack_start(description, False, False, 0)
+        content.pack_start(section, True, True, 0)
+        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        cancel = Gtk.Button(label="Cancel")
+        cancel.connect("clicked", lambda _: self.close())
+        action_label = "DISABLE LOCKDOWN" if self.enabled else "ENABLE LOCKDOWN"
+        action = Gtk.Button(label=action_label)
+        add_class(action, "danger" if self.enabled else "safe")
+        action.connect("clicked", self.on_action)
+        controls.pack_end(action, False, False, 0)
+        controls.pack_end(cancel, False, False, 0)
+        content.pack_end(controls, False, False, 0)
+        root.pack_start(content, True, True, 0)
+
+    def on_action(self, _):
+        action = "disable" if self.enabled else "enable"
+        if set_lockdown(action):
+            self.close()
+        else:
+            show_error(self)
+
+
+def main():
+    if len(sys.argv) == 2 and sys.argv[1] in ("enable", "disable"):
+        raise SystemExit(0 if set_lockdown(sys.argv[1]) else 1)
+    window = LockdownWindow()
+    window.connect("destroy", Gtk.main_quit)
+    window.show_all()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()

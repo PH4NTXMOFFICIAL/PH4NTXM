@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export LC_ALL=C
+
+STATE_DIR=/run/ph4ntxm
+MODE_FILE=$STATE_DIR/mode
+BROWSER_READY=$STATE_DIR/tor-browser-verified
+FIREWALL_READY=$STATE_DIR/firewall-ready
+TOR_READY=$STATE_DIR/tor-ready
+LONEWOLF_MANIFEST=/usr/lib/ph4ntxm/lonewolf/lonewolf.nft.sha256
+BROWSER_MANIFEST=/usr/lib/ph4ntxm/browser-mode/tor-browser.sha256
+START_BROWSER=/opt/ph4ntxm/tor-browser/Browser/start-tor-browser
+
+protected_file() {
+    local path=$1 owner mode
+    [[ -f "$path" && ! -L "$path" && -r "$path" ]] || return 1
+    owner=$(stat -c '%u' "$path")
+    mode=$(stat -c '%a' "$path")
+    [[ "$owner" == 0 && "$mode" =~ ^[0-7]{3,4}$ ]] || return 1
+    (( (8#$mode & 0022) == 0 ))
+}
+
+value() {
+    local key=$1 file=$2
+    awk -F= -v key="$key" '$1 == key {count++; result=substr($0, length(key) + 2)} END {if (count != 1) exit 1; print result}' "$file"
+}
+
+fresh() {
+    local recorded=$1 limit=$2 current
+    [[ "$recorded" =~ ^[0-9]+$ ]] || return 1
+    current=$(cut -d. -f1 /proc/uptime)
+    (( recorded <= current && current - recorded <= limit ))
+}
+
+tcp_listener() {
+    local port=$1
+    ss -H -ltn4 "sport = :$port" | awk -v endpoint="127.0.0.1:$port" '$4 == endpoint {found=1} END {exit !found}'
+}
+
+udp_listener() {
+    local port=$1
+    ss -H -lun4 "sport = :$port" | awk -v endpoint="127.0.0.1:$port" '$4 == endpoint {found=1} END {exit !found}'
+}
+
+fail() {
+    printf 'Tor Browser: %s\n' "$1" >&2
+    exit 1
+}
+
+USER_ID=$(id -u)
+(( USER_ID > 0 )) || fail 'refusing to run as root'
+RUNTIME_BASE=/run/user/$USER_ID
+[[ -d "$RUNTIME_BASE" && ! -L "$RUNTIME_BASE" && "$(stat -c '%u' "$RUNTIME_BASE")" == "$USER_ID" ]] || fail 'private runtime directory is unavailable'
+RUNTIME_MODE=$(stat -c '%a' "$RUNTIME_BASE")
+[[ "$RUNTIME_MODE" =~ ^[0-7]{3,4}$ ]] || fail 'invalid runtime directory permissions'
+(( (8#$RUNTIME_MODE & 0022) == 0 )) || fail 'unsafe runtime directory permissions'
+
+for required_file in "$MODE_FILE" "$BROWSER_READY" "$FIREWALL_READY" "$TOR_READY" "$LONEWOLF_MANIFEST" "$BROWSER_MANIFEST"; do
+    protected_file "$required_file" || fail 'trusted readiness state is unavailable'
+done
+
+[[ "$(tr -d '\n' < "$MODE_FILE")" == lonewolf ]] || fail 'Lonewolf mode is not active'
+[[ "$(value MODE "$BROWSER_READY")" == lonewolf ]] || fail 'Tor Browser mode verification failed'
+BROWSER_MANIFEST_HASH=$(sha256sum "$BROWSER_MANIFEST" | awk '{print $1}')
+[[ "$(value MANIFEST_SHA256 "$BROWSER_READY")" == "$BROWSER_MANIFEST_HASH" ]] || fail 'Tor Browser integrity state is stale'
+BROWSER_UPTIME=$(value UPTIME_SECONDS "$BROWSER_READY")
+CURRENT_UPTIME=$(cut -d. -f1 /proc/uptime)
+[[ "$BROWSER_UPTIME" =~ ^[0-9]+$ ]] || fail 'invalid Tor Browser verification state'
+(( BROWSER_UPTIME <= CURRENT_UPTIME )) || fail 'invalid Tor Browser verification time'
+[[ "$(value PROFILE "$FIREWALL_READY")" == lonewolf ]] || fail 'Lonewolf firewall is not active'
+LONEWOLF_SOURCE_HASH=$(tr -d '\n' < "$LONEWOLF_MANIFEST")
+[[ "$LONEWOLF_SOURCE_HASH" =~ ^[0-9a-f]{64}$ ]] || fail 'invalid Lonewolf firewall manifest'
+[[ "$(value SOURCE_SHA256 "$FIREWALL_READY")" == "$LONEWOLF_SOURCE_HASH" ]] || fail 'Lonewolf firewall source verification failed'
+[[ "$(value RULESET_SHA256 "$FIREWALL_READY")" =~ ^[0-9a-f]{64}$ ]] || fail 'invalid active firewall state'
+fresh "$(value UPTIME_SECONDS "$FIREWALL_READY")" 6 || fail 'firewall readiness state is stale'
+[[ "$(value STATUS "$TOR_READY")" == ready ]] || fail 'Tor is not ready'
+[[ "$(value BOOTSTRAP "$TOR_READY")" == 100 ]] || fail 'Tor bootstrap is incomplete'
+fresh "$(value UPTIME_SECONDS "$TOR_READY")" 6 || fail 'Tor readiness state is stale'
+
+systemctl is-active --quiet ph4ntxm-browser-mode.service || fail 'browser mode gate is inactive'
+systemctl is-active --quiet ph4ntxm-lonewolf-firewall-guard.service || fail 'firewall guardian is inactive'
+systemctl is-active --quiet tor@default.service || fail 'Tor service is inactive'
+systemctl is-active --quiet ph4ntxm-lonewolf-dns.service || fail 'DNS bridge is inactive'
+tcp_listener 53 || fail 'TCP DNS listener is unavailable'
+udp_listener 53 || fail 'UDP DNS listener is unavailable'
+udp_listener 5353 || fail 'Tor DNS listener is unavailable'
+tcp_listener 9040 || fail 'Tor transparent proxy is unavailable'
+tcp_listener 9050 || fail 'Tor SOCKS proxy is unavailable'
+[[ -x "$START_BROWSER" ]] || fail 'verified Tor Browser executable is unavailable'
+
+for browser_argument in "$@"; do
+    case "$browser_argument" in
+        http://*|https://*|file://*) ;;
+        *) fail 'unsupported launch argument' ;;
+    esac
+done
+
+exec 9>"$RUNTIME_BASE/ph4ntxm-tor-browser.lock"
+flock -n 9 || fail 'another Tor Browser session is already active'
+umask 077
+SESSION_DIR=$(mktemp -d "$RUNTIME_BASE/ph4ntxm-tor-browser.XXXXXX")
+SESSION_HOME=$SESSION_DIR/home
+mkdir -m 0700 "$SESSION_HOME"
+BROWSER_PID=0
+
+cleanup() {
+    if (( BROWSER_PID > 0 )) && kill -0 "$BROWSER_PID" 2>/dev/null; then
+        kill "$BROWSER_PID" 2>/dev/null || true
+        wait "$BROWSER_PID" 2>/dev/null || true
+    fi
+    case "${SESSION_DIR:-}" in
+        "$RUNTIME_BASE"/ph4ntxm-tor-browser.*)
+            if [[ -d "$SESSION_DIR" && ! -L "$SESSION_DIR" && "$(stat -c '%u' "$SESSION_DIR")" == "$USER_ID" ]]; then
+                rm -rf --one-file-system -- "$SESSION_DIR"
+            fi
+            ;;
+    esac
+}
+trap cleanup EXIT INT TERM HUP
+
+IFS=: read -r USER_NAME _ PASSWD_UID _ _ USER_HOME _ < <(getent passwd "$USER_ID")
+[[ "$PASSWD_UID" == "$USER_ID" && -n "$USER_NAME" ]] || fail 'unable to resolve local user'
+DISPLAY_VALUE=${DISPLAY:-}
+[[ -n "$DISPLAY_VALUE" ]] || fail 'graphical display is unavailable'
+XAUTHORITY_VALUE=${XAUTHORITY:-$USER_HOME/.Xauthority}
+[[ -r "$XAUTHORITY_VALUE" ]] || fail 'X authority is unavailable'
+
+ENVIRONMENT=(
+    "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    "LANG=C.UTF-8"
+    "LC_ALL=C.UTF-8"
+    "TZ=UTC"
+    "HOME=$SESSION_HOME"
+    "USER=$USER_NAME"
+    "LOGNAME=$USER_NAME"
+    "XDG_RUNTIME_DIR=$RUNTIME_BASE"
+    "DISPLAY=$DISPLAY_VALUE"
+    "XAUTHORITY=$XAUTHORITY_VALUE"
+    "TOR_PROVIDER=none"
+    "TOR_SOCKS_HOST=127.0.0.1"
+    "TOR_SOCKS_PORT=9050"
+)
+if [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
+    ENVIRONMENT+=("DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS")
+fi
+
+set +e
+env -i "${ENVIRONMENT[@]}" "$START_BROWSER" "$@" &
+BROWSER_PID=$!
+wait "$BROWSER_PID"
+STATUS=$?
+BROWSER_PID=0
+set -e
+exit "$STATUS"

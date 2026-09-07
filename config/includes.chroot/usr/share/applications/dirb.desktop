@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Dirb
+Comment=Show Dirb help inside a terminal
+Exec=xfce4-terminal --disable-server --class=Dirb --title="Dirb" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review Dirb options.\033[0m\"; dirb --help; exec zsh'"
+StartupWMClass=Dirb
+Icon=ph4ntxm-dirb
+Terminal=false
+Categories=X-PentestingPH4NTXM;

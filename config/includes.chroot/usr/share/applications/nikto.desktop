@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Nikto
+Comment=Launch Nikto in a terminal
+Exec=xfce4-terminal --disable-server --class=Nikto --title="Nikto" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review Nikto options.\033[0m\"; nikto; exec zsh'"
+StartupWMClass=Nikto
+Icon=ph4ntxm-nikto
+Terminal=false
+Categories=X-PentestingPH4NTXM;

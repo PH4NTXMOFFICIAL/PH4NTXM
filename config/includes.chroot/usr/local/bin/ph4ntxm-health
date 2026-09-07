@@ -1,0 +1,846 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+CYAN='\033[38;2;0;171;255m'
+MAGENTA='\033[38;2;255;61;251m'
+GREEN='\033[38;2;68;209;122m'
+AMBER='\033[38;2;255;176;32m'
+RED='\033[38;2;255;77;90m'
+GRAY='\033[38;2;165;175;195m'
+RESET='\033[0m'
+
+LINE_WIDTH=78
+
+STATE_DIR="/run/ph4ntxm"
+DMI_DIR="$STATE_DIR/fake_dmi"
+GPU_ENV="$STATE_DIR/gpu_env"
+
+HEALTH=100
+WARNINGS=0
+ERRORS=0
+CRITICAL_ERRORS=0
+
+separator() {
+    printf "${GRAY}%0.s─" $(seq 1 "$LINE_WIDTH")
+    printf "${RESET}\n"
+}
+
+section() {
+    printf "\n"
+    separator
+    printf "${CYAN}[ %s ]${RESET}\n" "$1"
+    separator
+}
+
+print_line() {
+    local label=$1
+    local value=$2
+    local color=$3
+
+    printf "  %-24s ${color}%s${RESET}\n" "$label" "$value"
+}
+
+warning() {
+    ((++WARNINGS))
+    HEALTH=$((HEALTH - 2))
+}
+
+error() {
+    ((++ERRORS))
+    HEALTH=$((HEALTH - 6))
+}
+
+critical_error() {
+    ((++ERRORS))
+    ((++CRITICAL_ERRORS))
+    HEALTH=$((HEALTH - 15))
+}
+
+protected_file() {
+    local path=$1 owner mode
+    [[ -f "$path" && ! -L "$path" && -r "$path" ]] || return 1
+    owner=$(stat -c '%u' "$path")
+    mode=$(stat -c '%a' "$path")
+    [[ "$owner" == 0 && "$mode" =~ ^[0-7]{3,4}$ ]] || return 1
+    (( (8#$mode & 0022) == 0 ))
+}
+
+state_value() {
+    local key=$1 file=$2
+    awk -F= -v key="$key" '$1 == key {count++; result=substr($0, length(key) + 2)} END {if (count != 1) exit 1; print result}' "$file"
+}
+
+fresh_uptime() {
+    local recorded=$1 limit=${2:-6} current
+    [[ "$recorded" =~ ^[0-9]+$ ]] || return 1
+    current=$(cut -d. -f1 /proc/uptime)
+    (( recorded <= current && current - recorded <= limit ))
+}
+
+tcp_listener() {
+    local port=$1
+    ss -H -ltn4 "sport = :$port" | awk -v endpoint="127.0.0.1:$port" '$4 == endpoint {found=1} END {exit !found}'
+}
+
+udp_listener() {
+    local port=$1
+    ss -H -lun4 "sport = :$port" | awk -v endpoint="127.0.0.1:$port" '$4 == endpoint {found=1} END {exit !found}'
+}
+
+section "PH4NTXM HEALTH REPORT"
+
+MODE=$(cat "$STATE_DIR/mode" 2>/dev/null || echo "UNKNOWN")
+HOSTNAME=$(hostname 2>/dev/null || echo "UNKNOWN")
+KERNEL=$(uname -r)
+ARCH=$(uname -m)
+BOOT_TIME=$(uptime -s 2>/dev/null || echo "UNKNOWN")
+UPTIME=$(uptime -p 2>/dev/null | sed 's/^up //')
+
+section "SYSTEM FOUNDATION"
+
+print_line "MODE:" "$MODE" "$GREEN"
+print_line "HOSTNAME:" "$HOSTNAME" "$GREEN"
+print_line "KERNEL:" "$KERNEL" "$GREEN"
+print_line "KERNEL ARCHITECTURE:" "$ARCH" "$GREEN"
+print_line "BOOT TIME:" "$BOOT_TIME" "$GREEN"
+print_line "UPTIME:" "$UPTIME" "$GREEN"
+
+if [[ ! "$MODE" =~ ^(linux|windows|lonewolf)$ ]]; then
+    critical_error
+    print_line "RUNTIME:" "MODE NOT INITIALIZED" "$RED"
+else
+    print_line "RUNTIME:" "OK" "$GREEN"
+fi
+
+if [[ -d "$STATE_DIR" ]]; then
+    print_line "STATE DIRECTORY:" "OK" "$GREEN"
+else
+    error
+    print_line "STATE DIRECTORY:" "MISSING" "$RED"
+fi
+
+if [[ -r /etc/machine-id ]]; then
+    MID=$(tr -d '\n' < /etc/machine-id)
+    BOOT_MID=$(tr -d '\n' < "$STATE_DIR/boot_machine_id" 2>/dev/null || true)
+
+    if [[ "$MID" =~ ^[0-9a-f]{32}$ ]] && [[ "$BOOT_MID" == "$MID" ]]; then
+        print_line "MACHINE ID:" "$MID" "$GREEN"
+    else
+        critical_error
+        print_line "MACHINE ID:" "INVALID OR OUT OF SYNC" "$RED"
+    fi
+else
+    critical_error
+    print_line "MACHINE ID:" "MISSING" "$RED"
+fi
+
+separator
+
+section "ACCESS & PRIVILEGE"
+
+if ! id ph4ntxm >/dev/null 2>&1; then
+    error
+    print_line "LIVE USER:" "MISSING" "$RED"
+else
+    print_line "LIVE USER:" "PRESENT" "$GREEN"
+    if sudo -n -l 2>/dev/null | grep -q 'NOPASSWD: ALL'; then
+        print_line "LIVE USER PRIVILEGE:" "FULL ADMIN" "$GREEN"
+    else
+        critical_error
+        print_line "LIVE USER PRIVILEGE:" "ADMIN POLICY MISSING" "$RED"
+    fi
+fi
+
+if [[ -e /etc/sudoers.d/live ]]; then
+    error
+    print_line "LIVE-CONFIG ADMIN RULE:" "PRESENT" "$RED"
+else
+    print_line "LIVE-CONFIG ADMIN RULE:" "ABSENT" "$GREEN"
+fi
+
+SUDO_POLICY_META=$(stat -c '%U:%G:%a' /etc/sudoers.d/ph4ntxm 2>/dev/null || true)
+if [[ "$SUDO_POLICY_META" == "root:root:440" ]]; then
+    print_line "PH4NTXM SUDO POLICY:" "FULL NOPASSWD ADMIN" "$GREEN"
+else
+    error
+    print_line "PH4NTXM SUDO POLICY:" "INVALID OWNER OR MODE" "$RED"
+fi
+
+separator
+
+section "PROTECTION RUNTIME"
+
+check_runtime_file() {
+
+    local FILE=$1
+    local LABEL=$2
+
+    if sudo -n /usr/bin/test -s "$FILE" 2>/dev/null; then
+        print_line "$LABEL:" "ACTIVE" "$GREEN"
+    else
+        warning
+        print_line "$LABEL:" "MISSING" "$AMBER"
+    fi
+}
+
+check_runtime_file "$STATE_DIR/mode" "SYSTEM MODE"
+if [[ -r "$STATE_DIR/identity-ready" ]] && \
+   [[ "$(tr -d '\n' < "$STATE_DIR/identity-ready")" == "$MODE" ]]; then
+    print_line "IDENTITY CHAIN:" "READY" "$GREEN"
+else
+    critical_error
+    print_line "IDENTITY CHAIN:" "INCOMPLETE" "$RED"
+fi
+if [[ "$MODE" == "lonewolf" ]]; then
+    check_runtime_file "$STATE_DIR/lonewolf_seed" "IDENTITY PROFILE"
+else
+    check_runtime_file "$STATE_DIR/persona_seed" "IDENTITY PROFILE"
+fi
+check_runtime_file "$STATE_DIR/gpu_env" "GPU PROFILE"
+if [[ -r /usr/local/lib/libph4ntxm-gl-spoof.so ]]; then
+    print_line "GL IDENTITY SHIM:" "READY" "$GREEN"
+else
+    critical_error
+    print_line "GL IDENTITY SHIM:" "MISSING" "$RED"
+fi
+check_runtime_file "$STATE_DIR/screen_env" "SCREEN PROFILE"
+BROWSER_RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+if [[ "$MODE" == lonewolf ]]; then
+    BROWSER_MARKER=$STATE_DIR/tor-browser-verified
+    BROWSER_MANIFEST=/usr/lib/ph4ntxm/browser-mode/tor-browser.sha256
+    BROWSER_OPTIONS=$(findmnt -rn -o OPTIONS --mountpoint /usr/lib/firefox-esr 2>/dev/null || true)
+    if protected_file "$BROWSER_MARKER" && protected_file "$BROWSER_MANIFEST" && \
+       systemctl is-active --quiet ph4ntxm-browser-mode.service 2>/dev/null && \
+       [[ "$(state_value MODE "$BROWSER_MARKER")" == lonewolf ]] && \
+       [[ "$(state_value MANIFEST_SHA256 "$BROWSER_MARKER")" == "$(sha256sum "$BROWSER_MANIFEST" | awk '{print $1}')" ]] && \
+       [[ ",$BROWSER_OPTIONS," == *,ro,* && ",$BROWSER_OPTIONS," == *,nosuid,* && ",$BROWSER_OPTIONS," == *,nodev,* && ",$BROWSER_OPTIONS," == *,noexec,* ]] && \
+       grep -q '^Name=Tor Browser$' /usr/share/applications/firefox-esr.desktop 2>/dev/null; then
+        print_line "BROWSER PROFILE:" "TOR BROWSER VERIFIED / ESR MASKED" "$GREEN"
+    else
+        critical_error
+        print_line "BROWSER PROFILE:" "TOR BROWSER GATE FAILED" "$RED"
+    fi
+elif [[ -r "$BROWSER_RUNTIME/ph4ntxm-firefox-profile/user.js" ]]; then
+    print_line "BROWSER PROFILE:" "ACTIVE" "$GREEN"
+elif [[ -r "/etc/firefox-esr/mode/$MODE/user.js" ]]; then
+    print_line "BROWSER PROFILE:" "READY (NOT STARTED)" "$GRAY"
+else
+    warning
+    print_line "BROWSER PROFILE:" "MISSING" "$AMBER"
+fi
+check_runtime_file "$STATE_DIR/clock-fuzz-profile" "CLOCK PROFILE"
+check_runtime_file "$STATE_DIR/boot_jitter" "BOOT JITTER"
+if [[ -e "$STATE_DIR/boot_mac" ]]; then
+    print_line "MAC PROFILE:" "ACTIVE" "$GREEN"
+else
+    warning
+    print_line "MAC PROFILE:" "MISSING" "$AMBER"
+fi
+
+separator
+
+section "IDENTITY & HARDWARE PERSONA"
+
+if [[ -d "$DMI_DIR" ]]; then
+    DMI_VENDOR=$(sudo -n /usr/bin/cat "$DMI_DIR/sys_vendor" 2>/dev/null || echo N/A)
+    DMI_PRODUCT=$(sudo -n /usr/bin/cat "$DMI_DIR/product_name" 2>/dev/null || echo N/A)
+    DMI_UUID=$(sudo -n /usr/bin/cat "$DMI_DIR/product_uuid" 2>/dev/null || echo N/A)
+    print_line "DMI PROFILE:" "ACTIVE" "$GREEN"
+    print_line "SYSTEM VENDOR:" "$DMI_VENDOR" "$GREEN"
+    print_line "PRODUCT NAME:" "$DMI_PRODUCT" "$GREEN"
+    print_line "PRODUCT UUID:" "$DMI_UUID" "$GREEN"
+else
+    warning
+    print_line "DMI PROFILE:" "MISSING" "$AMBER"
+fi
+
+if [[ -r "$GPU_ENV" ]]; then
+    GPU_INFO=$(bash -c 'source "$1"; printf "%s\n%s\n" "${PH4NTXM_GPU_MODEL:-N/A}" "${PH4NTXM_GPU_STACK:-N/A}"' _ "$GPU_ENV")
+    GPU_MODEL=$(sed -n '1p' <<< "$GPU_INFO")
+    GPU_STACK=$(sed -n '2p' <<< "$GPU_INFO")
+    print_line "GPU MODEL:" "$GPU_MODEL" "$GREEN"
+    print_line "GPU STACK:" "$GPU_STACK" "$GREEN"
+else
+    warning
+    print_line "GPU PERSONA:" "MISSING" "$AMBER"
+fi
+
+TTL=$(/usr/sbin/sysctl -n net.ipv4.ip_default_ttl 2>/dev/null || echo N/A)
+TIMESTAMPS=$(/usr/sbin/sysctl -n net.ipv4.tcp_timestamps 2>/dev/null || echo N/A)
+WINDOW_SCALE=$(/usr/sbin/sysctl -n net.ipv4.tcp_window_scaling 2>/dev/null || echo N/A)
+EXPECTED_TTL=64
+EXPECTED_TIMESTAMPS=1
+[[ "$MODE" == "windows" ]] && EXPECTED_TTL=128
+[[ "$MODE" == "windows" || "$MODE" == "lonewolf" ]] && EXPECTED_TIMESTAMPS=0
+
+if [[ "$TTL" == "$EXPECTED_TTL" ]]; then
+    print_line "IP TTL:" "$TTL" "$GREEN"
+else
+    warning
+    print_line "IP TTL:" "$TTL / EXPECTED $EXPECTED_TTL" "$AMBER"
+fi
+
+if [[ "$TIMESTAMPS" == "$EXPECTED_TIMESTAMPS" ]]; then
+    print_line "TCP TIMESTAMPS:" "$TIMESTAMPS" "$GREEN"
+else
+    warning
+    print_line "TCP TIMESTAMPS:" "$TIMESTAMPS / EXPECTED $EXPECTED_TIMESTAMPS" "$AMBER"
+fi
+
+if [[ "$WINDOW_SCALE" == "1" ]]; then
+    print_line "TCP WINDOW SCALE:" "ENABLED" "$GREEN"
+else
+    warning
+    print_line "TCP WINDOW SCALE:" "DISABLED" "$AMBER"
+fi
+
+while IFS= read -r IFACE; do
+    [[ "$IFACE" == "lo" || -z "$IFACE" ]] && continue
+    CURRENT_MAC=$(cat "/sys/class/net/$IFACE/address" 2>/dev/null || echo N/A)
+    print_line "MAC $IFACE:" "$CURRENT_MAC" "$GREEN"
+done < <(find /sys/class/net -mindepth 1 -maxdepth 1 -printf '%f\n' 2>/dev/null | sort)
+
+separator
+
+section "RESOURCE HEALTH"
+
+LOAD=$(cut -d' ' -f1 /proc/loadavg)
+CPU_COUNT=$(nproc)
+PERSONA_ARCH="UNKNOWN"
+PERSONA_CPU="UNKNOWN"
+PERSONA_RAM="UNKNOWN"
+if [[ -r "$STATE_DIR/cores_env" ]]; then
+    source "$STATE_DIR/cores_env"
+    PERSONA_ARCH=${PH4_CPU_ARCHITECTURE:-UNKNOWN}
+    PERSONA_CPU=${PH4_CPU_MODEL_NAME:-UNKNOWN}
+    PERSONA_RAM=${PH4_REPORTED_RAM:-UNKNOWN}
+fi
+[[ "$PERSONA_RAM" == "UNKNOWN" ]] || PERSONA_RAM="$PERSONA_RAM GB"
+
+if awk "BEGIN {exit !($LOAD >= ($CPU_COUNT * 2))}"; then
+    error
+    LOAD_COLOR=$RED
+elif awk "BEGIN {exit !($LOAD >= $CPU_COUNT)}"; then
+    warning
+    LOAD_COLOR=$AMBER
+else
+    LOAD_COLOR=$GREEN
+fi
+
+print_line "PERSONA ARCHITECTURE:" "$PERSONA_ARCH" "$GREEN"
+print_line "PERSONA CPU:" "$PERSONA_CPU" "$GREEN"
+print_line "PERSONA LOGICAL CPUS:" "$CPU_COUNT" "$GREEN"
+print_line "PERSONA RAM:" "$PERSONA_RAM" "$GREEN"
+print_line "LOAD AVERAGE:" "$LOAD" "$LOAD_COLOR"
+
+MEM_TOTAL=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
+MEM_AVAIL=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
+MEM_USED=$((MEM_TOTAL - MEM_AVAIL))
+MEM_PERCENT=$((MEM_USED * 100 / MEM_TOTAL))
+
+if (( MEM_PERCENT >= 95 )); then
+    error
+    MEM_COLOR=$RED
+elif (( MEM_PERCENT >= 85 )); then
+    warning
+    MEM_COLOR=$AMBER
+else
+    MEM_COLOR=$GREEN
+fi
+
+print_line "PHYSICAL MEMORY:" \
+    "${MEM_USED} MB / ${MEM_TOTAL} MB (${MEM_PERCENT}%)" \
+    "$MEM_COLOR"
+
+SWAP_TOTAL=$(awk '/SwapTotal/ {print int($2/1024)}' /proc/meminfo)
+SWAP_FREE=$(awk '/SwapFree/ {print int($2/1024)}' /proc/meminfo)
+
+if (( SWAP_TOTAL > 0 )); then
+
+    SWAP_USED=$((SWAP_TOTAL - SWAP_FREE))
+    SWAP_PERCENT=$((SWAP_USED * 100 / SWAP_TOTAL))
+
+    critical_error
+    SWAP_COLOR=$RED
+
+    print_line "SWAP:" \
+        "${SWAP_USED} MB / ${SWAP_TOTAL} MB (${SWAP_PERCENT}%)" \
+        "$SWAP_COLOR"
+
+else
+
+    print_line "SWAP:" "DISABLED" "$GREEN"
+
+fi
+
+TEMP="UNAVAILABLE"
+MAX_TEMP=0
+
+for SENSOR in /sys/class/thermal/thermal_zone*/temp; do
+
+    [[ -r "$SENSOR" ]] || continue
+
+    RAW=$(cat "$SENSOR")
+
+    [[ "$RAW" =~ ^[0-9]+$ ]] || continue
+    (( RAW < 1000 )) && RAW=$((RAW * 1000))
+    (( RAW > MAX_TEMP )) && MAX_TEMP=$RAW
+
+done
+
+(( MAX_TEMP > 0 )) && TEMP="$((MAX_TEMP / 1000))°C"
+
+if [[ "$TEMP" != "UNAVAILABLE" ]]; then
+
+    VALUE=${TEMP%°C}
+
+    if (( VALUE >= 90 )); then
+        error
+        TEMP_COLOR=$RED
+    elif (( VALUE >= 80 )); then
+        warning
+        TEMP_COLOR=$AMBER
+    else
+        TEMP_COLOR=$GREEN
+    fi
+
+    print_line "CPU TEMPERATURE:" "$TEMP" "$TEMP_COLOR"
+
+else
+
+    print_line "CPU TEMPERATURE:" "UNAVAILABLE" "$GRAY"
+
+fi
+
+separator
+
+section "STORAGE HEALTH"
+
+ROOT_USE=$(df -P / | awk 'NR==2 {gsub("%","",$5); print $5}')
+ROOT_FREE=$(df -hP / | awk 'NR==2 {print $4}')
+
+if (( ROOT_USE >= 95 )); then
+    error
+    ROOT_COLOR=$RED
+elif (( ROOT_USE >= 85 )); then
+    warning
+    ROOT_COLOR=$AMBER
+else
+    ROOT_COLOR=$GREEN
+fi
+
+print_line "ROOT USAGE:" "${ROOT_USE}% (${ROOT_FREE} FREE)" "$ROOT_COLOR"
+
+INODE_USE=$(df -Pi / | awk 'NR==2 {gsub("%","",$5); print $5}')
+
+if (( INODE_USE >= 95 )); then
+    error
+    INODE_COLOR=$RED
+elif (( INODE_USE >= 85 )); then
+    warning
+    INODE_COLOR=$AMBER
+else
+    INODE_COLOR=$GREEN
+fi
+
+print_line "INODES:" "${INODE_USE}% USED" "$INODE_COLOR"
+
+ROOT_OPTIONS=$(findmnt -n -o OPTIONS /)
+
+if grep -qw "ro" <<<"$ROOT_OPTIONS"; then
+    error
+    print_line "ROOT FILESYSTEM:" "READ ONLY" "$RED"
+else
+    print_line "ROOT FILESYSTEM:" "READ WRITE" "$GREEN"
+fi
+
+MOUNT_COUNT=$(findmnt -rn | wc -l)
+print_line "MOUNT POINTS:" "$MOUNT_COUNT" "$GREEN"
+
+WRITE_OK=YES
+HEALTH_RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+TESTFILE=$(mktemp "$HEALTH_RUNTIME/.ph4ntxm-health.XXXXXX" 2>/dev/null || true)
+if [[ -z "$TESTFILE" ]]; then
+    WRITE_OK=NO
+else
+    rm -f -- "$TESTFILE"
+fi
+
+if [[ "$WRITE_OK" == "YES" ]]; then
+    print_line "WRITE TEST:" "PASSED" "$GREEN"
+else
+    warning
+    print_line "WRITE TEST:" "FAILED" "$AMBER"
+fi
+
+ROOT_DEVICE=$(findmnt -n -o SOURCE /)
+print_line "ROOT DEVICE:" "$ROOT_DEVICE" "$GREEN"
+
+FS_TYPE=$(findmnt -n -o FSTYPE /)
+print_line "FILESYSTEM:" "$FS_TYPE" "$GREEN"
+
+separator
+
+section "SERVICE HEALTH"
+
+FAILED=$(systemctl --failed --no-legend --plain 2>/dev/null || true)
+
+if [[ -z "$FAILED" ]]; then
+
+    print_line "SYSTEMD:" "NO FAILED SERVICES" "$GREEN"
+
+else
+
+    critical_error
+
+    print_line "SYSTEMD:" "FAILED SERVICES DETECTED" "$RED"
+    printf "\n"
+
+    while read -r UNIT LOAD ACTIVE SUB REST; do
+        [[ -z "$UNIT" ]] && continue
+        print_line "$UNIT" "$ACTIVE/$SUB" "$RED"
+    done <<< "$FAILED"
+
+fi
+
+separator
+
+section "NETWORK & EGRESS"
+
+if ip route | grep -q '^default'; then
+    print_line "DEFAULT ROUTE:" "PRESENT" "$GREEN"
+else
+    warning
+    print_line "DEFAULT ROUTE:" "MISSING / OFFLINE" "$AMBER"
+fi
+
+DNS=$(awk '/^nameserver/ {print $2; exit}' /etc/resolv.conf 2>/dev/null || true)
+
+if [[ "$DNS" == "127.0.0.1" ]]; then
+    print_line "DNS SERVER:" "$DNS" "$GREEN"
+else
+    warning
+    print_line "DNS SERVER:" "${DNS:-NONE}" "$AMBER"
+fi
+
+IPV6=$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null || echo 0)
+
+if [[ "$MODE" == "lonewolf" && "$IPV6" != "1" ]]; then
+    error
+    print_line "IPV6:" "ENABLED (LONEWOLF POLICY FAILURE)" "$RED"
+elif [[ "$IPV6" == "1" ]]; then
+    print_line "IPV6:" "DISABLED" "$GREEN"
+else
+    print_line "IPV6:" "ENABLED (FIREWALL FILTERED)" "$GREEN"
+fi
+
+if ip route get 1.1.1.1 >/dev/null 2>&1; then
+    print_line "EGRESS CHECK:" "ROUTE READY (PASSIVE)" "$GREEN"
+else
+    warning
+    print_line "EGRESS CHECK:" "NO ROUTE / OFFLINE" "$AMBER"
+fi
+
+separator
+
+section "PRIVACY & OPSEC"
+
+FIREWALL_STATE=$STATE_DIR/firewall-ready
+FIREWALL_PROFILE=$(state_value PROFILE "$FIREWALL_STATE" 2>/dev/null || true)
+FIREWALL_HASH=$(state_value RULESET_SHA256 "$FIREWALL_STATE" 2>/dev/null || true)
+FIREWALL_UPTIME=$(state_value UPTIME_SECONDS "$FIREWALL_STATE" 2>/dev/null || true)
+FIREWALL_READY=0
+if protected_file "$FIREWALL_STATE" && [[ "$FIREWALL_HASH" =~ ^[0-9a-f]{64}$ ]]; then
+    if [[ "$FIREWALL_PROFILE" == "lockdown" ]] || \
+       [[ "$MODE" == "lonewolf" && "$FIREWALL_PROFILE" == "lonewolf" ]] || \
+       [[ "$MODE" != "lonewolf" && "$FIREWALL_PROFILE" == "normal" ]]; then
+        FIREWALL_READY=1
+    fi
+fi
+
+if [[ "$MODE" != lonewolf && "$FIREWALL_READY" == 1 ]] && \
+   ! fresh_uptime "$FIREWALL_UPTIME" 6; then
+    FIREWALL_READY=0
+fi
+
+if [[ "$MODE" == lonewolf && "$FIREWALL_READY" == 1 ]]; then
+    FIREWALL_SOURCE=$(state_value SOURCE_SHA256 "$FIREWALL_STATE" 2>/dev/null || true)
+    if [[ "$FIREWALL_PROFILE" == lonewolf ]]; then
+        EXPECTED_SOURCE=$(tr -d '\n' < /usr/lib/ph4ntxm/lonewolf/lonewolf.nft.sha256 2>/dev/null || true)
+    else
+        EXPECTED_SOURCE=$(awk '$2 == "/etc/firewall/lockdown.nft" {print $1}' /etc/firewall/rules.sha256 2>/dev/null || true)
+    fi
+    if [[ ! "$EXPECTED_SOURCE" =~ ^[0-9a-f]{64}$ ]] || \
+       [[ "$FIREWALL_SOURCE" != "$EXPECTED_SOURCE" ]] || \
+       ! fresh_uptime "$FIREWALL_UPTIME" 6; then
+        FIREWALL_READY=0
+    fi
+fi
+
+PACKET_TRANSFORMATION_ENGINE_GUARD_READY=0
+PACKET_TRANSFORMATION_ENGINE_GUARD_STATE=$STATE_DIR/packet-transformation-engine-guard-ready
+if [[ "$MODE" != lonewolf ]] && protected_file "$PACKET_TRANSFORMATION_ENGINE_GUARD_STATE" && \
+   systemctl is-active --quiet ph4ntxm-packet-transformation-engine-guard.service 2>/dev/null && \
+   [[ "$(state_value STATUS "$PACKET_TRANSFORMATION_ENGINE_GUARD_STATE" 2>/dev/null || true)" == ready ]] && \
+   [[ "$(state_value INTERFACES "$PACKET_TRANSFORMATION_ENGINE_GUARD_STATE" 2>/dev/null || true)" =~ ^[0-9]+$ ]] && \
+   fresh_uptime "$(state_value UPTIME_SECONDS "$PACKET_TRANSFORMATION_ENGINE_GUARD_STATE" 2>/dev/null || true)" 6; then
+    PACKET_TRANSFORMATION_ENGINE_GUARD_PROFILE=$(state_value PROFILE "$PACKET_TRANSFORMATION_ENGINE_GUARD_STATE" 2>/dev/null || true)
+    if [[ "$FIREWALL_PROFILE" == lockdown && "$PACKET_TRANSFORMATION_ENGINE_GUARD_PROFILE" == lockdown ]] || \
+       [[ "$FIREWALL_PROFILE" == normal && "$PACKET_TRANSFORMATION_ENGINE_GUARD_PROFILE" == normal ]]; then
+        PACKET_TRANSFORMATION_ENGINE_GUARD_READY=1
+    fi
+fi
+
+if [[ "$MODE" == "lonewolf" ]]; then
+    TOR_STATE=$STATE_DIR/tor-ready
+    if protected_file "$TOR_STATE" && \
+       systemctl is-active --quiet tor@default.service 2>/dev/null && \
+       systemctl is-active --quiet ph4ntxm-lonewolf-dns.service 2>/dev/null && \
+       [[ "$(state_value STATUS "$TOR_STATE")" == ready ]] && \
+       [[ "$(state_value BOOTSTRAP "$TOR_STATE")" == 100 ]] && \
+       fresh_uptime "$(state_value UPTIME_SECONDS "$TOR_STATE")" 6 && \
+       tcp_listener 9040 && tcp_listener 9050 && tcp_listener 53 && \
+       udp_listener 53 && udp_listener 5353; then
+        print_line "TOR DNS BRIDGE:" "ACTIVE" "$GREEN"
+    else
+        critical_error
+        print_line "TOR DNS BRIDGE:" "CIRCUIT NOT READY" "$RED"
+    fi
+elif systemctl is-active --quiet unbound 2>/dev/null; then
+    print_line "DNS RESOLVER:" "ACTIVE" "$GREEN"
+else
+    critical_error
+    print_line "DNS RESOLVER:" "INACTIVE" "$RED"
+fi
+
+if [[ "$MODE" == "lonewolf" ]]; then
+    print_line "PACKET TRANSFORM:" "REPLACED BY TOR PROFILE" "$GRAY"
+else
+    if systemctl is-active --quiet ph4ntxm-packet-transformation-engine.service 2>/dev/null && \
+       (( FIREWALL_READY == 1 && PACKET_TRANSFORMATION_ENGINE_GUARD_READY == 1 )); then
+        if [[ "$FIREWALL_PROFILE" == "lockdown" ]]; then
+            print_line "PACKET TRANSFORM:" "ACTIVE / LOCKDOWN CONTAINED" "$GREEN"
+        else
+            print_line "PACKET TRANSFORM:" "ACTIVE / NFQUEUE + TC/eBPF" "$GREEN"
+        fi
+    elif systemctl is-active --quiet ph4ntxm-packet-transformation-engine.service 2>/dev/null && \
+         (( FIREWALL_READY == 1 )); then
+        critical_error
+        print_line "PACKET TRANSFORM:" "GUARD NOT READY" "$RED"
+    elif systemctl is-active --quiet ph4ntxm-packet-transformation-engine.service 2>/dev/null; then
+        critical_error
+        print_line "PACKET TRANSFORM:" "FIREWALL READINESS MISSING" "$RED"
+    else
+        critical_error
+        print_line "PACKET TRANSFORM:" "SERVICE FAILED" "$RED"
+    fi
+fi
+
+if [[ "$DNS" == "127.0.0.1" ]]; then
+    print_line "DNS ROUTING:" "LOCAL" "$GREEN"
+else
+    warning
+    print_line "DNS ROUTING:" "EXTERNAL" "$AMBER"
+fi
+
+if [[ "$MODE" == "lonewolf" && "$IPV6" != "1" ]]; then
+    critical_error
+    print_line "IPV6 HARDENING:" "POLICY FAILURE" "$RED"
+elif [[ "$IPV6" == "1" ]]; then
+    print_line "IPV6 HARDENING:" "DISABLED AT KERNEL" "$GREEN"
+else
+    print_line "IPV6 HARDENING:" "NFTABLES ENFORCED" "$GREEN"
+fi
+
+if [[ "$MODE" == "lonewolf" ]]; then
+    FIREWALL_GUARD=ph4ntxm-lonewolf-firewall-guard.service
+else
+    FIREWALL_GUARD=ph4ntxm-firewall-guard.service
+fi
+if systemctl is-active --quiet "$FIREWALL_GUARD" 2>/dev/null && \
+   (( FIREWALL_READY == 1 )); then
+    print_line "FIREWALL GUARD:" "ACTIVE / FAIL-CLOSED" "$GREEN"
+elif systemctl is-active --quiet "$FIREWALL_GUARD" 2>/dev/null; then
+    critical_error
+    print_line "FIREWALL GUARD:" "RULESET HASH UNVERIFIED" "$RED"
+else
+    critical_error
+    print_line "FIREWALL GUARD:" "INACTIVE" "$RED"
+fi
+
+if [[ "$MODE" == "lonewolf" ]]; then
+    IDENTITY_SEED="$STATE_DIR/lonewolf_seed"
+else
+    IDENTITY_SEED="$STATE_DIR/persona_seed"
+fi
+
+if [[ -f "$IDENTITY_SEED" ]]; then
+    print_line "IDENTITY PROFILE:" "ACTIVE" "$GREEN"
+else
+    warning
+    print_line "IDENTITY PROFILE:" "MISSING" "$AMBER"
+fi
+
+if [[ -f "$STATE_DIR/boot_jitter" ]]; then
+    print_line "BOOT JITTER:" "ACTIVE" "$GREEN"
+else
+    warning
+    print_line "BOOT JITTER:" "MISSING" "$AMBER"
+fi
+
+if [[ -r "$STATE_DIR/clock-fuzz-profile" ]]; then
+
+    CLOCK_OFFSET=$(awk -F= '/^OFFSET_SECONDS=/{print $2}' "$STATE_DIR/clock-fuzz-profile")
+    CLOCK_TICK=$(awk -F= '/^INITIAL_TICK=/{print $2}' "$STATE_DIR/clock-fuzz-profile")
+    CLOCK_APPLIED=$(awk -F= '/^SKEW_APPLIED=/{print $2}' "$STATE_DIR/clock-fuzz-profile")
+
+    print_line "CLOCK PROFILE:" "ACTIVE" "$GREEN"
+    printf -v CLOCK_OFFSET_FMT "%+ds" "$CLOCK_OFFSET"
+    print_line "CLOCK OFFSET:" "$CLOCK_OFFSET_FMT" "$GREEN"
+    print_line "CLOCK TICK:" "$CLOCK_TICK" "$GREEN"
+    if [[ "$CLOCK_APPLIED" == "1" ]]; then
+        print_line "SYSTEM CLOCK SKEW:" "APPLIED" "$GREEN"
+    else
+        error
+        print_line "SYSTEM CLOCK SKEW:" "NOT APPLIED" "$RED"
+    fi
+
+else
+
+    warning
+    print_line "CLOCK PROFILE:" "MISSING" "$AMBER"
+
+fi
+
+separator
+
+section "TERMINATION & NUKE"
+
+if [[ -x /usr/local/sbin/ph4ntxm-ram-scrub ]]; then
+    print_line "RAM SCRUBBER:" "READY" "$GREEN"
+else
+    critical_error
+    print_line "RAM SCRUBBER:" "MISSING" "$RED"
+fi
+
+if systemctl is-enabled --quiet ph4ntxm-nuke.service 2>/dev/null; then
+    print_line "NUKE SERVICE:" "ENABLED" "$GREEN"
+else
+    critical_error
+    print_line "NUKE SERVICE:" "NOT ENABLED" "$RED"
+fi
+
+NUKE_TARGETS_OK=1
+for TARGET in shutdown reboot halt poweroff; do
+    LINK="/etc/systemd/system/$TARGET.target.wants/ph4ntxm-nuke.service"
+    if [[ ! -L "$LINK" ]] || \
+       [[ "$(readlink -f "$LINK" 2>/dev/null || true)" != "/etc/systemd/system/ph4ntxm-nuke.service" ]]; then
+        NUKE_TARGETS_OK=0
+    fi
+done
+if (( NUKE_TARGETS_OK == 1 )); then
+    print_line "TERMINATION TARGETS:" "ALL HOOKED" "$GREEN"
+else
+    critical_error
+    print_line "TERMINATION TARGETS:" "INCOMPLETE" "$RED"
+fi
+
+UNSAFE_POWER_PATHS_OK=1
+for UNIT in sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target soft-reboot.target kexec.target; do
+    MASK="/etc/systemd/system/$UNIT"
+    if [[ ! -L "$MASK" ]] || [[ "$(readlink "$MASK" 2>/dev/null || true)" != "/dev/null" ]]; then
+        UNSAFE_POWER_PATHS_OK=0
+    fi
+done
+if (( UNSAFE_POWER_PATHS_OK == 1 )); then
+    print_line "UNSAFE POWER PATHS:" "MASKED" "$GREEN"
+else
+    critical_error
+    print_line "UNSAFE POWER PATHS:" "AVAILABLE" "$RED"
+fi
+
+if [[ -L /etc/systemd/system/swap.target ]] && \
+   [[ "$(readlink /etc/systemd/system/swap.target 2>/dev/null || true)" == "/dev/null" ]]; then
+    print_line "SWAP TARGET:" "MASKED" "$GREEN"
+else
+    critical_error
+    print_line "SWAP TARGET:" "AVAILABLE" "$RED"
+fi
+
+if [[ "$(cat /proc/sys/kernel/sysrq 2>/dev/null || echo 1)" == "0" ]]; then
+    print_line "KEYBOARD SYSRQ:" "DISABLED" "$GREEN"
+else
+    critical_error
+    print_line "KEYBOARD SYSRQ:" "BYPASS AVAILABLE" "$RED"
+fi
+
+if grep -qx 'CtrlAltDelBurstAction=none' /etc/systemd/system.conf 2>/dev/null; then
+    print_line "CTRL-ALT-DEL BURST:" "DISABLED" "$GREEN"
+else
+    critical_error
+    print_line "CTRL-ALT-DEL BURST:" "FORCED PATH AVAILABLE" "$RED"
+fi
+
+if [[ -x /usr/lib/systemd/system-shutdown/ph4ntxm-nuke ]]; then
+    print_line "FINAL NUKE HOOK:" "READY" "$GREEN"
+else
+    critical_error
+    print_line "FINAL NUKE HOOK:" "MISSING" "$RED"
+fi
+
+if [[ -r /boot/nuke/vmlinuz-nuke && -r /boot/nuke/initrd-nuke.img ]]; then
+    print_line "NUKE ARTIFACTS:" "READY" "$GREEN"
+else
+    critical_error
+    print_line "NUKE ARTIFACTS:" "MISSING" "$RED"
+fi
+
+if grep -Eq '(^|[[:space:]])crashkernel=[^[:space:]]+' /proc/cmdline 2>/dev/null; then
+    print_line "CRASH RESERVE:" "CONFIGURED" "$GREEN"
+else
+    critical_error
+    print_line "CRASH RESERVE:" "NOT CONFIGURED" "$RED"
+fi
+
+if [[ $(cat /sys/kernel/kexec_crash_loaded 2>/dev/null || echo 0) == 1 ]]; then
+    print_line "FINAL NUKE RUNTIME:" "ARMED" "$GREEN"
+    if [[ $(cat /proc/sys/kernel/kexec_load_disabled 2>/dev/null || echo 0) == 1 ]]; then
+        print_line "KEXEC LOADER:" "LOCKED AFTER ARMING" "$GREEN"
+    else
+        critical_error
+        print_line "KEXEC LOADER:" "UNLOCKED" "$RED"
+    fi
+else
+    critical_error
+    print_line "FINAL NUKE RUNTIME:" "NOT ARMED" "$RED"
+fi
+
+separator
+
+section "FINAL ASSESSMENT"
+
+(( HEALTH < 0 )) && HEALTH=0
+
+if (( CRITICAL_ERRORS > 0 )); then
+    (( HEALTH > 69 )) && HEALTH=69
+    HEALTH_COLOR=$RED
+    STATUS="UNSAFE / NOT READY"
+elif (( HEALTH >= 90 )); then
+    HEALTH_COLOR=$GREEN
+    STATUS="EXCELLENT"
+elif (( HEALTH >= 70 )); then
+    HEALTH_COLOR=$AMBER
+    STATUS="GOOD"
+else
+    HEALTH_COLOR=$RED
+    STATUS="ATTENTION REQUIRED"
+fi
+
+print_line "SYSTEM STATUS:" "$STATUS" "$HEALTH_COLOR"
+print_line "HEALTH SCORE:" "${HEALTH}%" "$HEALTH_COLOR"
+print_line "WARNINGS:" "$WARNINGS" "$AMBER"
+print_line "ERRORS:" "$ERRORS" "$RED"
+print_line "CRITICAL GATES:" "$CRITICAL_ERRORS" "$RED"
+
+separator

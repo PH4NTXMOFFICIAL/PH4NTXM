@@ -1,0 +1,34 @@
+[Unit]
+Description=PH4NTXM Lone Wolf TCP and UDP DNS Bridge
+After=network-online.target ph4ntxm-lonewolf.service tor@default.service
+Requires=ph4ntxm-lonewolf.service tor@default.service
+BindsTo=tor@default.service
+PartOf=tor@default.service
+Wants=network-online.target
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Service]
+Type=notify
+NotifyAccess=all
+ExecStartPre=/usr/sbin/dnsmasq --test --conf-file=/usr/lib/ph4ntxm/lonewolf/dnsmasq.conf
+ExecStart=/usr/local/sbin/ph4ntxm-lonewolf-dns-bridge.sh
+Restart=always
+RestartSec=2
+TimeoutStartSec=370
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE CAP_SETUID CAP_SETGID CAP_CHOWN
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_NETLINK
+RuntimeDirectory=ph4ntxm-lonewolf-dns
+RuntimeDirectoryMode=0750
+LockPersonality=yes
+RestrictRealtime=yes
+
+[Install]
+WantedBy=ph4ntxm-lonewolf-multi-user.target

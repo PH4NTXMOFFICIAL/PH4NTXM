@@ -1,0 +1,179 @@
+#!/usr/bin/env python3
+import os
+import subprocess
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, Gdk
+
+CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
+ICON_FILE = "/usr/share/icons/Lyra-blue-dark/apps/scalable/ph4ntxm-panic-button.svg"
+
+
+def add_class(widget, name):
+    widget.get_style_context().add_class(name)
+    return widget
+
+
+def install_style():
+    provider = Gtk.CssProvider()
+    provider.load_from_path(CSS_FILE)
+    Gtk.StyleContext.add_provider_for_screen(
+        Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+    )
+
+
+def nuke_sequence():
+    return subprocess.run(
+        ["/usr/bin/sudo", "/usr/bin/systemctl", "start", "ph4ntxm-panic.service"],
+        check=False,
+    ).returncode == 0
+
+
+def show_error(parent):
+    dialog = Gtk.Dialog(title="PH4NTXM Panic", transient_for=parent, flags=Gtk.DialogFlags.MODAL)
+    dialog.set_default_size(480, 230)
+    dialog.set_resizable(False)
+    dialog.set_position(Gtk.WindowPosition.CENTER_ON_PARENT)
+    content = dialog.get_content_area()
+    content.set_spacing(12)
+    content.set_border_width(18)
+    panel = add_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8), "danger-panel")
+    title = add_class(Gtk.Label(label="CONTAINMENT START FAILED"), "danger-title")
+    title.set_halign(Gtk.Align.START)
+    body = add_class(
+        Gtk.Label(label="The mandatory nuke sequence did not start. Retry or inspect ph4ntxm-panic.service."),
+        "danger-text",
+    )
+    body.set_halign(Gtk.Align.START)
+    body.set_line_wrap(True)
+    panel.pack_start(title, False, False, 0)
+    panel.pack_start(body, False, False, 0)
+    content.pack_start(panel, True, True, 0)
+    close = dialog.add_button("Close", Gtk.ResponseType.CLOSE)
+    add_class(close, "danger")
+    dialog.show_all()
+    dialog.run()
+    dialog.destroy()
+
+
+class PanicProgress(Gtk.Window):
+    def __init__(self):
+        Gtk.Window.__init__(self, title="PH4NTXM Emergency Containment")
+        self.set_default_size(540, 290)
+        self.set_resizable(False)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        self.set_keep_above(True)
+        self.set_deletable(False)
+        if os.path.exists(ICON_FILE):
+            self.set_icon_from_file(ICON_FILE)
+        add_class(self, "ph4ntxm-window")
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.add(root)
+        header = add_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3), "top-panel")
+        title = add_class(Gtk.Label(label="PH4NTXM PANIC"), "title")
+        title.set_halign(Gtk.Align.START)
+        subtitle = add_class(Gtk.Label(label="Emergency containment sequence"), "subtitle")
+        subtitle.set_halign(Gtk.Align.START)
+        header.pack_start(title, False, False, 0)
+        header.pack_start(subtitle, False, False, 0)
+        root.pack_start(header, False, False, 0)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        content.set_border_width(18)
+        panel = add_class(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16), "danger-panel")
+        dot = add_class(Gtk.Label(label="●"), "status-dot")
+        dot.get_style_context().add_class("dot-danger")
+        panel.pack_start(dot, False, False, 0)
+        message = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+        title = add_class(Gtk.Label(label="SYSTEM IN PANIC"), "danger-title")
+        title.set_halign(Gtk.Align.START)
+        text = add_class(
+            Gtk.Label(label="Emergency containment is active. The mandatory nuke sequence is running."),
+            "danger-text",
+        )
+        text.set_halign(Gtk.Align.START)
+        text.set_line_wrap(True)
+        state = add_class(Gtk.Label(label="NUKE SEQUENCE ACTIVE"), "status-pill")
+        state.get_style_context().add_class("status-danger")
+        state.set_halign(Gtk.Align.START)
+        message.pack_start(title, False, False, 0)
+        message.pack_start(text, False, False, 0)
+        message.pack_start(state, False, False, 2)
+        panel.pack_start(message, True, True, 0)
+        content.pack_start(panel, True, True, 0)
+        root.pack_start(content, True, True, 0)
+
+
+class PanicWindow(Gtk.Window):
+    def __init__(self):
+        Gtk.Window.__init__(self, title="PH4NTXM Panic Button")
+        self.set_default_size(540, 350)
+        self.set_resizable(False)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        if os.path.exists(ICON_FILE):
+            self.set_icon_from_file(ICON_FILE)
+        install_style()
+        add_class(self, "ph4ntxm-window")
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.add(root)
+        header = add_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3), "top-panel")
+        title = add_class(Gtk.Label(label="PH4NTXM PANIC"), "title")
+        title.set_halign(Gtk.Align.START)
+        subtitle = add_class(Gtk.Label(label="Emergency containment control"), "subtitle")
+        subtitle.set_halign(Gtk.Align.START)
+        header.pack_start(title, False, False, 0)
+        header.pack_start(subtitle, False, False, 0)
+        root.pack_start(header, False, False, 0)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        content.set_border_width(18)
+        panel = add_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=9), "danger-panel")
+        heading = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        dot = add_class(Gtk.Label(label="●"), "status-dot")
+        dot.get_style_context().add_class("dot-danger")
+        title = add_class(Gtk.Label(label="ACTIVATE EMERGENCY NUKE"), "danger-title")
+        title.set_halign(Gtk.Align.START)
+        heading.pack_start(dot, False, False, 0)
+        heading.pack_start(title, True, True, 0)
+        panel.pack_start(heading, False, False, 0)
+        text = add_class(
+            Gtk.Label(label="This starts mandatory containment, the nuke sequence, and emergency shutdown."),
+            "danger-text",
+        )
+        text.set_halign(Gtk.Align.START)
+        text.set_line_wrap(True)
+        panel.pack_start(text, False, False, 0)
+        content.pack_start(panel, True, True, 0)
+        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        cancel = Gtk.Button(label="Cancel")
+        cancel.connect("clicked", lambda _: self.close())
+        activate = Gtk.Button(label="ACTIVATE NUKE")
+        add_class(activate, "danger")
+        activate.connect("clicked", self.on_activate)
+        controls.pack_end(activate, False, False, 0)
+        controls.pack_end(cancel, False, False, 0)
+        content.pack_end(controls, False, False, 0)
+        root.pack_start(content, True, True, 0)
+        self.progress = None
+
+    def on_activate(self, _):
+        self.hide()
+        self.progress = PanicProgress()
+        self.progress.show_all()
+        while Gtk.events_pending():
+            Gtk.main_iteration()
+        if not nuke_sequence():
+            self.progress.destroy()
+            self.progress = None
+            self.show_all()
+            show_error(self)
+
+
+def main():
+    window = PanicWindow()
+    window.connect("destroy", Gtk.main_quit)
+    window.show_all()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()

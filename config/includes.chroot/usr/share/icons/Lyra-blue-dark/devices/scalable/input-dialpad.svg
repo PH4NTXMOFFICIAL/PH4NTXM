@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="44.072128"
+   height="59.99596"
+   version="1.1"
+   viewBox="0 0 11.660521 15.873619"
+   id="svg30"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs10">
+    <linearGradient
+       id="linearGradient38">
+      <stop
+         style="stop-color:#00abff;stop-opacity:0;"
+         offset="0"
+         id="stop39" />
+      <stop
+         style="stop-color:#00abff;stop-opacity:1;"
+         offset="1"
+         id="stop38" />
+    </linearGradient>
+    <linearGradient
+       xlink:href="#linearGradient38"
+       id="linearGradient39"
+       x1="10.684285"
+       y1="21.192511"
+       x2="10.684285"
+       y2="7.432622"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       style="color-interpolation-filters:sRGB"
+       id="filter39"
+       x="-0.032191768"
+       y="-0.02325028"
+       width="1.0643835"
+       height="1.0465006">
+      <feGaussianBlur
+         stdDeviation="0.17437399"
+         id="feGaussianBlur39" />
+    </filter>
+  </defs>
+  <g
+     transform="matrix(0.84269754,0,0,0.84269754,-3.0180564,-1.3327478)"
+     fill="#dedede"
+     stroke-width="1.5"
+     id="g10">
+    <path
+       id="path1"
+       d="M 3.9999206,2.0000233 V 4.9998675 H 6.9997647 V 2.0000233 Z m 5.0001491,0 V 4.9998675 H 11.999914 V 2.0000233 Z m 5.0001493,0 v 2.9998442 h 2.999844 V 2.0000233 Z M 3.9999206,7.0001724 V 10.000017 H 6.9997647 V 7.0001724 Z m 5.0001491,0 V 10.000017 H 11.999914 V 7.0001724 Z m 5.0001493,0 v 2.9998446 h 2.999844 V 7.0001724 Z M 3.9999206,11.999708 v 3.000458 h 2.9998441 v -3.000458 z m 5.0001491,0 v 3.000458 h 2.9998443 v -3.000458 z m 5.0001493,0 v 3.000458 h 2.999844 v -3.000458 z m -5.0001493,5.000149 v 2.999845 h 2.9998443 v -2.999845 z"
+       style="display:inline;opacity:0.6;fill:#00abff;fill-opacity:1;filter:url(#filter39)" />
+    <path
+       id="path38"
+       d="M 3.9999206,2.0000233 V 4.9998675 H 6.9997647 V 2.0000233 Z m 5.0001491,0 V 4.9998675 H 11.999914 V 2.0000233 Z m 5.0001493,0 v 2.9998442 h 2.999844 V 2.0000233 Z M 3.9999206,7.0001724 V 10.000017 H 6.9997647 V 7.0001724 Z m 5.0001491,0 V 10.000017 H 11.999914 V 7.0001724 Z m 5.0001493,0 v 2.9998446 h 2.999844 V 7.0001724 Z M 3.9999206,11.999708 v 3.000458 h 2.9998441 v -3.000458 z m 5.0001491,0 v 3.000458 h 2.9998443 v -3.000458 z m 5.0001493,0 v 3.000458 h 2.999844 v -3.000458 z m -5.0001493,5.000149 v 2.999845 h 2.9998443 v -2.999845 z"
+       style="fill:url(#linearGradient39);fill-opacity:1" />
+  </g>
+</svg>

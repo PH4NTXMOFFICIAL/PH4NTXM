@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+systemctl enable ph4ntxm-arm-nuke.service
+systemctl is-enabled --quiet ph4ntxm-arm-nuke.service

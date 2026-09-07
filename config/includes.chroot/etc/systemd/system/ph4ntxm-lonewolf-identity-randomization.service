@@ -1,0 +1,19 @@
+[Unit]
+Description=PH4NTXM Lone Wolf Identity Randomization
+DefaultDependencies=no
+After=ph4ntxm-mode.service local-fs.target systemd-udevd.service systemd-udev-settle.service ph4ntxm-link-block.service
+Wants=systemd-udev-settle.service
+Requires=ph4ntxm-mode.service ph4ntxm-link-block.service
+Before=network-pre.target
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+OnSuccess=ph4ntxm-link-unblock.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-identity-randomization.sh
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=ph4ntxm-lonewolf-multi-user.target

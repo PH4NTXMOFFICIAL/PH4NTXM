@@ -1,0 +1,13 @@
+[Unit]
+Description=PH4NTXM GPU Randomization
+Before=multi-user.target
+After=ph4ntxm-hardware-randomization.service
+Requires=ph4ntxm-hardware-randomization.service
+ConditionPathExists=/run/ph4ntxm/mode-normal
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-gpu-randomization.sh
+
+[Install]
+WantedBy=multi-user.target

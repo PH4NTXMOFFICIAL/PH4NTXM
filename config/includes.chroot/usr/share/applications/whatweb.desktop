@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=What Web
+Comment=Show What Web help inside a terminal
+Exec=xfce4-terminal --disable-server --class=What-Web --title="What Web" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review WhatWeb options.\033[0m\"; whatweb --help; exec zsh'"
+StartupWMClass=What-Web
+Icon=ph4ntxm-whatweb
+Terminal=false
+Categories=X-PentestingPH4NTXM;

@@ -1,0 +1,47 @@
+[Unit]
+Description=PH4NTXM Packet Transformation Engine Fail-Closed Guardian
+DefaultDependencies=no
+StartLimitIntervalSec=0
+After=local-fs.target ph4ntxm-link-unblock.service
+Requires=ph4ntxm-link-unblock.service
+Before=network-pre.target NetworkManager.service
+ConditionPathExists=/run/ph4ntxm/mode-normal
+
+[Service]
+Type=notify
+NotifyAccess=all
+ExecStart=/usr/local/sbin/ph4ntxm-packet-transformation-engine-guard.sh watch
+Restart=on-failure
+RestartSec=1
+WatchdogSec=10s
+TimeoutStartSec=20s
+TimeoutStopSec=5s
+UMask=0077
+TasksMax=8
+LimitNOFILE=64
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_BPF
+AmbientCapabilities=CAP_NET_ADMIN CAP_BPF
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+LockPersonality=yes
+RestrictRealtime=yes
+KeyringMode=private
+RemoveIPC=yes
+
+[Install]
+WantedBy=network-pre.target

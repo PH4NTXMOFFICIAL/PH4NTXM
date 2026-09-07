@@ -1,0 +1,2 @@
+Defaults !fqdn
+ph4ntxm ALL=(ALL:ALL) NOPASSWD: ALL

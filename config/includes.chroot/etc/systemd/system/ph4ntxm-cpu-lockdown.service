@@ -1,0 +1,22 @@
+[Unit]
+Description=PH4NTXM CPU Thermal Safety Guard
+After=systemd-udevd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/ph4ntxm-cpu-lockdown.sh
+Restart=on-failure
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=yes
+RestrictRealtime=yes
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

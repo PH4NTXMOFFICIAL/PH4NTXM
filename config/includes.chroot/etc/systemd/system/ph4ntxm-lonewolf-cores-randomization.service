@@ -1,0 +1,13 @@
+[Unit]
+Description=PH4NTXM Lone Wolf Core Randomization
+After=ph4ntxm-lonewolf-gpu-randomization.service
+Requires=ph4ntxm-lonewolf-gpu-randomization.service
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-cores-randomization.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=ph4ntxm-lonewolf-graphical.target

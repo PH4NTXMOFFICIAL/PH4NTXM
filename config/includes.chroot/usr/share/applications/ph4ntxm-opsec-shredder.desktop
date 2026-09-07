@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM OpSec Shredder
+Comment=PH4NTXM Operational Security Shredder 
+Exec=xfce4-terminal --disable-server --class=PH4NTXM-OpSec-Shredder --title="PH4NTXM OpSec Shredder" --hold --command="/usr/local/bin/ph4-shred --help"
+StartupWMClass=PH4NTXM-OpSec-Shredder
+Icon=ph4ntxm-opsec-shredder
+Terminal=false
+Categories=System;Security;X-PH4NTXMOpSecSuite;

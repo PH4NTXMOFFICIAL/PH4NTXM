@@ -1,0 +1,194 @@
+#!/bin/sh
+set -eu
+
+SOURCE=/usr/local/src/ph4ntxm-packet-transformation-engine
+BUILD=/tmp/ph4ntxm-packet-transformation-engine-build
+UNIT=/etc/systemd/system/ph4ntxm-packet-transformation-engine.service
+GUARD_UNIT=/etc/systemd/system/ph4ntxm-packet-transformation-engine-guard.service
+GUARD_SCRIPT=/usr/local/sbin/ph4ntxm-packet-transformation-engine-guard.sh
+CLANG=$(command -v clang-19 || command -v clang)
+CLANG_MAJOR=$("$CLANG" -dumpversion | sed 's/\..*//')
+MULTIARCH=$(gcc -print-multiarch)
+
+[ -n "$CLANG_MAJOR" ]
+case "$CLANG_MAJOR" in
+  *[!0-9]*) exit 1 ;;
+esac
+[ -n "$MULTIARCH" ]
+[ -d "/usr/include/$MULTIARCH" ]
+chown root:root /etc/hostname
+chmod 0644 /etc/hostname
+
+[ -f "$UNIT" ]
+[ "$(grep -c '^TasksMax=8$' "$UNIT")" -eq 1 ]
+! grep -q '^RuntimeDirectory=' "$UNIT"
+! grep -q '^Environment=.*\/run\/ph4ntxm-packet-transformation-engine' "$UNIT"
+grep -qx 'ExecStartPre=/usr/local/sbin/ph4ntxm-packet-transformation-engine-guard.sh runtime' "$UNIT"
+grep -qx 'ExecStart=/usr/local/sbin/ph4ntxm-packet-transformation-engine-native' "$UNIT"
+[ -f "$GUARD_UNIT" ]
+[ -f "$GUARD_SCRIPT" ]
+grep -qx 'NotifyAccess=all' "$GUARD_UNIT"
+! grep -q 'CAP_SYS_ADMIN' "$GUARD_UNIT"
+grep -q '^tc_program_identity()' "$GUARD_SCRIPT"
+! grep -q '"\$LOADER" identity' "$GUARD_SCRIPT"
+
+rm -rf /tmp/ph4ntxm-packet-transformation-engine-build
+install -d -m 0700 "$BUILD"
+trap 'rm -rf /tmp/ph4ntxm-packet-transformation-engine-build' EXIT HUP INT TERM
+
+rustc --edition=2021 --test "$SOURCE/src/lib.rs" -o "$BUILD/ph4ntxm-packet-transformation-engine-tests"
+"$BUILD/ph4ntxm-packet-transformation-engine-tests"
+
+rustc \
+  --edition=2021 \
+  --crate-name ph4ntxm_packet_transformation_engine_core \
+  --crate-type staticlib,cdylib \
+  -C opt-level=3 \
+  -C overflow-checks=yes \
+  -C panic=abort \
+  -C lto=fat \
+  -C codegen-units=1 \
+  -C strip=symbols \
+  --remap-path-prefix=/usr/local/src/ph4ntxm-packet-transformation-engine=/usr/src/ph4ntxm-packet-transformation-engine \
+  "$SOURCE/src/lib.rs" \
+  --out-dir "$BUILD"
+
+PH4NTXM_PACKET_TRANSFORMATION_ENGINE_NATIVE_LIBRARY="$BUILD/libph4ntxm_packet_transformation_engine_core.so" \
+  /usr/bin/python3 "$SOURCE/tests/differential.py"
+PH4NTXM_PACKET_TRANSFORMATION_ENGINE_NATIVE_LIBRARY="$BUILD/libph4ntxm_packet_transformation_engine_core.so" \
+  /usr/bin/python3 "$SOURCE/tests/fuzz-smoke.py"
+
+gcc \
+  -std=c17 \
+  -O2 \
+  -Wall \
+  -Wextra \
+  -Werror \
+  -fPIE \
+  -fstack-protector-strong \
+  -fstack-clash-protection \
+  -fcf-protection=full \
+  -D_FORTIFY_SOURCE=3 \
+  -ffile-prefix-map=/usr/local/src/ph4ntxm-packet-transformation-engine=/usr/src/ph4ntxm-packet-transformation-engine \
+  "$SOURCE/adapter.c" \
+  "$BUILD/libph4ntxm_packet_transformation_engine_core.a" \
+  -Wl,-z,relro,-z,now,-z,noexecstack \
+  -Wl,--as-needed \
+  -Wl,--build-id=sha1 \
+  -pie \
+  -lnetfilter_queue \
+  -lnfnetlink \
+  -lmnl \
+  -lpthread \
+  -ldl \
+  -lm \
+  -o "$BUILD/ph4ntxm-packet-transformation-engine-native"
+
+strip --strip-all "$BUILD/ph4ntxm-packet-transformation-engine-native"
+"$BUILD/ph4ntxm-packet-transformation-engine-native" --self-test
+install -o root -g root -m 0755 \
+  "$BUILD/ph4ntxm-packet-transformation-engine-native" \
+  /usr/local/sbin/ph4ntxm-packet-transformation-engine-native
+
+"$CLANG" \
+  -target bpf \
+  -O2 \
+  -g \
+  -Wall \
+  -Wextra \
+  -Werror \
+  -ffile-prefix-map=/usr/local/src/ph4ntxm-packet-transformation-engine=/usr/src/ph4ntxm-packet-transformation-engine \
+  -fdebug-prefix-map=/usr/local/src/ph4ntxm-packet-transformation-engine=/usr/src/ph4ntxm-packet-transformation-engine \
+  -fdebug-compilation-dir=/usr/src/ph4ntxm-packet-transformation-engine \
+  -I/usr/include/"$MULTIARCH" \
+  -I"$SOURCE/ebpf" \
+  -c "$SOURCE/ebpf/packet-transformation-engine.bpf.c" \
+  -o "$BUILD/packet-transformation-engine.bpf.o"
+
+gcc \
+  -std=c17 \
+  -O2 \
+  -Wall \
+  -Wextra \
+  -Werror \
+  -fPIE \
+  -fstack-protector-strong \
+  -fstack-clash-protection \
+  -fcf-protection=full \
+  -D_FORTIFY_SOURCE=3 \
+  -ffile-prefix-map=/usr/local/src/ph4ntxm-packet-transformation-engine=/usr/src/ph4ntxm-packet-transformation-engine \
+  -I"$SOURCE/ebpf" \
+  "$SOURCE/ebpf/packet-transformation-engine-loader.c" \
+  -Wl,-z,relro,-z,now,-z,noexecstack \
+  -Wl,--as-needed \
+  -Wl,--build-id=sha1 \
+  -pie \
+  -lbpf \
+  -lelf \
+  -lz \
+  -o "$BUILD/ph4ntxm-packet-transformation-engine-loader"
+
+strip --strip-all "$BUILD/ph4ntxm-packet-transformation-engine-loader"
+"$BUILD/ph4ntxm-packet-transformation-engine-loader" --self-test
+install -d -o root -g root -m 0755 /usr/lib/ph4ntxm
+install -o root -g root -m 0644 "$BUILD/packet-transformation-engine.bpf.o" \
+  /usr/lib/ph4ntxm/packet-transformation-engine.bpf.o
+install -o root -g root -m 0755 "$BUILD/ph4ntxm-packet-transformation-engine-loader" \
+  /usr/local/sbin/ph4ntxm-packet-transformation-engine-loader
+(cd / && sha256sum \
+  usr/lib/ph4ntxm/packet-transformation-engine.bpf.o \
+  usr/local/sbin/ph4ntxm-packet-transformation-engine-loader \
+  usr/local/sbin/ph4ntxm-packet-transformation-engine-native) \
+  > /usr/lib/ph4ntxm/packet-transformation-engine.sha256
+chown root:root /usr/lib/ph4ntxm/packet-transformation-engine.sha256
+chmod 0644 /usr/lib/ph4ntxm/packet-transformation-engine.sha256
+
+rm -f /usr/local/sbin/ph4ntxm-packet-transformation-engine.py \
+  /usr/local/sbin/ph4ntxm-pte-egress-loader \
+  /usr/local/sbin/ph4ntxm-pte-egress-guard.sh \
+  /usr/lib/ph4ntxm/pte-egress.bpf.o \
+  /usr/lib/ph4ntxm/pte-egress.sha256 \
+  /etc/systemd/system/ph4ntxm-pte-egress-guard.service \
+  /etc/systemd/system/network-pre.target.wants/ph4ntxm-pte-egress-guard.service
+
+rm -rf /usr/local/src/ph4ntxm-packet-transformation-engine
+
+export DEBIAN_FRONTEND=noninteractive
+PURGE_PACKAGES="
+rustc
+cargo
+rust-llvm
+libstd-rust-dev
+libnetfilter-queue-dev
+libmnl-dev
+libnfnetlink-dev
+clang
+clang-$CLANG_MAJOR
+clang-tools-$CLANG_MAJOR
+libclang-common-$CLANG_MAJOR-dev
+libclang-cpp$CLANG_MAJOR
+libclang-rt-$CLANG_MAJOR-dev
+llvm
+llvm-$CLANG_MAJOR
+llvm-$CLANG_MAJOR-dev
+llvm-$CLANG_MAJOR-linker-tools
+llvm-$CLANG_MAJOR-runtime
+llvm-$CLANG_MAJOR-tools
+libbpf-dev
+libelf-dev
+"
+
+set --
+for package in $PURGE_PACKAGES; do
+  if dpkg-query -W -f='${db:Status-Abbrev}' "$package" 2>/dev/null | grep -q '^ii '; then
+    set -- "$@" "$package"
+  fi
+done
+[ "$#" -eq 0 ] || apt-get purge -y "$@"
+
+for package in $PURGE_PACKAGES; do
+  if dpkg-query -W -f='${db:Status-Abbrev}' "$package" 2>/dev/null | grep -q '^ii '; then
+    printf '%s\n' "Packet Transformation Engine build dependency remains installed: $package" >&2
+    exit 1
+  fi
+done

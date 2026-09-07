@@ -1,0 +1,41 @@
+[Unit]
+Description=PH4NTXM Firewall Guardian
+After=ph4ntxm-nft-rules.service ph4ntxm-packet-transformation-engine-guard.service
+Requires=ph4ntxm-nft-rules.service
+Wants=ph4ntxm-packet-transformation-engine-guard.service
+ConditionPathExists=/run/ph4ntxm/mode-normal
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/ph4ntxm-firewall-guard.sh
+Restart=always
+RestartSec=1
+UMask=0077
+TasksMax=32
+LimitNOFILE=64
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_NET_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+LockPersonality=yes
+RestrictRealtime=yes
+KeyringMode=private
+RemoveIPC=yes
+
+[Install]
+WantedBy=multi-user.target

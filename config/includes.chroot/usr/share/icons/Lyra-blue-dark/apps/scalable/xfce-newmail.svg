@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="45.93166"
+   height="37.171089"
+   version="1.1"
+   viewBox="0 0 12.152512 9.834657"
+   id="svg19"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <defs
+     id="defs12">
+    <linearGradient
+       id="linearGradient2">
+      <stop
+         style="stop-color:#00abff;stop-opacity:0;"
+         offset="0"
+         id="stop3" />
+      <stop
+         style="stop-color:#00abff;stop-opacity:1;"
+         offset="1"
+         id="stop2" />
+    </linearGradient>
+    <style
+       type="text/css"
+       id="style1" />
+    <style
+       type="text/css"
+       id="style2" />
+    <style
+       type="text/css"
+       id="style3" />
+    <style
+       type="text/css"
+       id="style4" />
+    <style
+       type="text/css"
+       id="style5" />
+    <style
+       type="text/css"
+       id="style6" />
+    <style
+       type="text/css"
+       id="style7" />
+    <style
+       type="text/css"
+       id="style8" />
+    <linearGradient
+       xlink:href="#linearGradient2"
+       id="linearGradient3"
+       x1="6.6927705"
+       y1="12.037691"
+       x2="6.6927705"
+       y2="5.1822495"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       style="color-interpolation-filters:sRGB"
+       id="filter3"
+       x="-0.024299999"
+       y="-0.030375001"
+       width="1.0486"
+       height="1.06075">
+      <feGaussianBlur
+         stdDeviation="0.11734139"
+         id="feGaussianBlur3" />
+    </filter>
+  </defs>
+  <metadata
+     id="metadata12">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     id="g3"
+     transform="translate(-0.30847699,-1.4325463)">
+    <path
+       style="color:#dedede;display:inline;opacity:0.6;fill:#00abff;fill-opacity:1;stroke:none;stroke-width:0.579464;filter:url(#filter3)"
+       d="m 0.59009634,1.7141656 v 0.5794636 8.1124918 0.239933 0.33953 H 1.1695601 12.17937 V 10.646054 10.406121 9.826657 1.7141656 H 12.151075 11.599906 1.4377885 1.1695601 Z M 1.1695601,2.2936292 h 0.028295 l 3.4620685,3.4632005 -3.490363,3.4903635 z m 0.847692,0 H 10.752214 L 6.3847331,6.66111 Z m 9.5543609,0 h 0.02829 v 6.953564 L 8.1095426,5.7568297 Z M 5.0696222,6.1665291 6.3847331,7.4805083 7.6998439,6.1665291 11.331678,9.7983629 11.599906,10.066591 v 0.33953 H 1.1695601 v -0.33953 L 1.4377885,9.7983629 Z"
+       class="ColorScheme-Text"
+       id="path1" />
+    <path
+       style="color:#dedede;fill:url(#linearGradient3);fill-opacity:1;stroke:none;stroke-width:0.579464"
+       d="m 0.59009634,1.7141656 v 0.5794636 8.1124918 0.239933 0.33953 H 1.1695601 12.17937 V 10.646054 10.406121 9.826657 1.7141656 H 12.151075 11.599906 1.4377885 1.1695601 Z M 1.1695601,2.2936292 h 0.028295 l 3.4620685,3.4632005 -3.490363,3.4903635 z m 0.847692,0 H 10.752214 L 6.3847331,6.66111 Z m 9.5543609,0 h 0.02829 v 6.953564 L 8.1095426,5.7568297 Z M 5.0696222,6.1665291 6.3847331,7.4805083 7.6998439,6.1665291 11.331678,9.7983629 11.599906,10.066591 v 0.33953 H 1.1695601 v -0.33953 L 1.4377885,9.7983629 Z"
+       class="ColorScheme-Text"
+       id="path2" />
+  </g>
+</svg>

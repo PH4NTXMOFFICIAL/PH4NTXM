@@ -1,0 +1,140 @@
+#!/bin/sh
+set -eu
+
+KVER=$(find /boot -maxdepth 1 -type f -name 'vmlinuz-*' -printf '%f\n' \
+    | sed 's/^vmlinuz-//' | sort -V | tail -n 1)
+[ -n "$KVER" ]
+
+WORK_DIR=$(mktemp -d /tmp/ph4ntxm-crash-initramfs.XXXXXX)
+SCRUB_DIR=$(mktemp -d /tmp/ph4ntxm-scrub-initramfs.XXXXXX)
+INITRD_TMP=$(mktemp /boot/.ph4ntxm-initrd.XXXXXX)
+KERNEL_TMP=$(mktemp /boot/.ph4ntxm-kernel.XXXXXX)
+trap 'rm -rf "$WORK_DIR" "$SCRUB_DIR"; rm -f "$INITRD_TMP" "$KERNEL_TMP"' EXIT HUP INT TERM
+
+install_binary()
+{
+    source_path=$1
+    root_path=$2
+    target_path=$3
+    install -m 0755 "$source_path" "$root_path$target_path"
+    ldd "$source_path" 2>/dev/null | awk '
+        $2 == "=>" && $3 ~ /^\// {print $3}
+        $1 ~ /^\// && $2 ~ /^\(/ {print $1}
+    ' | while IFS= read -r library; do
+        [ -f "$library" ] || continue
+        cp -L --parents "$library" "$root_path"
+    done
+}
+
+install -d -m 0755 /boot/nuke "$WORK_DIR/bin" "$WORK_DIR/proc" \
+    "$WORK_DIR/sys" "$WORK_DIR/dev" "$SCRUB_DIR/bin" "$SCRUB_DIR/proc" \
+    "$SCRUB_DIR/sys" "$SCRUB_DIR/dev"
+
+install_binary /bin/busybox "$SCRUB_DIR" /bin/busybox
+install_binary /usr/local/sbin/ph4ntxm-ram-scrub \
+    "$SCRUB_DIR" /bin/ph4ntxm-ram-scrub
+
+cat > "$SCRUB_DIR/init" <<'EOF'
+#!/bin/busybox sh
+/bin/busybox --install -s /bin
+export PATH=/bin
+
+mount -t proc proc /proc 2>/dev/null || true
+mount -t sysfs sysfs /sys 2>/dev/null || true
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+
+echo "PH4NTXM: USABLE RAM MEMTEST COMPLETE"
+sync
+if /bin/ph4ntxm-ram-scrub; then
+    echo "PH4NTXM: ALLOCATABLE RAM SCRUB COMPLETE"
+else
+    echo "PH4NTXM: ALLOCATABLE RAM SCRUB INCOMPLETE"
+fi
+sync
+poweroff -f || true
+sleep 1
+echo o > /proc/sysrq-trigger 2>/dev/null || true
+sleep 1
+reboot -f -p || true
+sleep 1
+echo b > /proc/sysrq-trigger 2>/dev/null || true
+EOF
+chmod 0755 "$SCRUB_DIR/init"
+
+(cd "$SCRUB_DIR" && find . -print0 \
+    | cpio --null -o -H newc 2>/dev/null \
+    | gzip -9 > "$WORK_DIR/bin/initrd-scrub.img")
+gzip -t "$WORK_DIR/bin/initrd-scrub.img"
+
+install_binary /bin/busybox "$WORK_DIR" /bin/busybox
+install_binary /usr/sbin/kexec "$WORK_DIR" /bin/kexec
+install -m 0644 "/boot/vmlinuz-$KVER" "$WORK_DIR/bin/vmlinuz-nuke"
+
+cat > "$WORK_DIR/init" <<'EOF'
+#!/bin/busybox sh
+/bin/busybox --install -s /bin
+export PATH=/bin
+
+mount -t proc proc /proc 2>/dev/null || true
+mount -t sysfs sysfs /sys 2>/dev/null || true
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+
+echo "PH4NTXM: NUKE ACTIVATED"
+sync
+memory_map="memmap=exactmap"
+for parameter in $(cat /proc/cmdline); do
+    case "$parameter" in
+        ph4ntxm.memmap=*)
+            range=${parameter#*=}
+            start=${range%-*}
+            end=${range#*-}
+            size=$((0x$end - 0x$start + 1))
+            [ "$size" -gt 0 ] || continue
+            memory_map="$memory_map memmap=${size}@0x${start}"
+            ;;
+    esac
+done
+loaded=0
+if [ "$memory_map" != "memmap=exactmap" ]; then
+    nuke_append="init=/init root=/dev/ram0 rw quiet loglevel=3 noswap memtest=17 nokaslr nosmap nosmep reset_devices maxcpus=1 irqpoll acpi=noirq init_on_free=1 page_alloc.shuffle=1 $memory_map"
+    if /bin/kexec --kexec-file-syscall --load /bin/vmlinuz-nuke \
+        --initrd=/bin/initrd-scrub.img \
+        --append="$nuke_append"; then
+        loaded=1
+    elif /bin/kexec --load /bin/vmlinuz-nuke \
+        --initrd=/bin/initrd-scrub.img \
+        --append="$nuke_append"; then
+        loaded=1
+    fi
+fi
+if [ "$loaded" -eq 1 ]; then
+    /bin/kexec --exec
+fi
+echo "PH4NTXM: NUKE KERNEL LOAD FAILED"
+sync
+poweroff -f || true
+sleep 1
+echo o > /proc/sysrq-trigger 2>/dev/null || true
+sleep 1
+reboot -f -p || true
+sleep 1
+echo b > /proc/sysrq-trigger 2>/dev/null || true
+EOF
+chmod 0755 "$WORK_DIR/init"
+
+(cd "$WORK_DIR" && find . -print0 \
+    | cpio --null -o -H newc 2>/dev/null \
+    | gzip -9 > "$INITRD_TMP")
+gzip -t "$INITRD_TMP"
+gzip -dc "$INITRD_TMP" | cpio -it 2>/dev/null \
+    | sed 's|^\./||' > "$WORK_DIR/archive.list"
+grep -qx 'init' "$WORK_DIR/archive.list"
+grep -qx 'bin/busybox' "$WORK_DIR/archive.list"
+grep -qx 'bin/kexec' "$WORK_DIR/archive.list"
+grep -qx 'bin/vmlinuz-nuke' "$WORK_DIR/archive.list"
+grep -qx 'bin/initrd-scrub.img' "$WORK_DIR/archive.list"
+chmod 0644 "$INITRD_TMP"
+mv -f "$INITRD_TMP" /boot/nuke/initrd-nuke.img
+
+install -m 0644 "/boot/vmlinuz-$KVER" "$KERNEL_TMP"
+mv -f "$KERNEL_TMP" /boot/nuke/vmlinuz-nuke

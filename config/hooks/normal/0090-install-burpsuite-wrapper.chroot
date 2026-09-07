@@ -1,0 +1,74 @@
+#!/bin/bash
+set -e
+
+install -d -m 0755 /usr/local/bin
+install -d -m 0755 /usr/share/applications
+
+cat > /usr/local/bin/burpsuite <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+BURP_VERSION="2026.7.3"
+BURP_NAME="burpsuite_desktop_v${BURP_VERSION}.jar"
+BURP_URL="https://portswigger.net/burp/releases/download?product=desktop&version=${BURP_VERSION}&type=Jar"
+BURP_SHA256="c8262dc5426f38bedc490d66c5d21b6ff77d6dc6d85cefe6a66c882690134069"
+
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ph4ntxm/burpsuite"
+JAR_PATH="${CACHE_DIR}/${BURP_NAME}"
+
+umask 077
+install -d -m 0700 "$CACHE_DIR"
+
+if ! command -v java >/dev/null 2>&1; then
+  echo "Java not found. Please install openjdk (e.g. openjdk-17-jre or newer) and re-run."
+  exit 1
+fi
+
+if [ -f "$JAR_PATH" ] && printf '%s  %s\n' "$BURP_SHA256" "$JAR_PATH" | sha256sum -c - >/dev/null 2>&1; then
+  printf "Using cached Burp: %s\n" "$JAR_PATH"
+  exec java -jar "$JAR_PATH" "$@"
+fi
+
+tmpf="$(mktemp "$CACHE_DIR/.burp.XXXXXX.jar")"
+trap 'rm -f "$tmpf"' EXIT HUP INT TERM
+echo "Downloading Burp Suite Community ${BURP_VERSION}..."
+if ! curl --proto '=https' --tlsv1.2 --fail --location \
+    --retry 3 --connect-timeout 30 --output "$tmpf" "$BURP_URL"; then
+  echo "Download failed. If automatic download doesn't work, open your browser to https://portswigger.net/burp/communitydownload to download manually."
+  rm -f "$tmpf"
+  xdg-open "https://portswigger.net/burp/communitydownload" >/dev/null 2>&1 || true
+  exit 1
+fi
+
+echo "Verifying SHA256..."
+calc_sha256="$(sha256sum "$tmpf" | awk '{print $1}')"
+if [ "$calc_sha256" != "$BURP_SHA256" ]; then
+  echo "SHA256 mismatch! expected: $BURP_SHA256 got: $calc_sha256"
+  echo "Aborting. Please verify the downloaded file manually at https://portswigger.net/burp/releases"
+  rm -f "$tmpf"
+  exit 1
+fi
+
+mv "$tmpf" "${JAR_PATH}"
+trap - EXIT HUP INT TERM
+chmod 0600 "${JAR_PATH}"
+echo "Burp downloaded and verified at ${JAR_PATH}"
+exec java -jar "${JAR_PATH}" "$@"
+EOF
+
+chmod 0755 /usr/local/bin/burpsuite
+
+cat > /usr/share/applications/burpsuite.desktop <<'EOF'
+[Desktop Entry]
+Name=Burp Suite Community
+Comment=Burp Suite - Web security testing toolkit (Community)
+Exec=/usr/local/bin/burpsuite
+Terminal=false
+Type=Application
+Categories=PentestingPH4NTXM;
+Icon=ph4ntxm-burpsuite
+StartupWMClass=burp-StartBurp
+MimeType=application/x-java-archive;
+EOF
+
+exit 0

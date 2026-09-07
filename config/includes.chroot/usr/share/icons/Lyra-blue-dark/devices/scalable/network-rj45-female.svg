@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="57.920132"
+   height="45.638512"
+   version="1.1"
+   viewBox="0 0 15.3244 12.074952"
+   id="svg30"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs10">
+    <linearGradient
+       id="linearGradient42">
+      <stop
+         style="stop-color:#00abff;stop-opacity:0;"
+         offset="0"
+         id="stop43" />
+      <stop
+         style="stop-color:#00abff;stop-opacity:1;"
+         offset="1"
+         id="stop42" />
+    </linearGradient>
+    <linearGradient
+       xlink:href="#linearGradient42"
+       id="linearGradient43"
+       x1="8.4594946"
+       y1="16.355024"
+       x2="8.4594946"
+       y2="8.0256748"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       style="color-interpolation-filters:sRGB"
+       id="filter43"
+       x="-0.024000001"
+       y="-0.030857143"
+       width="1.048"
+       height="1.0617143">
+      <feGaussianBlur
+         stdDeviation="0.1462252"
+         id="feGaussianBlur43" />
+    </filter>
+  </defs>
+  <g
+     id="g43"
+     transform="translate(-0.91223223,-3.1022284)">
+    <path
+       class="ColorScheme-Text"
+       d="m 2.8878971,3.4531689 c -0.9000975,0 -1.6247244,0.7246272 -1.6247244,1.6247244 v 8.1236227 c 0,0.900097 0.7246269,1.624724 1.6247244,1.624724 H 14.260969 c 0.900099,0 1.624723,-0.724627 1.624723,-1.624724 V 5.0778933 c 0,-0.9000972 -0.724624,-1.6247244 -1.624723,-1.6247244 z M 2.075535,5.0778933 2.8878971,4.2655311 V 5.8902559 H 3.7002594 V 4.2655311 H 4.5126215 V 5.8902559 H 5.3249847 V 4.2655311 H 6.1373466 V 5.8902559 H 6.9497085 V 4.2655311 h 3.2494475 v 1.6247248 h 0.812365 V 4.2655311 h 0.812362 v 1.6247248 h 0.812362 V 4.2655311 h 0.812362 v 1.6247248 h 0.812362 V 4.2655311 l 0.812362,0.8123622 v 6.4988977 h -2.437086 v 0.812362 h -1.624724 v 1.624725 H 6.1373466 V 12.389153 H 4.5126215 V 11.576791 H 2.075535 Z"
+       fill="currentColor"
+       id="path1"
+       style="color:#dedede;display:inline;opacity:0.6;fill:#00abff;fill-opacity:1;stroke-width:0.812362;filter:url(#filter43)" />
+    <path
+       class="ColorScheme-Text"
+       d="m 2.8878971,3.4531689 c -0.9000975,0 -1.6247244,0.7246272 -1.6247244,1.6247244 v 8.1236227 c 0,0.900097 0.7246269,1.624724 1.6247244,1.624724 H 14.260969 c 0.900099,0 1.624723,-0.724627 1.624723,-1.624724 V 5.0778933 c 0,-0.9000972 -0.724624,-1.6247244 -1.624723,-1.6247244 z M 2.075535,5.0778933 2.8878971,4.2655311 V 5.8902559 H 3.7002594 V 4.2655311 H 4.5126215 V 5.8902559 H 5.3249847 V 4.2655311 H 6.1373466 V 5.8902559 H 6.9497085 V 4.2655311 h 3.2494475 v 1.6247248 h 0.812365 V 4.2655311 h 0.812362 v 1.6247248 h 0.812362 V 4.2655311 h 0.812362 v 1.6247248 h 0.812362 V 4.2655311 l 0.812362,0.8123622 v 6.4988977 h -2.437086 v 0.812362 h -1.624724 v 1.624725 H 6.1373466 V 12.389153 H 4.5126215 V 11.576791 H 2.075535 Z"
+       fill="currentColor"
+       id="path42"
+       style="color:#dedede;fill:url(#linearGradient43);fill-opacity:1;stroke-width:0.812362" />
+  </g>
+</svg>

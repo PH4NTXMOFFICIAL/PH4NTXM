@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM OpSec Network
+Comment=PH4NTXM Operational Security Network Report
+Exec=xfce4-terminal --disable-server --class=PH4NTXM-OpSec-Network --title="PH4NTXM OpSec Network" --hold --command="/usr/local/bin/ph4ntxm-opsec-net"
+StartupWMClass=PH4NTXM-OpSec-Network
+Icon=ph4ntxm-opsec-net
+Terminal=false
+Categories=System;Security;X-PH4NTXMOpSecSuite;
+StartupNotify=false

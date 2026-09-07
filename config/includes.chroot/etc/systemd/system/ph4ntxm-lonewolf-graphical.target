@@ -1,0 +1,9 @@
+[Unit]
+Description=PH4NTXM Lone Wolf Mode
+Requires=ph4ntxm-mode.service ph4ntxm-lonewolf-multi-user.target
+After=ph4ntxm-mode.service ph4ntxm-lonewolf-multi-user.target
+AllowIsolate=yes
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Install]
+WantedBy=graphical.target

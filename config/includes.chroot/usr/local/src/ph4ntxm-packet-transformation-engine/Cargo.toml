@@ -1,0 +1,17 @@
+[package]
+name = "ph4ntxm-packet-transformation-engine-core"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "ph4ntxm_packet_transformation_engine_core"
+crate-type = ["staticlib", "cdylib"]
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = 3
+overflow-checks = true
+panic = "abort"
+strip = "symbols"

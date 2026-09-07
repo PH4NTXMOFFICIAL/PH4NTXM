@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+mkdir -p /etc/systemd/system/lightdm.service.d
+cat > /etc/systemd/system/lightdm.service.d/override.conf <<'EOT'
+[Unit]
+Requires=ph4ntxm-browser-mode.service
+After=ph4ntxm-browser-mode.service
+
+[Service]
+ExecStartPre=/bin/rm -rf /var/lib/lightdm/.cache
+ExecStartPre=/usr/local/sbin/ph4ntxm-browser-user-setup.sh
+EOT

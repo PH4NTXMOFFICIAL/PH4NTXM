@@ -1,0 +1,16 @@
+RunAsDaemon 1
+AvoidDiskWrites 1
+ClientOnly 1
+SafeLogging 1
+SafeSocks 1
+TestSocks 1
+ClientUseIPv4 1
+ClientUseIPv6 0
+
+DNSPort 127.0.0.1:5353
+TransPort 127.0.0.1:9040 IsolateClientAddr IsolateClientProtocol IsolateDestAddr IsolateDestPort
+SocksPort 127.0.0.1:9050 IsolateSOCKSAuth
+SocksPolicy accept 127.0.0.1
+SocksPolicy reject *
+AutomapHostsOnResolve 1
+VirtualAddrNetworkIPv4 10.192.0.0/10

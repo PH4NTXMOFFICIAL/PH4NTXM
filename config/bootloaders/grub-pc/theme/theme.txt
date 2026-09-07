@@ -1,0 +1,60 @@
+title-text: ""
+desktop-image: "../splash.png"
+desktop-color: "#000000"
+
+terminal-left: "0"
+terminal-top: "0"
+terminal-width: "100%"
+terminal-height: "100%"
+terminal-border: "0"
+
++ label {
+  top = 31%
+  left = 0
+  width = 100%
+  height = 35
+  align = "center"
+  color = "#ffffff"
+  font = "Sans 16"
+  text = "PH4NTXM Live Menu (UEFI Mode)"
+}
+
++ boot_menu {
+  left = 14%
+  width = 73%
+  top = 39%
+  height = 42%
+
+  item_color = "#FFFFFF"
+  selected_item_color = "#FF3DFB"
+
+  item_height = 36
+  item_padding = 0
+  item_spacing = 4
+
+  icon_width = 0
+  icon_height = 0
+
+  selected_item_pixmap_style = "select_*.png"
+}
+
++ vbox {
+  top = 100%-60
+  left = 14%
+  width = 73%
+  + hbox {
+    top = 0
+    left = 20%
+    + label {text = "ENTER: " font = "Sans 10" color = "#ffffff"}
+    + label {text = "Select             " font = "Sans 10" color = "#ffffff"}
+  }
+  + hbox {
+    top = 0
+    left = 20%
+    + label {text = "E:     " font = "Sans 10" color = "#ffffff"}
+    + label {text = "Edit Selection     " font = "Sans 10" color = "#ffffff"}
+    + label {text = "           " font = "Sans 10" color = "#ffffff"}
+    + label {text = "C:     " font = "Sans 10" color = "#ffffff"}
+    + label {text = "GRUB Command line" font = "Sans 10" color = "#ffffff"}
+  }
+}

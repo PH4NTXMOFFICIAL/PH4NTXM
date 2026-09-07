@@ -1,0 +1,44 @@
+#!/bin/sh
+set -e
+
+if [ ! -e /usr/bin/nproc-real ]; then
+    dpkg-divert --add --rename --divert /usr/bin/nproc-real /usr/bin/nproc
+fi
+
+cat << 'EOF' > /usr/bin/nproc
+#!/usr/bin/env bash
+set -euo pipefail
+STATE_DIR="/run/ph4ntxm"
+
+case "${1:-}" in
+    --help|--version)
+        exec /usr/bin/nproc-real "$@"
+        ;;
+esac
+
+if [ -r "$STATE_DIR/cores_env" ]; then
+    source "$STATE_DIR/cores_env"
+else
+    PH4_REPORTED_CORES=1
+fi
+
+count=${PH4_REPORTED_CORES:-1}
+[[ "$count" =~ ^[1-9][0-9]*$ ]] || exit 1
+ignore=0
+for arg in "$@"; do
+    case "$arg" in
+        --all) ;;
+        --ignore=*) ignore=${arg#--ignore=} ;;
+        *)
+            printf 'nproc: option %s is unavailable in the protected CPU view\n' "$arg" >&2
+            exit 2
+            ;;
+    esac
+done
+[[ "$ignore" =~ ^[0-9]+$ ]] || { printf 'nproc: invalid ignore count\n' >&2; exit 2; }
+count=$((count - ignore))
+(( count > 0 )) || count=1
+echo "$count"
+EOF
+
+chmod +x /usr/bin/nproc

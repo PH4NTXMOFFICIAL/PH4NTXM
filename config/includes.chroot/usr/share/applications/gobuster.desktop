@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Gobuster
+Comment=Launch Gobuster in a terminal
+Exec=xfce4-terminal --disable-server --class=Gobuster --title="Gobuster" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review Gobuster options.\033[0m\"; gobuster --help; exec zsh'"
+StartupWMClass=Gobuster
+Icon=ph4ntxm-gobuster
+Terminal=false
+Categories=X-PentestingPH4NTXM;

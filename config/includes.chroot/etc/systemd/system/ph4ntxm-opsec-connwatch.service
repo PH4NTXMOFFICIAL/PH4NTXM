@@ -1,0 +1,29 @@
+[Unit]
+Description=PH4NTXM OpSec ConnWatch
+After=network-online.target ph4ntxm-firewall-guard.service ph4ntxm-lonewolf-firewall-guard.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/ph4ntxm-opsec-connwatch.sh
+Restart=on-failure
+RestartSec=3
+RuntimeDirectory=ph4ntxm-opsec-connwatch
+RuntimeDirectoryMode=0750
+UMask=0027
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_SETGID CAP_SETUID CAP_CHOWN CAP_FOWNER
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_PACKET
+LockPersonality=yes
+RestrictRealtime=yes
+
+[Install]
+WantedBy=graphical.target

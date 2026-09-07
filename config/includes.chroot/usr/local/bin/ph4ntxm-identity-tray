@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+import os
+import subprocess
+import signal
+import gi
+gi.require_version("Gtk", "3.0")
+gi.require_version("AyatanaAppIndicator3", "0.1")
+from gi.repository import Gtk, GLib, AyatanaAppIndicator3 as AppIndicator3
+
+ICON_NAME = "ph4ntxm-identity"
+EXEC_VIEWER = "/usr/local/bin/ph4ntxm-identity"
+TOOLTIP = "PH4NTXM Identity"
+
+class IdentityTray:
+    def __init__(self):
+        self.ind = AppIndicator3.Indicator.new(
+            "ph4ntxm-identity-tray",
+            ICON_NAME,
+            AppIndicator3.IndicatorCategory.APPLICATION_STATUS
+        )
+        self.ind.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+
+        try:
+            self.ind.set_title(TOOLTIP)
+        except Exception:
+            pass
+
+        self.menu = Gtk.Menu()
+
+        mi_show = Gtk.MenuItem(label="Show Identity")
+        mi_show.connect("activate", self.on_show)
+        self.menu.append(mi_show)
+
+        mi_quit = Gtk.MenuItem(label="Quit")
+        mi_quit.connect("activate", self.on_quit)
+        self.menu.append(mi_quit)
+
+        self.menu.show_all()
+        self.ind.set_menu(self.menu)
+
+    def on_show(self, _):
+        try:
+            subprocess.Popen([EXEC_VIEWER])
+        except Exception:
+            pass
+
+    def on_quit(self, _):
+        Gtk.main_quit()
+
+def main():
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    IdentityTray()
+    Gtk.main()
+
+if __name__ == "__main__":
+    main()

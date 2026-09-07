@@ -1,0 +1,10 @@
+[Unit]
+Description=PH4NTXM Lone Wolf Mode
+DefaultDependencies=no
+Requires=ph4ntxm-mode.service
+After=ph4ntxm-mode.service ph4ntxm-lonewolf.service ph4ntxm-lonewolf-dhcp-session-generator.service ph4ntxm-lonewolf-firewall-guard.service ph4ntxm-lonewolf-gpu-randomization.service ph4ntxm-lonewolf-identity-randomization.service ph4ntxm-lonewolf-screen-generator.service ph4ntxm-lonewolf-screen-randomization.service ph4ntxm-lonewolf-sysctl.service
+AllowIsolate=yes
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Install]
+WantedBy=multi-user.target

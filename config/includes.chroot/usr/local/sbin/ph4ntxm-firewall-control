@@ -1,0 +1,129 @@
+#!/bin/sh
+set -eu
+
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+STATUS_FILE=/run/ph4ntxm-lockdown-status.json
+MODE_FILE=/run/ph4ntxm/mode
+READY_FILE=/run/ph4ntxm/firewall-ready
+PACKET_TRANSFORMATION_ENGINE_GUARD=/usr/local/sbin/ph4ntxm-packet-transformation-engine-guard.sh
+
+[ "$(id -u)" -eq 0 ] || exit 1
+[ "$#" -eq 1 ] || exit 2
+
+mkdir -p /run/ph4ntxm
+umask 077
+
+protected_directory() {
+    directory_mode=$(stat -c '%a' "$1") || return 1
+    [ -d "$1" ] && [ ! -L "$1" ] && [ "$(stat -c '%u' "$1")" -eq 0 ] &&
+        [ $((0$directory_mode & 0022)) -eq 0 ]
+}
+
+protected_file() {
+    file_mode=$(stat -c '%a' "$1") || return 1
+    [ -f "$1" ] && [ ! -L "$1" ] && [ -r "$1" ] &&
+        [ "$(stat -c '%u' "$1")" -eq 0 ] && [ $((0$file_mode & 0022)) -eq 0 ]
+}
+
+protected_directory /run/ph4ntxm || exit 1
+protected_file "$MODE_FILE" || exit 1
+exec 9>/run/ph4ntxm/firewall.lock || exit 1
+flock -x 9 || exit 1
+
+write_status() {
+    tmp=$(mktemp /run/ph4ntxm/lockdown-status.XXXXXX) || return 1
+    printf '{"enabled": %s}\n' "$1" > "$tmp" || return 1
+    chmod 0644 "$tmp" || return 1
+    mv -f "$tmp" "$STATUS_FILE" || return 1
+}
+
+validate_rules() {
+    profile=$1
+    rules=$2
+    case "$profile" in
+        normal)
+            protected_file "$rules" || return 1
+            protected_file /etc/firewall/rules.sha256 || return 1
+            (cd / && sha256sum --check --status --strict /etc/firewall/rules.sha256) || return 1
+            [ "$(sha256sum "$rules" | awk '{print $1}')" = "234323ac0f160373d8d7d23c86d64e00dcbb264fe87afb34c727295fad53092d" ]
+            ;;
+        lonewolf)
+            expected=$(tr -d '\n' < /usr/lib/ph4ntxm/lonewolf/lonewolf.nft.sha256)
+            [ "$expected" = "b46d12b343403b4d30e01dc721a42862c7bd4b3b0e110ed763f1ece04c263ebc" ]
+            [ "$(sha256sum "$rules" | awk '{print $1}')" = "$expected" ]
+            ;;
+        lockdown)
+            protected_file "$rules" || return 1
+            protected_file /etc/firewall/rules.sha256 || return 1
+            [ "$(sha256sum "$rules" | awk '{print $1}')" = "7fe94742884f1b20f84980701594811371a2c8c4a0b255cb0071a6eadab36d26" ]
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+force_physical_links_down() {
+    for path in /sys/class/net/*; do
+        [ -d "$path/device" ] || continue
+        iface=${path##*/}
+        ip link set dev "$iface" down >/dev/null 2>&1 || true
+    done
+}
+
+case "$1" in
+    enable)
+        mode_size=$(stat -c '%s' "$MODE_FILE") || exit 1
+        mode=$(cat "$MODE_FILE") || exit 1
+        case "$mode" in
+            lonewolf) [ "$mode_size" -eq 9 ] || exit 1 ;;
+            linux) [ "$mode_size" -eq 6 ] || exit 1 ;;
+            windows) [ "$mode_size" -eq 8 ] || exit 1 ;;
+            *) exit 1 ;;
+        esac
+        if [ "$mode" != lonewolf ]; then
+            "$PACKET_TRANSFORMATION_ENGINE_GUARD" cancel
+        fi
+        validate_rules lockdown /etc/firewall/lockdown.nft
+        rm -f "$READY_FILE"
+        write_status true
+        packet_transformation_engine_sealed=1
+        if [ "$mode" != lonewolf ] && ! "$PACKET_TRANSFORMATION_ENGINE_GUARD" seal; then
+            packet_transformation_engine_sealed=0
+            force_physical_links_down
+        fi
+        nft -c -f /etc/firewall/lockdown.nft
+        nft -f /etc/firewall/lockdown.nft
+        conntrack -F >/dev/null 2>&1 || true
+        [ "$packet_transformation_engine_sealed" -eq 1 ] || exit 1
+        ;;
+    disable)
+        mode_size=$(stat -c '%s' "$MODE_FILE") || exit 1
+        mode=$(cat "$MODE_FILE") || exit 1
+        case "$mode" in
+            lonewolf) [ "$mode_size" -eq 9 ] || exit 1; profile=lonewolf; rules=/usr/lib/ph4ntxm/lonewolf/lonewolf.nft ;;
+            linux) [ "$mode_size" -eq 6 ] || exit 1; profile=normal; rules=/etc/firewall/normal.nft ;;
+            windows) [ "$mode_size" -eq 8 ] || exit 1; profile=normal; rules=/etc/firewall/normal.nft ;;
+            *) exit 1 ;;
+        esac
+        if [ "$profile" = normal ]; then
+            "$PACKET_TRANSFORMATION_ENGINE_GUARD" cancel
+        fi
+        validate_rules "$profile" "$rules"
+        rm -f "$READY_FILE"
+        if [ "$profile" = normal ] && ! "$PACKET_TRANSFORMATION_ENGINE_GUARD" seal; then
+            force_physical_links_down
+            exit 1
+        fi
+        nft -c -f "$rules"
+        nft -f "$rules"
+        conntrack -F >/dev/null 2>&1 || true
+        write_status false
+        if [ "$profile" = normal ]; then
+            "$PACKET_TRANSFORMATION_ENGINE_GUARD" unseal
+        fi
+        ;;
+    *)
+        exit 2
+        ;;
+esac

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Proxychains
+Comment=Show ProxyChains help inside a terminal
+Exec=xfce4-terminal --disable-server --class=Proxychains --title="Proxychains" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review ProxyChains options.\033[0m\"; proxychains4 --help; exec zsh'"
+StartupWMClass=Proxychains
+Icon=ph4ntxm-proxychains4
+Terminal=false
+Categories=X-AnonymityPH4NTXM;

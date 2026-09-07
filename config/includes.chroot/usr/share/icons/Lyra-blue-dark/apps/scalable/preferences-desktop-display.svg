@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="45.321789"
+   height="45.313976"
+   viewBox="0 0 11.991154 11.989087"
+   version="1.1"
+   id="svg26"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata
+     id="metadata32">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs30">
+    <linearGradient
+       id="linearGradient3">
+      <stop
+         style="stop-color:#00abff;stop-opacity:0;"
+         offset="0"
+         id="stop4" />
+      <stop
+         style="stop-color:#00abff;stop-opacity:1;"
+         offset="1"
+         id="stop3" />
+    </linearGradient>
+    <style
+       id="style4"
+       type="text/css" />
+    <style
+       id="style6"
+       type="text/css" />
+    <style
+       id="style8"
+       type="text/css" />
+    <style
+       type="text/css"
+       id="style1078" />
+    <style
+       type="text/css"
+       id="style1080" />
+    <style
+       id="style14"
+       type="text/css" />
+    <style
+       id="style16"
+       type="text/css" />
+    <linearGradient
+       xlink:href="#linearGradient3"
+       id="linearGradient4"
+       x1="6.182302"
+       y1="12.829439"
+       x2="6.182302"
+       y2="5.0666986"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       style="color-interpolation-filters:sRGB"
+       id="filter4"
+       x="-0.026997548"
+       y="-0.027002454"
+       width="1.0539951"
+       height="1.0540049">
+      <feGaussianBlur
+         stdDeviation="0.12797804"
+         id="feGaussianBlur4" />
+    </filter>
+  </defs>
+  <g
+     id="g4"
+     transform="translate(-0.38426976,-0.48968759)">
+    <path
+       id="path1"
+       style="display:inline;opacity:0.6;fill:#00abff;fill-opacity:1;stroke-linecap:round;paint-order:stroke fill markers;filter:url(#filter4)"
+       d="m 1.6406944,0.79683489 c -0.5210549,0 -0.94927735,0.42822261 -0.94927735,0.94927741 v 9.4783047 c 0,0.521054 0.42840865,0.94721 0.94927735,0.94721 h 9.4783046 c 0.520868,0 0.949277,-0.426342 0.949277,-0.94721 V 1.7461123 c 0,-0.5208686 -0.428223,-0.94927741 -0.949277,-0.94927741 z m 0,0.71105371 h 9.4783046 c 0.139366,0 0.236673,0.09858 0.236673,0.2382237 v 9.4783047 c 0,0.139642 -0.09703,0.236673 -0.236673,0.236673 H 1.6406944 c -0.1396442,0 -0.2361566,-0.0973 -0.2361566,-0.236673 V 1.7461123 c 0,-0.1393689 0.096788,-0.2382237 0.2361566,-0.2382237 z m 0,7.3456602 v 2.3708682 h 2.3693178 2.368801 2.3713847 2.3688011 V 8.8535488 H 8.7501979 6.3788132 4.0100122 Z M 2.3496811,9.5661527 H 3.2989585 V 10.511813 H 2.3496811 Z m 2.370868,0 H 5.6677595 V 10.511813 H 4.7205491 Z m 2.3713848,0 H 8.0391442 V 10.511813 H 7.0919339 Z m 2.3672507,0 H 10.407945 V 10.511813 H 9.4591846 Z" />
+    <path
+       id="path2"
+       style="fill:url(#linearGradient4);fill-opacity:1;stroke-linecap:round;paint-order:stroke fill markers"
+       d="m 1.6406944,0.79683489 c -0.5210549,0 -0.94927735,0.42822261 -0.94927735,0.94927741 v 9.4783047 c 0,0.521054 0.42840865,0.94721 0.94927735,0.94721 h 9.4783046 c 0.520868,0 0.949277,-0.426342 0.949277,-0.94721 V 1.7461123 c 0,-0.5208686 -0.428223,-0.94927741 -0.949277,-0.94927741 z m 0,0.71105371 h 9.4783046 c 0.139366,0 0.236673,0.09858 0.236673,0.2382237 v 9.4783047 c 0,0.139642 -0.09703,0.236673 -0.236673,0.236673 H 1.6406944 c -0.1396442,0 -0.2361566,-0.0973 -0.2361566,-0.236673 V 1.7461123 c 0,-0.1393689 0.096788,-0.2382237 0.2361566,-0.2382237 z m 0,7.3456602 v 2.3708682 h 2.3693178 2.368801 2.3713847 2.3688011 V 8.8535488 H 8.7501979 6.3788132 4.0100122 Z M 2.3496811,9.5661527 H 3.2989585 V 10.511813 H 2.3496811 Z m 2.370868,0 H 5.6677595 V 10.511813 H 4.7205491 Z m 2.3713848,0 H 8.0391442 V 10.511813 H 7.0919339 Z m 2.3672507,0 H 10.407945 V 10.511813 H 9.4591846 Z" />
+  </g>
+</svg>

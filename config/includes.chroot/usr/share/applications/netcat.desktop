@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Netcat
+Comment=Launch Netcat in a terminal
+Exec=xfce4-terminal --disable-server --class=Netcat --title="Netcat" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review Netcat options.\033[0m\"; nc; exec zsh'"
+StartupWMClass=Netcat
+Icon=ph4ntxm-netcat
+Terminal=false
+Categories=X-PentestingPH4NTXM;

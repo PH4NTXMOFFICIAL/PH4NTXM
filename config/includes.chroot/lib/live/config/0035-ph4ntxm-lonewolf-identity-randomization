@@ -1,0 +1,25 @@
+#!/bin/sh
+set -e
+
+MODE_FILE="/run/ph4ntxm/mode"
+
+if [ -r "$MODE_FILE" ]; then
+    MODE="$(tr -d '[:space:]' < "$MODE_FILE")"
+    if [ "$MODE" = "lonewolf" ]; then
+        READY=$(tr -d '\n' < /run/ph4ntxm/identity-ready 2>/dev/null || true)
+        recover_service() {
+            if systemctl is-failed --quiet ph4ntxm-lonewolf-identity-randomization.service; then
+                systemctl reset-failed ph4ntxm-lonewolf-identity-randomization.service
+            fi
+            systemctl start ph4ntxm-lonewolf-identity-randomization.service
+        }
+        if [ "$READY" = "$MODE" ]; then
+            recover_service
+            exit 0
+        fi
+        if [ -x /usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-identity-randomization.sh ]; then
+            /usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-identity-randomization.sh
+            recover_service
+        fi
+    fi
+fi

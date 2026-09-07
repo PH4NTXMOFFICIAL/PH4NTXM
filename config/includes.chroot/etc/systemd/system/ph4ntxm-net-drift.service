@@ -1,0 +1,26 @@
+[Unit]
+Description=PH4NTXM Network Drift Engine
+After=network-online.target ph4ntxm-net-randomization.service
+Wants=network-online.target
+ConditionPathExists=/run/ph4ntxm/mode-normal
+
+[Service]
+ExecStart=/usr/local/sbin/ph4ntxm-net-drift.sh
+Type=simple
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_NET_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+LockPersonality=yes
+RestrictRealtime=yes
+
+[Install]
+WantedBy=multi-user.target

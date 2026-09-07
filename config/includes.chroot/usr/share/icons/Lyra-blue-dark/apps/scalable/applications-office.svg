@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="40.895382"
+   height="44.486847"
+   version="1.1"
+   id="svg4126"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata
+     id="metadata2">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs1194">
+    <linearGradient
+       id="linearGradient2">
+      <stop
+         style="stop-color:#00abff;stop-opacity:0;"
+         offset="0"
+         id="stop3" />
+      <stop
+         style="stop-color:#00abff;stop-opacity:1;"
+         offset="1"
+         id="stop2" />
+    </linearGradient>
+    <linearGradient
+       xlink:href="#linearGradient2"
+       id="linearGradient3"
+       x1="22.13718"
+       y1="47.351345"
+       x2="22.13718"
+       y2="18.803783"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       style="color-interpolation-filters:sRGB"
+       id="filter3"
+       x="-0.028252571"
+       y="-0.025853779"
+       width="1.0565051"
+       height="1.0517076">
+      <feGaussianBlur
+         stdDeviation="0.45566892"
+         id="feGaussianBlur3" />
+    </filter>
+  </defs>
+  <g
+     id="g3"
+     transform="translate(-1.5465386,-1.518341)">
+    <path
+       id="path1"
+       style="display:inline;opacity:0.6;fill:#00abff;stroke-width:0.926362;filter:url(#filter3)"
+       d="M 2.640144,2.6119464 V 44.911581 H 41.346508 V 18.010902 L 23.608127,2.6119464 Z m 23.253128,0.00543 15.455045,12.7193816 V 2.6173743 Z M 5.1460251,5.1178275 H 22.670909 L 38.838818,19.15438 V 42.4057 H 5.1460251 Z m 27.7582869,0.012665 h 5.929077 V 10.011985 Z M 7.9377757,17.621902 v 2.507691 H 18.391913 v -2.507691 z m 17.0074233,0.586214 -4.646283,6.868104 v 2.115073 h 14.867022 v -2.171161 l -3.459383,-3.965986 -2.737471,2.09336 z m -17.0074233,2.94554 v 2.507691 H 18.391913 v -2.507691 z m 0,4.414693 v 2.505882 H 18.391913 v -2.505882 z m 0,4.414694 v 2.505881 H 36.048876 v -2.505881 z m 0,4.414693 v 2.505881 H 36.048876 v -2.505881 z m 0,3.529945 v 2.50769 H 28.985367 v -2.50769 z" />
+    <path
+       id="path2"
+       style="fill:url(#linearGradient3);fill-opacity:1;stroke-width:0.926362"
+       d="M 2.640144,2.6119464 V 44.911581 H 41.346508 V 18.010902 L 23.608127,2.6119464 Z m 23.253128,0.00543 15.455045,12.7193816 V 2.6173743 Z M 5.1460251,5.1178275 H 22.670909 L 38.838818,19.15438 V 42.4057 H 5.1460251 Z m 27.7582869,0.012665 h 5.929077 V 10.011985 Z M 7.9377757,17.621902 v 2.507691 H 18.391913 v -2.507691 z m 17.0074233,0.586214 -4.646283,6.868104 v 2.115073 h 14.867022 v -2.171161 l -3.459383,-3.965986 -2.737471,2.09336 z m -17.0074233,2.94554 v 2.507691 H 18.391913 v -2.507691 z m 0,4.414693 v 2.505882 H 18.391913 v -2.505882 z m 0,4.414694 v 2.505881 H 36.048876 v -2.505881 z m 0,4.414693 v 2.505881 H 36.048876 v -2.505881 z m 0,3.529945 v 2.50769 H 28.985367 v -2.50769 z" />
+  </g>
+</svg>

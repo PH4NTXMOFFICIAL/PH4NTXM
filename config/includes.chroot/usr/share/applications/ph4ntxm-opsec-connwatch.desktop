@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM OpSec ConnWatch
+Comment=PH4NTXM Operational Security ConnWatch
+Exec=xfce4-terminal --disable-server --class=PH4NTXM-OpSec-Connwatch --title="PH4NTXM OpSec Connwatch" --command="/usr/local/bin/ph4ntxm-opsec-connwatch"
+StartupWMClass=PH4NTXM-OpSec-Connwatch
+Icon=ph4ntxm-opsec-connwatch
+Terminal=false
+Categories=System;Security;X-PH4NTXMOpSecSuite;
+StartupNotify=false

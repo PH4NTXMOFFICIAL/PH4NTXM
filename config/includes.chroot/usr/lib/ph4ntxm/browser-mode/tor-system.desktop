@@ -1,0 +1,18 @@
+[Desktop Entry]
+Version=1.0
+Name=Tor Browser
+GenericName=Web Browser
+Comment=Browse privately through the Tor network
+Exec=/usr/bin/firefox-esr %u
+StartupNotify=true
+StartupWMClass=Tor Browser
+Terminal=false
+Icon=tor-browser
+Type=Application
+Categories=Network;WebBrowser;Security;
+MimeType=application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/http;x-scheme-handler/https;
+Actions=new-window;
+
+[Desktop Action new-window]
+Name=New Window
+Exec=/usr/bin/firefox-esr

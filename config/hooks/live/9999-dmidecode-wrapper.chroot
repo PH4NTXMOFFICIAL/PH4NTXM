@@ -1,0 +1,338 @@
+#!/bin/sh
+set -e
+
+if [ ! -e /usr/sbin/dmidecode-real ]; then
+    dpkg-divert --add --rename --divert /usr/sbin/dmidecode-real /usr/sbin/dmidecode
+fi
+
+cat << 'EOF' > /usr/sbin/dmidecode
+#!/usr/bin/env bash
+set -euo pipefail
+
+FAKE_DMI_DIR=/run/ph4ntxm/fake_dmi
+ERA_FILE=/run/ph4ntxm/cores_env
+
+PH4_REPORTED_CORES=1
+PH4_REPORTED_RAM=1
+PH4_THREADS_PER_CORE=1
+PH4_CPU_FAMILY=6
+PH4_CPU_MODEL_ID=142
+PH4_CPU_STEPPING=10
+PH4_CPU_MODEL_NAME='Generic x86_64 CPU'
+PH4_CPU_ARCHITECTURE=x86_64
+PH4_DEVICE_CLASS=generic
+if [[ -r "$ERA_FILE" ]]; then
+    source "$ERA_FILE"
+fi
+
+get_val() {
+    local key=$1
+    if [[ -r "$FAKE_DMI_DIR/$key" ]]; then
+        cat "$FAKE_DMI_DIR/$key"
+    else
+        printf '%s\n' "Not Specified"
+    fi
+}
+
+bios_date() {
+    get_val bios_date
+}
+
+chassis_name() {
+    case "$(get_val chassis_type)" in
+        3)  printf '%s\n' 'Desktop' ;;
+        4)  printf '%s\n' 'Low Profile Desktop' ;;
+        5)  printf '%s\n' 'Pizza Box' ;;
+        6)  printf '%s\n' 'Mini Tower' ;;
+        7)  printf '%s\n' 'Tower' ;;
+        8)  printf '%s\n' 'Portable' ;;
+        9)  printf '%s\n' 'Laptop' ;;
+        10) printf '%s\n' 'Notebook' ;;
+        11) printf '%s\n' 'Hand Held' ;;
+        13) printf '%s\n' 'All In One' ;;
+        14) printf '%s\n' 'Sub Notebook' ;;
+        15) printf '%s\n' 'Space-saving' ;;
+        16) printf '%s\n' 'Lunch Box' ;;
+        17) printf '%s\n' 'Main Server Chassis' ;;
+        23) printf '%s\n' 'Rack Mount Chassis' ;;
+        30) printf '%s\n' 'Tablet' ;;
+        *)  printf '%s\n' 'Other' ;;
+    esac
+}
+
+print_string() {
+    case "$1" in
+        bios-vendor)                get_val bios_vendor ;;
+        bios-version)               get_val bios_version ;;
+        bios-release-date)          bios_date ;;
+        bios-revision)              get_val bios_release ;;
+        firmware-revision)          get_val ec_firmware_release ;;
+        system-manufacturer)        get_val sys_vendor ;;
+        system-product-name)        get_val product_name ;;
+        system-version)             get_val product_version ;;
+        system-serial-number)       get_val product_serial ;;
+        system-uuid)                get_val product_uuid ;;
+        system-wake-up-type)        printf '%s\n' 'Power Switch' ;;
+        system-sku-number)          get_val product_sku ;;
+        system-family)              get_val product_family ;;
+        baseboard-manufacturer)     get_val board_vendor ;;
+        baseboard-product-name)     get_val board_name ;;
+        baseboard-version)          get_val board_version ;;
+        baseboard-serial-number)    get_val board_serial ;;
+        baseboard-asset-tag)        get_val board_asset_tag ;;
+        chassis-manufacturer)       get_val chassis_vendor ;;
+        chassis-type)               chassis_name ;;
+        chassis-version)            get_val chassis_version ;;
+        chassis-asset-tag)          get_val chassis_asset_tag ;;
+        chassis-serial-number)      get_val chassis_serial ;;
+        *)
+            printf 'dmidecode: unsupported string keyword: %s\n' "$1" >&2
+            exit 2
+            ;;
+    esac
+}
+
+emit_bios() {
+    printf '%s\n' 'Handle 0x0000, DMI type 0, 24 bytes' 'BIOS Information'
+    printf '\tVendor: %s\n' "$(get_val bios_vendor)"
+    printf '\tVersion: %s\n' "$(get_val bios_version)"
+    printf '\tRelease Date: %s\n\n' "$(bios_date)"
+}
+
+emit_system() {
+    printf '%s\n' 'Handle 0x0001, DMI type 1, 27 bytes' 'System Information'
+    printf '\tManufacturer: %s\n' "$(get_val sys_vendor)"
+    printf '\tProduct Name: %s\n' "$(get_val product_name)"
+    printf '\tVersion: %s\n' "$(get_val product_version)"
+    printf '\tSerial Number: %s\n' "$(get_val product_serial)"
+    printf '\tUUID: %s\n' "$(get_val product_uuid)"
+    printf '\tSKU Number: %s\n' "$(get_val product_sku)"
+    printf '\tFamily: %s\n' "$(get_val product_family)"
+    printf '\tWake-up Type: Power Switch\n\n'
+}
+
+emit_baseboard() {
+    printf '%s\n' 'Handle 0x0002, DMI type 2, 15 bytes' 'Base Board Information'
+    printf '\tManufacturer: %s\n' "$(get_val board_vendor)"
+    printf '\tProduct Name: %s\n' "$(get_val board_name)"
+    printf '\tVersion: %s\n' "$(get_val board_version)"
+    printf '\tSerial Number: %s\n' "$(get_val board_serial)"
+    printf '\tAsset Tag: %s\n\n' "$(get_val board_asset_tag)"
+}
+
+emit_chassis() {
+    printf '%s\n' 'Handle 0x0003, DMI type 3, 22 bytes' 'Chassis Information'
+    printf '\tManufacturer: %s\n' "$(get_val chassis_vendor)"
+    printf '\tType: %s\n' "$(chassis_name)"
+    printf '\tLock: Not Present\n'
+    printf '\tVersion: %s\n' "$(get_val chassis_version)"
+    printf '\tSerial Number: %s\n' "$(get_val chassis_serial)"
+    printf '\tAsset Tag: %s\n\n' "$(get_val chassis_asset_tag)"
+}
+
+emit_processor() {
+    local physical_cores=$((PH4_REPORTED_CORES / PH4_THREADS_PER_CORE))
+    (( physical_cores > 0 )) || physical_cores=1
+    printf '%s\n' 'Handle 0x0004, DMI type 4, 48 bytes' 'Processor Information'
+    printf '\tSocket Designation: CPU0\n'
+    printf '\tType: Central Processor\n'
+    printf '\tFamily: Other\n'
+    printf '\tManufacturer: %s\n' "${PH4_CPU_VENDOR_ID:-GenuineIntel}"
+    printf '\tVersion: %s\n' "${PH4_CPU_MODEL_NAME:-Generic x86_64 CPU}"
+    printf '\tStatus: Populated, Enabled\n'
+    printf '\tCore Count: %s\n' "$physical_cores"
+    printf '\tCore Enabled: %s\n' "$physical_cores"
+    printf '\tThread Count: %s\n\n' "$PH4_REPORTED_CORES"
+}
+
+emit_cache() {
+    local selected=${1:-all} level handle size ways
+    for level in 1 2 3; do
+        case "$level" in
+            1) handle=0007; size=32; ways=8 ;;
+            2) handle=0008; size=256; ways=4 ;;
+            3) handle=0009; size=8192; ways=16 ;;
+        esac
+        [[ "$selected" == all || "$selected" == "$handle" ]] || continue
+        printf 'Handle 0x%s, DMI type 7, 27 bytes\n' "$handle"
+        printf '%s\n' 'Cache Information'
+        printf '\tSocket Designation: L%s-Cache\n' "$level"
+        printf '\tInstalled Size: %s kB\n' "$size"
+        printf '\tAssociativity: %s-way Set-associative\n\n' "$ways"
+    done
+}
+
+emit_connector() {
+    printf '%s\n' 'Handle 0x000A, DMI type 8, 9 bytes' 'Port Connector Information'
+    printf '\tInternal Reference Designator: USB\n'
+    printf '\tInternal Connector Type: None\n'
+    printf '\tExternal Reference Designator: USB\n'
+    printf '\tExternal Connector Type: Access Bus (USB)\n\n'
+}
+
+emit_slot() {
+    printf '%s\n' 'Handle 0x000B, DMI type 9, 17 bytes' 'System Slot Information'
+    printf '\tDesignation: PCIe Slot 1\n'
+    printf '\tType: x16 PCI Express\n'
+    printf '\tCurrent Usage: Available\n\n'
+}
+
+emit_memory_array() {
+    local correction='None'
+    [[ "$PH4_DEVICE_CLASS" == server ]] && correction='Multi-bit ECC'
+    printf '%s\n' 'Handle 0x0010, DMI type 16, 23 bytes' 'Physical Memory Array'
+    printf '\tLocation: System Board Or Motherboard\n'
+    printf '\tUse: System Memory\n'
+    printf '\tError Correction Type: %s\n' "$correction"
+    printf '\tMaximum Capacity: %s GB\n' "$PH4_REPORTED_RAM"
+    printf '\tNumber Of Devices: 1\n\n'
+}
+
+emit_memory_device() {
+    local form_factor memory_type
+    case "$PH4_CPU_ARCHITECTURE:$PH4_DEVICE_CLASS" in
+        aarch64:*)
+            form_factor='Row Of Chips'
+            [[ "$PH4_CPU_MODEL_NAME" == 'Apple M2' ]] && memory_type='LPDDR5' || memory_type='LPDDR4'
+            ;;
+        *:server|*:desktop) form_factor='DIMM'; memory_type='DDR4' ;;
+        *:apple) form_factor='Row Of Chips'; memory_type='LPDDR4' ;;
+        *) form_factor='SODIMM'; memory_type='DDR4' ;;
+    esac
+    printf '%s\n' 'Handle 0x0011, DMI type 17, 40 bytes' 'Memory Device'
+    printf '\tArray Handle: 0x0010\n'
+    printf '\tTotal Width: 64 bits\n'
+    printf '\tData Width: 64 bits\n'
+    printf '\tSize: %s GB\n' "$PH4_REPORTED_RAM"
+    printf '\tForm Factor: %s\n' "$form_factor"
+    printf '\tLocator: DIMM 0\n'
+    printf '\tType: %s\n\n' "$memory_type"
+}
+
+emit_boot() {
+    printf '%s\n' 'Handle 0x0020, DMI type 32, 11 bytes' 'System Boot Information'
+    printf '\tStatus: No errors detected\n\n'
+}
+
+emit_end() {
+    printf '%s\n\n' 'Handle 0x007F, DMI type 127, 4 bytes' 'End Of Table'
+}
+
+quiet=0
+string_key=
+types=
+handle=
+
+while (($#)); do
+    case "$1" in
+        -h|--help|-V|--version)
+            exec /usr/sbin/dmidecode-real "$1"
+            ;;
+        -q|--quiet)
+            quiet=1
+            shift
+            ;;
+        --no-sysfs)
+            shift
+            ;;
+        -u|--dump)
+            shift
+            ;;
+        -H|--handle)
+            (($# >= 2)) || { printf 'dmidecode: missing handle\n' >&2; exit 2; }
+            handle=$2
+            shift 2
+            ;;
+        --handle=*)
+            handle=${1#*=}
+            shift
+            ;;
+        -s|--string)
+            (($# >= 2)) || { printf 'dmidecode: missing string keyword\n' >&2; exit 2; }
+            string_key=$2
+            shift 2
+            ;;
+        --string=*)
+            string_key=${1#*=}
+            shift
+            ;;
+        -t|--type)
+            (($# >= 2)) || { printf 'dmidecode: missing type\n' >&2; exit 2; }
+            types="${types}${types:+,}$2"
+            shift 2
+            ;;
+        --type=*)
+            types="${types}${types:+,}${1#*=}"
+            shift
+            ;;
+        *)
+            printf 'dmidecode: option %s is unavailable in the protected DMI view\n' "$1" >&2
+            exit 2
+            ;;
+    esac
+done
+
+if [[ -n "$string_key" ]]; then
+    [[ -z "$types" && -z "$handle" ]] || { printf 'dmidecode: --string cannot be combined with --type or --handle\n' >&2; exit 2; }
+    print_string "$string_key"
+    exit 0
+fi
+
+if [[ -n "$handle" ]]; then
+    [[ -z "$types" ]] || { printf 'dmidecode: --handle and --type cannot be combined\n' >&2; exit 2; }
+    handle=${handle#0x}
+    handle=${handle#0X}
+    case "${handle^^}" in
+        0000|0) emit_bios ;;
+        0001|1) emit_system ;;
+        0002|2) emit_baseboard ;;
+        0003|3) emit_chassis ;;
+        0004|4) emit_processor ;;
+        0007|7) emit_cache 0007 ;;
+        0008|8) emit_cache 0008 ;;
+        0009|9) emit_cache 0009 ;;
+        0010|10) emit_memory_array ;;
+        0011|11) emit_memory_device ;;
+        0020|20) emit_boot ;;
+        007F|7F) emit_end ;;
+        *) printf 'dmidecode: handle 0x%s is not present in the protected DMI view\n' "$handle" >&2; exit 2 ;;
+    esac
+    exit 0
+fi
+
+if (( ! quiet )); then
+    printf '%s\n' '# dmidecode 3.4' 'Getting SMBIOS data from the PH4NTXM protected view.' 'SMBIOS 2.8 present.' ''
+fi
+
+if [[ -z "$types" ]]; then
+    types='0,1,2,3,4,7,8,9,16,17,32,127'
+fi
+
+IFS=',' read -r -a requested <<< "$types"
+for requested_type in "${requested[@]}"; do
+    requested_type=${requested_type,,}
+    case "$requested_type" in
+        0|bios)      emit_bios ;;
+        1|system)    emit_system ;;
+        2|baseboard) emit_baseboard ;;
+        3|chassis)   emit_chassis ;;
+        4|processor) emit_processor ;;
+        7|cache)     emit_cache ;;
+        8|connector) emit_connector ;;
+        9|slot)      emit_slot ;;
+        16)          emit_memory_array ;;
+        17)          emit_memory_device ;;
+        memory)      emit_memory_array; emit_memory_device ;;
+        32)          emit_boot ;;
+        127)         emit_end ;;
+        5|6)         ;;
+        [0-9]|[1-9][0-9]|1[01][0-9]|12[0-6]) ;;
+        *)
+            printf 'dmidecode: invalid type: %s\n' "$requested_type" >&2
+            exit 2
+            ;;
+    esac
+done
+EOF
+
+chmod 0755 /usr/sbin/dmidecode

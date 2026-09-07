@@ -1,0 +1,2 @@
+ACTION=="remove", SUBSYSTEM=="block", KERNEL=="sd*[!0-9]", ENV{ID_BUS}=="usb", RUN+="/usr/local/sbin/ph4ntxm-usb-nuke.sh"
+ACTION=="remove", SUBSYSTEM=="block", KERNEL=="sd*[!0-9]", ENV{ID_PATH}=="*-usb-*", RUN+="/usr/local/sbin/ph4ntxm-usb-nuke.sh"

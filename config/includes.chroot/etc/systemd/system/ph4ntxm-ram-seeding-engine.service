@@ -1,0 +1,31 @@
+[Unit]
+Description=PH4NTXM RAM Seeding Engine
+DefaultDependencies=no
+After=local-fs.target
+Before=sysinit.target ph4ntxm-nuke.service shutdown.target
+Conflicts=shutdown.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/ph4ntxm-ram-seeding-engine
+Restart=on-failure
+RestartSec=3
+LimitMEMLOCK=infinity
+OOMScoreAdjust=-1000
+Nice=-10
+StandardOutput=null
+StandardError=null
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=yes
+RestrictRealtime=yes
+
+[Install]
+WantedBy=sysinit.target

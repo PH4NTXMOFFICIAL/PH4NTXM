@@ -1,0 +1,335 @@
+#!/usr/bin/env bash
+set -e
+
+if [ ! -e /usr/bin/lscpu-real ]; then
+    dpkg-divert --add --rename --divert /usr/bin/lscpu-real /usr/bin/lscpu
+fi
+
+cat << 'EOF' > /usr/bin/lscpu
+#!/usr/bin/env bash
+set -euo pipefail
+
+CORES_FILE=/run/ph4ntxm/cores_env
+
+PH4_REPORTED_CORES=1
+PH4_THREADS_PER_CORE=1
+PH4_CPU_ARCHITECTURE=x86_64
+PH4_CPU_VENDOR_ID=GenuineIntel
+PH4_CPU_FAMILY=6
+PH4_CPU_MODEL_ID=142
+PH4_CPU_STEPPING=10
+PH4_CPU_MODEL_NAME='Generic x86_64 CPU'
+PH4_CPU_FLAGS='fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht tm pbe syscall nx rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid pni pclmulqdq ssse3 cx16 sse4_1 sse4_2 x2apic popcnt aes xsave avx f16c rdrand hypervisor'
+PH4_HARDWARE_ERA=mid
+
+if [[ -r "$CORES_FILE" ]]; then
+    source "$CORES_FILE"
+fi
+
+[[ "$PH4_REPORTED_CORES" =~ ^[1-9][0-9]*$ ]] || exit 1
+[[ "$PH4_THREADS_PER_CORE" =~ ^[1-9][0-9]*$ ]] || exit 1
+[[ "$PH4_CPU_ARCHITECTURE" == "x86_64" || "$PH4_CPU_ARCHITECTURE" == "aarch64" ]] || exit 1
+[[ "$PH4_CPU_FAMILY" =~ ^[0-9]+$ ]] || exit 1
+[[ "$PH4_CPU_MODEL_ID" =~ ^[0-9]+$ ]] || exit 1
+[[ "$PH4_CPU_STEPPING" =~ ^[0-9]+$ ]] || exit 1
+
+CORES_PER_SOCKET=$((PH4_REPORTED_CORES / PH4_THREADS_PER_CORE))
+(( CORES_PER_SOCKET > 0 )) || CORES_PER_SOCKET=1
+CPU_LIST="0-$((PH4_REPORTED_CORES - 1))"
+(( PH4_REPORTED_CORES == 1 )) && CPU_LIST=0
+
+case "$PH4_HARDWARE_ERA" in
+    old) MIN_MHZ=800 MAX_MHZ=3200 CURRENT_MHZ=2500 L3_KIB=3072 ;;
+    new) MIN_MHZ=400 MAX_MHZ=4800 CURRENT_MHZ=2800 L3_KIB=12288 ;;
+    *) MIN_MHZ=400 MAX_MHZ=4200 CURRENT_MHZ=2300 L3_KIB=8192 ;;
+esac
+
+if [[ "$PH4_CPU_ARCHITECTURE" == "aarch64" ]]; then
+    CPU_OP_MODES="64-bit"
+    ADDRESS_SIZES="40 bits physical, 48 bits virtual"
+else
+    CPU_OP_MODES="32-bit, 64-bit"
+    ADDRESS_SIZES="40 bits physical, 48 bits virtual"
+fi
+
+emit_text() {
+    printf '%-23s %s\n' \
+        'Architecture:' "$PH4_CPU_ARCHITECTURE" \
+        'CPU op-mode(s):' "$CPU_OP_MODES" \
+        'Address sizes:' "$ADDRESS_SIZES" \
+        'Byte Order:' 'Little Endian' \
+        'CPU(s):' "$PH4_REPORTED_CORES" \
+        'On-line CPU(s) list:' "$CPU_LIST" \
+        'Vendor ID:' "$PH4_CPU_VENDOR_ID" \
+        'Model name:' "$PH4_CPU_MODEL_NAME" \
+        'CPU family:' "$PH4_CPU_FAMILY" \
+        'Model:' "$PH4_CPU_MODEL_ID" \
+        'Thread(s) per core:' "$PH4_THREADS_PER_CORE" \
+        'Core(s) per socket:' "$CORES_PER_SOCKET" \
+        'Socket(s):' '1' \
+        'Stepping:' "$PH4_CPU_STEPPING" \
+        'CPU max MHz:' "${MAX_MHZ}.0000" \
+        'CPU min MHz:' "${MIN_MHZ}.0000" \
+        'NUMA node(s):' '1' \
+        'NUMA node0 CPU(s):' "$CPU_LIST" \
+        'Flags:' "$PH4_CPU_FLAGS"
+}
+
+emit_json() {
+    python3 - "$PH4_CPU_ARCHITECTURE" "$CPU_OP_MODES" "$ADDRESS_SIZES" \
+        "$PH4_REPORTED_CORES" "$CPU_LIST" "$PH4_CPU_VENDOR_ID" \
+        "$PH4_CPU_MODEL_NAME" "$PH4_CPU_FAMILY" "$PH4_CPU_MODEL_ID" \
+        "$PH4_THREADS_PER_CORE" "$CORES_PER_SOCKET" "$PH4_CPU_STEPPING" \
+        "$MAX_MHZ" "$MIN_MHZ" "$PH4_CPU_FLAGS" <<'PY'
+import json
+import sys
+
+architecture, op_modes, address_sizes, cores, cpu_list, vendor, name, family, model, threads, per_socket, stepping, maximum, minimum, flags = sys.argv[1:]
+fields = [
+    ("Architecture:", architecture),
+    ("CPU op-mode(s):", op_modes),
+    ("Address sizes:", address_sizes),
+    ("Byte Order:", "Little Endian"),
+    ("CPU(s):", cores),
+    ("On-line CPU(s) list:", cpu_list),
+    ("Vendor ID:", vendor),
+    ("Model name:", name),
+    ("CPU family:", family),
+    ("Model:", model),
+    ("Thread(s) per core:", threads),
+    ("Core(s) per socket:", per_socket),
+    ("Socket(s):", "1"),
+    ("Stepping:", stepping),
+    ("CPU max MHz:", maximum + ".0000"),
+    ("CPU min MHz:", minimum + ".0000"),
+    ("NUMA node(s):", "1"),
+    ("NUMA node0 CPU(s):", cpu_list),
+    ("Flags:", flags),
+]
+json.dump({"lscpu": [{"field": field, "data": data} for field, data in fields]}, sys.stdout)
+sys.stdout.write("\n")
+PY
+}
+
+cpu_value() {
+    local column=$1 cpu=$2
+    case "$column" in
+        CPU) printf '%s' "$cpu" ;;
+        CORE) printf '%s' "$((cpu / PH4_THREADS_PER_CORE))" ;;
+        SOCKET|NODE|BOOK|DRAWER|CLUSTER) printf '0' ;;
+        ONLINE|CONFIGURED) printf 'yes' ;;
+        POLARIZATION) printf '-' ;;
+        ADDRESS) printf '%s' "$cpu" ;;
+        MHZ) printf '%s.0000' "$CURRENT_MHZ" ;;
+        MAXMHZ) printf '%s.0000' "$MAX_MHZ" ;;
+        MINMHZ) printf '%s.0000' "$MIN_MHZ" ;;
+        SCALMHZ%) printf '100%%' ;;
+        *) return 1 ;;
+    esac
+}
+
+validate_cpu_column() {
+    case "$1" in
+        CPU|CORE|SOCKET|NODE|BOOK|DRAWER|CLUSTER|ONLINE|CONFIGURED|POLARIZATION|ADDRESS|MHZ|MAXMHZ|MINMHZ|SCALMHZ%) ;;
+        *) printf 'lscpu: unknown column: %s\n' "$1" >&2; exit 2 ;;
+    esac
+}
+
+emit_cpu_rows() {
+    local format=$1 list=$2 selection=$3 output_json=$4 cpu column first value json_first separator row_first
+    IFS=',' read -r -a selected_columns <<< "${list^^}"
+    for column in "${selected_columns[@]}"; do
+        validate_cpu_column "$column"
+    done
+
+    if (( output_json )); then
+        printf '{"cpus":['
+    elif [[ "$format" == extended ]]; then
+        first=1
+        for column in "${selected_columns[@]}"; do
+            (( first )) || printf ' '
+            printf '%s' "$column"
+            first=0
+        done
+        printf '\n'
+    else
+        printf '%s\n' '# The following is the parsable format, which can be fed to other programs.'
+        printf '# %s\n' "${list^^}"
+    fi
+
+    first=1
+    if [[ "$selection" != offline ]]; then
+        for ((cpu=0; cpu<PH4_REPORTED_CORES; cpu++)); do
+            if (( output_json )); then
+                (( first )) || printf ','
+                printf '{'
+                json_first=1
+                for column in "${selected_columns[@]}"; do
+                    value=$(cpu_value "$column" "$cpu")
+                    (( json_first )) || printf ','
+                    printf '"%s":"%s"' "${column,,}" "$value"
+                    json_first=0
+                done
+                printf '}'
+            else
+                separator=' '
+                [[ "$format" == parse ]] && separator=','
+                row_first=1
+                for column in "${selected_columns[@]}"; do
+                    value=$(cpu_value "$column" "$cpu")
+                    (( row_first )) || printf '%s' "$separator"
+                    printf '%s' "$value"
+                    row_first=0
+                done
+                printf '\n'
+            fi
+            first=0
+        done
+    fi
+
+    if (( output_json )); then
+        printf ']}\n'
+    fi
+}
+
+cache_value() {
+    local column=$1 name=$2 one_kib=$3 all_kib=$4 ways=$5 type=$6 level=$7 sets=$8
+    case "$column" in
+        NAME) printf '%s' "$name" ;;
+        ONE-SIZE)
+            if (( bytes )); then printf '%s' "$((one_kib * 1024))"; elif (( one_kib >= 1024 && one_kib % 1024 == 0 )); then printf '%sM' "$((one_kib / 1024))"; else printf '%sK' "$one_kib"; fi
+            ;;
+        ALL-SIZE)
+            if (( bytes )); then printf '%s' "$((all_kib * 1024))"; elif (( all_kib >= 1024 && all_kib % 1024 == 0 )); then printf '%sM' "$((all_kib / 1024))"; else printf '%sK' "$all_kib"; fi
+            ;;
+        WAYS) printf '%s' "$ways" ;;
+        TYPE) printf '%s' "$type" ;;
+        LEVEL) printf '%s' "$level" ;;
+        SETS) printf '%s' "$sets" ;;
+        PHY-LINE|COHERENCY-SIZE) printf '64' ;;
+        *) return 1 ;;
+    esac
+}
+
+validate_cache_column() {
+    case "$1" in
+        NAME|ONE-SIZE|ALL-SIZE|WAYS|TYPE|LEVEL|SETS|PHY-LINE|COHERENCY-SIZE) ;;
+        *) printf 'lscpu: unknown cache column: %s\n' "$1" >&2; exit 2 ;;
+    esac
+}
+
+emit_caches() {
+    local list=$1 output_json=$2 column row name one all ways type level sets value first json_first row_first
+    IFS=',' read -r -a selected_columns <<< "${list^^}"
+    for column in "${selected_columns[@]}"; do
+        validate_cache_column "$column"
+    done
+    local l1_all=$((CORES_PER_SOCKET * 32))
+    local l2_all=$((CORES_PER_SOCKET * 256))
+    local rows=("L1d|32|$l1_all|8|Data|1|64" "L1i|32|$l1_all|8|Instruction|1|64" "L2|256|$l2_all|4|Unified|2|1024" "L3|$L3_KIB|$L3_KIB|16|Unified|3|8192")
+    if (( output_json )); then
+        printf '{"caches":['
+    else
+        row_first=1
+        for column in "${selected_columns[@]}"; do
+            (( row_first )) || printf ' '
+            printf '%s' "$column"
+            row_first=0
+        done
+        printf '\n'
+    fi
+    first=1
+    for row in "${rows[@]}"; do
+        IFS='|' read -r name one all ways type level sets <<< "$row"
+        if (( output_json )); then
+            (( first )) || printf ','
+            printf '{'
+            json_first=1
+            for column in "${selected_columns[@]}"; do
+                value=$(cache_value "$column" "$name" "$one" "$all" "$ways" "$type" "$level" "$sets")
+                (( json_first )) || printf ','
+                printf '"%s":"%s"' "${column,,}" "$value"
+                json_first=0
+            done
+            printf '}'
+        else
+            row_first=1
+            for column in "${selected_columns[@]}"; do
+                value=$(cache_value "$column" "$name" "$one" "$all" "$ways" "$type" "$level" "$sets")
+                (( row_first )) || printf ' '
+                printf '%s' "$value"
+                row_first=0
+            done
+            printf '\n'
+        fi
+        first=0
+    done
+    if (( output_json )); then
+        printf ']}\n'
+    fi
+}
+
+mode=summary
+columns=
+selection=online
+json=0
+bytes=0
+output_all=0
+
+while (($#)); do
+    case "$1" in
+        -h|--help|-V|--version)
+            exec /usr/bin/lscpu-real "$1"
+            ;;
+        -a|--all) selection=all ;;
+        -b|--online) selection=online ;;
+        -c|--offline) selection=offline ;;
+        -B|--bytes) bytes=1 ;;
+        -C|--caches) mode=caches ;;
+        -C=*|--caches=*) mode=caches; columns=${1#*=} ;;
+        -e|--extended) mode=extended ;;
+        -e=*|--extended=*) mode=extended; columns=${1#*=} ;;
+        -p|--parse) mode=parse ;;
+        -p=*|--parse=*) mode=parse; columns=${1#*=} ;;
+        -J|--json) json=1 ;;
+        -r|--raw|-x|--hex|-y|--physical) ;;
+        -s|--sysroot)
+            (($# >= 2)) || { printf 'lscpu: missing sysroot path\n' >&2; exit 2; }
+            shift
+            ;;
+        --sysroot=*) ;;
+        --hierarchic|--hierarchic=*) ;;
+        --output-all) output_all=1 ;;
+        --)
+            shift
+            (($# == 0)) || { printf 'lscpu: unexpected argument: %s\n' "$1" >&2; exit 2; }
+            break
+            ;;
+        *)
+            printf 'lscpu: unrecognized option: %s\n' "$1" >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+case "$mode" in
+    summary)
+        if (( json )); then emit_json; else emit_text; fi
+        ;;
+    extended)
+        if (( output_all )); then columns='CPU,NODE,SOCKET,CORE,ONLINE,CONFIGURED,MHZ,MAXMHZ,MINMHZ'; fi
+        emit_cpu_rows extended "${columns:-CPU,NODE,SOCKET,CORE,ONLINE,MAXMHZ,MINMHZ}" "$selection" "$json"
+        ;;
+    parse)
+        if (( output_all )); then columns='CPU,CORE,SOCKET,NODE,ONLINE,CONFIGURED'; fi
+        emit_cpu_rows parse "${columns:-CPU,CORE,SOCKET,NODE}" "$selection" "$json"
+        ;;
+    caches)
+        if (( output_all )); then columns='NAME,ONE-SIZE,ALL-SIZE,WAYS,TYPE,LEVEL,SETS,PHY-LINE,COHERENCY-SIZE'; fi
+        emit_caches "${columns:-NAME,ONE-SIZE,ALL-SIZE,WAYS,TYPE,LEVEL}" "$json"
+        ;;
+esac
+EOF
+
+chmod 0755 /usr/bin/lscpu

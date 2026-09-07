@@ -1,0 +1,352 @@
+#!/usr/bin/env python3
+import ctypes
+import json
+import resource
+import sys
+import time
+import unicodedata
+import uuid
+
+import dbus
+
+
+NM_SERVICE = "org.freedesktop.NetworkManager"
+NM_PATH = "/org/freedesktop/NetworkManager"
+NM_IFACE = "org.freedesktop.NetworkManager"
+NM_DEVICE_IFACE = "org.freedesktop.NetworkManager.Device"
+NM_WIRELESS_IFACE = "org.freedesktop.NetworkManager.Device.Wireless"
+NM_AP_IFACE = "org.freedesktop.NetworkManager.AccessPoint"
+PROPERTIES_IFACE = "org.freedesktop.DBus.Properties"
+DEVICE_WIFI = 2
+DEVICE_STATE_ACTIVATED = 100
+DEVICE_STATE_FAILED = 120
+AP_PRIVACY = 0x1
+SEC_KEY_MGMT_PSK = 0x100
+SEC_KEY_MGMT_802_1X = 0x200
+SEC_KEY_MGMT_SAE = 0x400
+SEC_KEY_MGMT_OWE = 0x800
+SEC_KEY_MGMT_OWE_TM = 0x1000
+
+
+def harden_process():
+    try:
+        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+    except (OSError, ValueError):
+        pass
+    try:
+        ctypes.CDLL(None, use_errno=True).prctl(4, 0, 0, 0, 0)
+    except (AttributeError, OSError):
+        pass
+
+
+harden_process()
+
+
+def emit(payload, status=0):
+    sys.stdout.write(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
+    sys.stdout.write("\n")
+    raise SystemExit(status)
+
+
+def fail(message, status=1):
+    emit({"ok": False, "error": message}, status)
+
+
+def prop(bus, path, interface, name):
+    obj = bus.get_object(NM_SERVICE, path)
+    return dbus.Interface(obj, PROPERTIES_IFACE).Get(interface, name)
+
+
+def decode_ssid(value):
+    raw = bytes(bytearray(value))
+    if not raw or b"\x00" in raw:
+        return ""
+    decoded = raw.decode("utf-8", "replace")
+    return "".join(character if unicodedata.category(character)[0] != "C" else "�" for character in decoded)
+
+
+def security_info(flags, wpa_flags, rsn_flags):
+    wpa_flags = int(wpa_flags)
+    rsn_flags = int(rsn_flags)
+    key_flags = wpa_flags | rsn_flags
+    has_wpa_psk = bool(wpa_flags & SEC_KEY_MGMT_PSK)
+    has_rsn_psk = bool(rsn_flags & SEC_KEY_MGMT_PSK)
+    has_psk = has_wpa_psk or has_rsn_psk
+    has_sae = bool(rsn_flags & SEC_KEY_MGMT_SAE)
+    has_enterprise = bool(key_flags & SEC_KEY_MGMT_802_1X)
+    has_owe = bool(key_flags & (SEC_KEY_MGMT_OWE | SEC_KEY_MGMT_OWE_TM))
+    if has_psk and has_sae:
+        return "WPA2/WPA3", "wpa-psk", True
+    if has_sae:
+        return "WPA3", "sae", True
+    if has_rsn_psk:
+        return "WPA2", "wpa-psk", True
+    if has_wpa_psk:
+        return "WPA", "wpa-psk", True
+    if has_owe:
+        return "Enhanced Open", "owe", False
+    if has_enterprise:
+        return "Enterprise", "unsupported", False
+    if int(flags) & AP_PRIVACY:
+        return "WEP", "unsupported", True
+    return "Open", "open", False
+
+
+def manager(bus):
+    obj = bus.get_object(NM_SERVICE, NM_PATH)
+    return dbus.Interface(obj, NM_IFACE)
+
+
+def wifi_devices(bus):
+    devices = []
+    for path in manager(bus).GetDevices():
+        path = str(path)
+        try:
+            if int(prop(bus, path, NM_DEVICE_IFACE, "DeviceType")) == DEVICE_WIFI:
+                devices.append(path)
+        except dbus.DBusException:
+            continue
+    return devices
+
+
+def access_points(bus, device):
+    obj = bus.get_object(NM_SERVICE, device)
+    interface = dbus.Interface(obj, NM_WIRELESS_IFACE)
+    try:
+        paths = interface.GetAllAccessPoints()
+    except dbus.DBusException:
+        paths = interface.GetAccessPoints()
+    return [str(path) for path in paths]
+
+
+def scan(bus, devices):
+    pending = {}
+    for device in devices:
+        try:
+            obj = bus.get_object(NM_SERVICE, device)
+            before = int(prop(bus, device, NM_WIRELESS_IFACE, "LastScan"))
+            dbus.Interface(obj, NM_WIRELESS_IFACE).RequestScan(dbus.Dictionary({}, signature="sv"))
+            pending[device] = before
+        except dbus.DBusException:
+            continue
+    deadline = time.monotonic() + 6
+    while pending and time.monotonic() < deadline:
+        for device, before in list(pending.items()):
+            try:
+                if int(prop(bus, device, NM_WIRELESS_IFACE, "LastScan")) != before:
+                    del pending[device]
+            except dbus.DBusException:
+                del pending[device]
+        if pending:
+            time.sleep(0.2)
+
+
+def network_record(bus, device, access_point, active_path):
+    ssid_value = prop(bus, access_point, NM_AP_IFACE, "Ssid")
+    ssid = decode_ssid(ssid_value)
+    if not ssid:
+        return None
+    flags = int(prop(bus, access_point, NM_AP_IFACE, "Flags"))
+    wpa_flags = int(prop(bus, access_point, NM_AP_IFACE, "WpaFlags"))
+    rsn_flags = int(prop(bus, access_point, NM_AP_IFACE, "RsnFlags"))
+    label, key_mgmt, requires_password = security_info(flags, wpa_flags, rsn_flags)
+    return {
+        "ssid": ssid,
+        "ssid_id": bytes(bytearray(ssid_value)).hex(),
+        "bssid": str(prop(bus, access_point, NM_AP_IFACE, "HwAddress")),
+        "strength": int(prop(bus, access_point, NM_AP_IFACE, "Strength")),
+        "frequency": int(prop(bus, access_point, NM_AP_IFACE, "Frequency")),
+        "security": label,
+        "key_mgmt": key_mgmt,
+        "requires_password": requires_password,
+        "supported": key_mgmt != "unsupported",
+        "device": device,
+        "access_point": access_point,
+        "active": access_point == active_path,
+    }
+
+
+def current_network(bus, devices):
+    for device in devices:
+        try:
+            if int(prop(bus, device, NM_DEVICE_IFACE, "State")) != DEVICE_STATE_ACTIVATED:
+                continue
+            access_point = str(prop(bus, device, NM_WIRELESS_IFACE, "ActiveAccessPoint"))
+            if access_point == "/":
+                continue
+            record = network_record(bus, device, access_point, access_point)
+            if record:
+                return record
+        except dbus.DBusException:
+            continue
+    return None
+
+
+def list_networks(bus, do_scan=False, enable=False):
+    manager_properties = dbus.Interface(bus.get_object(NM_SERVICE, NM_PATH), PROPERTIES_IFACE)
+    hardware_enabled = bool(manager_properties.Get(NM_IFACE, "WirelessHardwareEnabled"))
+    enabled = bool(manager_properties.Get(NM_IFACE, "WirelessEnabled"))
+    if enable and hardware_enabled and not enabled:
+        manager_properties.Set(NM_IFACE, "WirelessEnabled", dbus.Boolean(True))
+        time.sleep(0.4)
+        enabled = True
+    devices = wifi_devices(bus)
+    if do_scan and enabled:
+        scan(bus, devices)
+    connected = current_network(bus, devices)
+    networks = []
+    for device in devices:
+        try:
+            active_path = str(prop(bus, device, NM_WIRELESS_IFACE, "ActiveAccessPoint"))
+            for access_point in access_points(bus, device):
+                record = network_record(bus, device, access_point, active_path)
+                if record:
+                    networks.append(record)
+        except dbus.DBusException:
+            continue
+    strongest = {}
+    for record in networks:
+        key = (record["ssid_id"], record["key_mgmt"])
+        current = strongest.get(key)
+        if (
+            current is None
+            or record["active"] and not current["active"]
+            or record["active"] == current["active"] and record["strength"] > current["strength"]
+        ):
+            strongest[key] = record
+    ordered = sorted(strongest.values(), key=lambda item: (not item["active"], -item["strength"], item["ssid"].casefold()))
+    return {
+        "ok": True,
+        "enabled": enabled,
+        "hardware_enabled": hardware_enabled,
+        "device_count": len(devices),
+        "connected": connected,
+        "networks": ordered,
+    }
+
+
+def read_request():
+    data = sys.stdin.buffer.read(8193)
+    if len(data) > 8192:
+        fail("Connection request is too large")
+    try:
+        request = json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        fail("Invalid connection request")
+    if not isinstance(request, dict):
+        fail("Invalid connection request")
+    return request
+
+
+def validate_password(key_mgmt, password):
+    if key_mgmt == "wpa-psk":
+        octets = len(password.encode("utf-8"))
+        return 8 <= octets <= 63 or len(password) == 64 and all(char in "0123456789abcdefABCDEF" for char in password)
+    if key_mgmt == "sae":
+        return 1 <= len(password.encode("utf-8")) <= 63
+    return password == ""
+
+
+def connect_network(bus, request):
+    device = request.get("device")
+    access_point = request.get("access_point")
+    password = request.get("password", "")
+    expected_ssid = request.get("ssid_id")
+    expected_bssid = request.get("bssid")
+    expected_key_mgmt = request.get("key_mgmt")
+    if not all(
+        isinstance(value, str)
+        for value in (device, access_point, password, expected_ssid, expected_bssid, expected_key_mgmt)
+    ):
+        fail("Invalid connection request")
+    devices = wifi_devices(bus)
+    if device not in devices:
+        fail("Wireless device is no longer available")
+    try:
+        if access_point not in access_points(bus, device):
+            fail("Wireless network is no longer available")
+        record = network_record(bus, device, access_point, "/")
+        ssid_bytes = bytes(bytearray(prop(bus, access_point, NM_AP_IFACE, "Ssid")))
+    except dbus.DBusException:
+        fail("Unable to read the selected wireless network")
+    if not record or not record["supported"]:
+        fail("This network requires a connection method that is not supported by the Pilot")
+    if (
+        record["ssid_id"] != expected_ssid
+        or record["bssid"] != expected_bssid
+        or record["key_mgmt"] != expected_key_mgmt
+    ):
+        fail("The selected wireless network changed; rescan before connecting")
+    key_mgmt = record["key_mgmt"]
+    if not validate_password(key_mgmt, password):
+        fail("The Wi-Fi password format is invalid")
+    try:
+        bssid_bytes = bytes.fromhex(record["bssid"].replace(":", ""))
+    except (KeyError, ValueError):
+        fail("The selected access point has an invalid hardware address")
+    if len(bssid_bytes) != 6:
+        fail("The selected access point has an invalid hardware address")
+    settings = {
+        "connection": {
+            "id": dbus.String("PH4NTXM Wi-Fi"),
+            "type": dbus.String("802-11-wireless"),
+            "uuid": dbus.String(str(uuid.uuid4())),
+            "autoconnect": dbus.Boolean(False),
+        },
+        "802-11-wireless": {
+            "ssid": dbus.ByteArray(ssid_bytes),
+            "bssid": dbus.ByteArray(bssid_bytes),
+            "mode": dbus.String("infrastructure"),
+            "assigned-mac-address": dbus.String("preserve"),
+        },
+        "ipv4": {"method": dbus.String("auto")},
+        "ipv6": {"method": dbus.String("disabled")},
+    }
+    if key_mgmt in {"wpa-psk", "sae"}:
+        settings["802-11-wireless-security"] = {
+            "key-mgmt": dbus.String(key_mgmt),
+            "psk": dbus.String(password),
+        }
+    elif key_mgmt == "owe":
+        settings["802-11-wireless-security"] = {"key-mgmt": dbus.String("owe")}
+    options = dbus.Dictionary({"persist": dbus.String("volatile")}, signature="sv")
+    try:
+        manager(bus).AddAndActivateConnection2(settings, device, access_point, options)
+    except dbus.DBusException as error:
+        name = error.get_dbus_name()
+        if name.endswith(".PermissionDenied") or name.endswith(".NotAuthorized"):
+            fail("NetworkManager denied the connection request")
+        fail("NetworkManager could not start the connection")
+    deadline = time.monotonic() + 35
+    while time.monotonic() < deadline:
+        try:
+            state = int(prop(bus, device, NM_DEVICE_IFACE, "State"))
+            if state == DEVICE_STATE_ACTIVATED:
+                connected = current_network(bus, [device])
+                if connected and connected["ssid"] == record["ssid"]:
+                    emit({"ok": True, "connected": connected})
+            if state == DEVICE_STATE_FAILED:
+                fail("Wi-Fi authentication or association failed")
+        except dbus.DBusException:
+            fail("Wireless device disappeared during connection")
+        time.sleep(0.5)
+    fail("Wi-Fi connection timed out")
+
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] not in {"list", "connect"}:
+        fail("Usage: ph4ntxm-wifi-control list [--enable] [--rescan] | connect", 2)
+    try:
+        bus = dbus.SystemBus()
+        if sys.argv[1] == "list":
+            allowed = {"--enable", "--rescan"}
+            if any(argument not in allowed for argument in sys.argv[2:]):
+                fail("Invalid list option", 2)
+            emit(list_networks(bus, "--rescan" in sys.argv[2:], "--enable" in sys.argv[2:]))
+        connect_network(bus, read_request())
+    except dbus.DBusException:
+        fail("NetworkManager is unavailable")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+
+gcc -std=c11 -O2 -Wall -Wextra -Werror -static -fstack-protector-strong -D_FORTIFY_SOURCE=2 \
+  /usr/local/sbin/ph4ntxm-ram-seeding-engine.c \
+  -o /usr/local/sbin/ph4ntxm-ram-seeding-engine
+
+gcc -std=c11 -O2 -Wall -Wextra -Werror -static -fstack-protector-strong -D_FORTIFY_SOURCE=2 \
+  /usr/local/sbin/ph4ntxm-ram-scrub.c \
+  -o /usr/local/sbin/ph4ntxm-ram-scrub
+
+strip /usr/local/sbin/ph4ntxm-ram-seeding-engine
+strip /usr/local/sbin/ph4ntxm-ram-scrub
+
+install -d -o root -g root -m 0755 /usr/lib/systemd/system-shutdown
+install -o root -g root -m 0755 \
+  /usr/local/sbin/ph4ntxm-ram-scrub \
+  /usr/lib/systemd/system-shutdown/ph4ntxm-nuke
+
+rm -f /usr/local/sbin/ph4ntxm-ram-seeding-engine.c
+rm -f /usr/local/sbin/ph4ntxm-ram-scrub.c

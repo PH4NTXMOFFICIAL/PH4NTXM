@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=SQLMap
+Comment=Launch SQLMap in a terminal
+Exec=xfce4-terminal --disable-server --class=SQLMap --title="SQLMap" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review SQLMap options.\033[0m\"; sqlmap --help; exec zsh'"
+StartupWMClass=SQLMap
+Icon=ph4ntxm-sqlmap
+Terminal=false
+Categories=X-PentestingPH4NTXM;

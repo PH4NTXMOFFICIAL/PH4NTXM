@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM BOOT PILOT
+Comment=Establish network connectivity and verify boot protection gates
+Exec=/usr/bin/python3 /usr/local/bin/ph4ntxm-boot-pilot
+Icon=ph4ntxm-health
+Terminal=false
+OnlyShowIn=XFCE;
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=2
+StartupNotify=false

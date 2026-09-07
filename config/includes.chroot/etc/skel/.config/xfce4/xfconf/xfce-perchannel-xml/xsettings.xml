@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<channel name="xsettings" version="1.0">
+  <property name="Net" type="empty">
+    <property name="ThemeName" type="string" value="Midnight"/>
+    <property name="IconThemeName" type="string" value="Lyra-blue-dark"/>
+    <property name="CursorThemeName" type="string" value="LyraB-cursors"/>
+  </property>
+  <property name="Gtk" type="empty">
+    <property name="DecorationLayout" type="string" value="icon,menu:minimize,maximize,close"/>
+  </property>
+  <property name="Xfce" type="empty">
+    <property name="SyncThemes" type="bool" value="true"/>
+  </property>
+</channel>

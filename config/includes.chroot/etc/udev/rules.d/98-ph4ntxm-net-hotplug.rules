@@ -1,0 +1,2 @@
+ACTION=="add|change", SUBSYSTEM=="net", KERNEL!="lo", TEST=="device", ENV{NM_UNMANAGED}="1"
+ACTION=="add|change", SUBSYSTEM=="net", KERNEL!="lo", TEST=="device", PROGRAM=="/usr/local/sbin/ph4ntxm-net-hotplug.sh %k", RESULT=="protected", ENV{NM_UNMANAGED}="0"

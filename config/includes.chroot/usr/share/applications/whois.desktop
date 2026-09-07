@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Who Is
+Comment=Show Who Is help inside a terminal
+Exec=xfce4-terminal --disable-server --class=Who-Is --title="Who Is" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review Who Is options.\033[0m\"; whois --help; exec zsh'"
+StartupWMClass=Who-Is
+Icon=ph4ntxm-whois
+Terminal=false
+Categories=X-PentestingPH4NTXM;

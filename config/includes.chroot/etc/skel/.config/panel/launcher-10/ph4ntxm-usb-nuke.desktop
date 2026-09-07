@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM USB Nuke
+Comment=Toggle USB Nuke Arming
+Exec=/usr/local/bin/ph4ntxm-usb-nuke
+Icon=ph4ntxm-usb-nuke
+Terminal=false
+Categories=System;X-XFCE;X-Xfce-Toplevel;
+StartupNotify=false
+X-XFCE-Source=file:///usr/share/applications/ph4ntxm-usb-nuke.desktop

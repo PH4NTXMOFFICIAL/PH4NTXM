@@ -1,0 +1,99 @@
+#!/bin/bash
+set -e
+
+for data_file in /etc/ph4ntxm-skulist /etc/ph4ntxm-namelist; do
+    if [ -f "$data_file" ]; then
+        chown root:root "$data_file"
+        chmod 0644 "$data_file"
+    fi
+done
+
+find /usr/local/sbin -maxdepth 1 -type f -name 'ph4ntxm-*' \
+    -exec chown root:root {} + -exec chmod 0755 {} +
+find /usr/local/bin -maxdepth 1 -type f -name 'ph4ntxm-*' \
+    -exec chown root:root {} + -exec chmod 0755 {} +
+
+if [ -f /usr/lib/systemd/system-shutdown/ph4ntxm-nuke ]; then
+    chown root:root /usr/lib/systemd/system-shutdown/ph4ntxm-nuke
+    chmod 0755 /usr/lib/systemd/system-shutdown/ph4ntxm-nuke
+fi
+
+if [ -d /usr/lib/ph4ntxm ]; then
+    chown -R root:root /usr/lib/ph4ntxm
+    find /usr/lib/ph4ntxm -type d -exec chmod 0755 {} +
+    find /usr/lib/ph4ntxm -type f -name '*.sh' -exec chmod 0755 {} +
+    find /usr/lib/ph4ntxm -type f ! -name '*.sh' -exec chmod 0644 {} +
+fi
+
+find /etc/systemd/system -maxdepth 2 -type f \( -name 'ph4ntxm-*' -o -name 'ph4ntxm.conf' \) \
+    -exec chown root:root {} + -exec chmod 0644 {} +
+if [ -d /etc/firewall ]; then
+    find /etc/firewall -maxdepth 1 -type f \
+        -exec chown root:root {} + -exec chmod 0644 {} +
+fi
+find /etc/udev/rules.d -maxdepth 1 -type f -name '*ph4ntxm*' \
+    -exec chown root:root {} + -exec chmod 0644 {} +
+
+for config_file in \
+    /etc/NetworkManager/NetworkManager.conf \
+    /etc/fail2ban/jail.local \
+    /etc/ssl/openssl.cnf \
+    /etc/sysctl.d/99-defaults.conf \
+    /etc/sysctl.d/99-hardening.conf \
+    /etc/systemd/system.conf \
+    /etc/systemd/sleep.conf \
+    /etc/tor/torrc; do
+    if [ -f "$config_file" ]; then
+        chown root:root "$config_file"
+        chmod 0644 "$config_file"
+    fi
+done
+
+if [ -f /etc/NetworkManager/dispatcher.d/30-ph4ntxm-dhcp ]; then
+    chown root:root /etc/NetworkManager/dispatcher.d/30-ph4ntxm-dhcp
+    chmod 0755 /etc/NetworkManager/dispatcher.d/30-ph4ntxm-dhcp
+fi
+
+find /etc/profile.d -maxdepth 1 -type f -name 'ph4ntxm-*.sh' \
+    -exec chown root:root {} + -exec chmod 0644 {} +
+
+if [ -d /etc/firefox-esr/mode ]; then
+    chown -R root:root /etc/firefox-esr/mode
+    find /etc/firefox-esr/mode -type d -exec chmod 0755 {} +
+    find /etc/firefox-esr/mode -type f -exec chmod 0644 {} +
+fi
+
+if [ -d /opt/ph4ntxm ]; then
+    chown -R root:root /opt/ph4ntxm
+    find /opt/ph4ntxm -path /opt/ph4ntxm/tor-browser -prune -o -type d -exec chmod 0755 {} +
+    find /opt/ph4ntxm -path /opt/ph4ntxm/tor-browser -prune -o -type f -exec chmod 0644 {} +
+    if [ -d /opt/ph4ntxm/tor-browser ]; then
+        find /opt/ph4ntxm/tor-browser -type d -exec chmod 0755 {} +
+        find /opt/ph4ntxm/tor-browser -type f -perm /0100 -exec chmod 0755 {} +
+        find /opt/ph4ntxm/tor-browser -type f ! -perm /0100 -exec chmod 0644 {} +
+    fi
+fi
+
+find /lib/live/config -maxdepth 1 -type f -name '00*-ph4ntxm-*' \
+    -exec chown root:root {} + -exec chmod 0755 {} +
+if [ -f /lib/live/config/0032-set-shell ]; then
+    chown root:root /lib/live/config/0032-set-shell
+    chmod 0755 /lib/live/config/0032-set-shell
+fi
+
+if [ -d /etc/xdg ]; then
+    chown -R root:root /etc/xdg
+    find /etc/xdg/autostart -maxdepth 1 -type f -name '*.desktop' \
+        -exec chmod 0644 {} +
+    find /etc/xdg/menus -type f -name '*.menu' -exec chmod 0644 {} +
+    find /etc/xdg/xfce4 -type f \( -name '*.xml' -o -name 'helpers.rc' \) \
+        -exec chmod 0644 {} +
+fi
+
+find /usr/share/applications -maxdepth 1 -type f -name '*.desktop' \
+    -exec chown root:root {} + -exec chmod 0644 {} +
+
+if [ -f /etc/sudoers.d/ph4ntxm ]; then
+    chown root:root /etc/sudoers.d/ph4ntxm
+    chmod 0440 /etc/sudoers.d/ph4ntxm
+fi

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Hashcat
+Comment=Launch Hashcat in a terminal
+Exec=xfce4-terminal --disable-server --class=Hashcat --title="Hashcat" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review Hashcat options.\033[0m\"; hashcat --help; exec zsh'"
+StartupWMClass=Hashcat
+Icon=ph4ntxm-hashcat
+Terminal=false
+Categories=X-PentestingPH4NTXM;

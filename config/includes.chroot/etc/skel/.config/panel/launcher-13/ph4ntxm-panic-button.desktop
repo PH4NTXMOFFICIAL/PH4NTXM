@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=PH4NTXM Panic Button
+Comment=Emergency network containment and poweroff
+Exec=/usr/local/bin/ph4ntxm-panic-button
+Icon=ph4ntxm-panic-button
+Terminal=false
+Categories=System;X-XFCE;X-Xfce-Toplevel;
+X-XFCE-Source=file:///usr/share/applications/ph4ntxm-panic-button.desktop

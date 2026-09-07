@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+
+update-icon-caches /usr/share/icons/* || true
+update-alternatives --install /usr/share/icons/default/index.theme x-cursor-theme /usr/share/icons/LyraB-cursors/index.theme 100
+update-alternatives --set x-cursor-theme /usr/share/icons/LyraB-cursors/index.theme

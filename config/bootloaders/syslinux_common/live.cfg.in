@@ -1,0 +1,18 @@
+label live-linux
+        menu label PH4NTXM (Linux Mode)
+        menu default
+        linux @LINUX@
+        initrd @INITRD@
+        append @APPEND_LIVE@ ph4ntxm.mode=linux
+
+label live-windows
+        menu label PH4NTXM (Windows Mode)
+        linux @LINUX@
+        initrd @INITRD@
+        append @APPEND_LIVE@ ph4ntxm.mode=windows
+
+label live-lonewolf
+        menu label PH4NTXM Lone Wolf (Tor Isolated Mode)
+        linux @LINUX@
+        initrd @INITRD@
+        append @APPEND_LIVE@ ph4ntxm.mode=lonewolf

@@ -1,0 +1,13 @@
+[DEFAULT]
+ignoreip = 127.0.0.1/8 ::1
+bantime  = 1800
+findtime = 600
+maxretry = 3
+backend  = auto
+banaction = nftables-multiport
+sender   = fail2ban@localhost
+
+[sshd]
+enabled  = false
+port     = ssh
+logpath  = %(sshd_log)s

@@ -1,0 +1,26 @@
+#!/bin/sh
+set -e
+
+MODE=$(tr -d '\n' < /run/ph4ntxm/mode 2>/dev/null || true)
+READY=$(tr -d '\n' < /run/ph4ntxm/identity-ready 2>/dev/null || true)
+case "$MODE" in
+    linux|windows) ;;
+    *) exit 0 ;;
+esac
+
+recover_service() {
+    if systemctl is-failed --quiet ph4ntxm-identity-randomization.service; then
+        systemctl reset-failed ph4ntxm-identity-randomization.service
+    fi
+    systemctl start ph4ntxm-identity-randomization.service
+}
+
+if [ "$MODE" = "$READY" ]; then
+    recover_service
+    exit 0
+fi
+
+if [ -x /usr/local/sbin/ph4ntxm-identity-randomization.sh ]; then
+    /usr/local/sbin/ph4ntxm-identity-randomization.sh
+    recover_service
+fi

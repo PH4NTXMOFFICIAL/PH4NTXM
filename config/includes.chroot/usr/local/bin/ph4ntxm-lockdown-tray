@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+import os
+import json
+import subprocess
+import signal
+import gi
+gi.require_version("Gtk", "3.0")
+gi.require_version("AyatanaAppIndicator3", "0.1")
+from gi.repository import Gtk, GLib, AyatanaAppIndicator3 as AppIndicator3
+
+STATUS_FILE = "/run/ph4ntxm-lockdown-status.json"
+LOCKDOWN_SCRIPT = "/usr/local/bin/ph4ntxm-lockdown"
+POLL_INTERVAL = 2
+
+ICON_ENABLED  = "lockdown-enabled"
+ICON_DISABLED = "lockdown-disabled"
+
+class LockdownTray:
+    def __init__(self):
+        self.ind = AppIndicator3.Indicator.new(
+            "ph4ntxm-lockdown-tray",
+            ICON_DISABLED,
+            AppIndicator3.IndicatorCategory.APPLICATION_STATUS
+        )
+        self.ind.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+
+        self.menu = Gtk.Menu()
+        self.mi_enable = Gtk.MenuItem(label="Enable Lockdown")
+        self.mi_enable.connect("activate", self.enable_lockdown)
+        self.menu.append(self.mi_enable)
+
+        self.mi_disable = Gtk.MenuItem(label="Disable Lockdown")
+        self.mi_disable.connect("activate", self.disable_lockdown)
+        self.menu.append(self.mi_disable)
+
+        self.mi_quit = Gtk.MenuItem(label="Quit")
+        self.mi_quit.connect("activate", self.quit_tray)
+        self.menu.append(self.mi_quit)
+
+        self.menu.show_all()
+        self.ind.set_menu(self.menu)
+
+        self._last_state = None
+        GLib.timeout_add_seconds(POLL_INTERVAL, self._poll_status)
+
+    def _read_status(self):
+        try:
+            if not os.path.exists(STATUS_FILE):
+                return False
+            with open(STATUS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return bool(data.get("enabled", False))
+        except:
+            return False
+
+    def _apply_state(self, enabled):
+        self.ind.set_icon(ICON_ENABLED if enabled else ICON_DISABLED)
+        self.ind.set_title(f"PH4NTXM Lockdown: {'ENABLED' if enabled else 'DISABLED'}")
+        self.mi_enable.set_sensitive(not enabled)
+        self.mi_disable.set_sensitive(enabled)
+
+    def _poll_status(self):
+        state = self._read_status()
+        if state != self._last_state:
+            self._apply_state(state)
+            self._last_state = state
+        return True
+
+    def enable_lockdown(self, _):
+        subprocess.Popen(['sudo', '/usr/local/sbin/ph4ntxm-firewall-control', 'enable'])
+    def disable_lockdown(self, _):
+        subprocess.Popen(['sudo', '/usr/local/sbin/ph4ntxm-firewall-control', 'disable'])
+    def quit_tray(self, _):
+        Gtk.main_quit()
+
+def main():
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    LockdownTray()
+    Gtk.main()
+
+if __name__ == "__main__":
+    main()

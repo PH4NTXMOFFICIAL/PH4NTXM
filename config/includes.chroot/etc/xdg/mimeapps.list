@@ -1,0 +1,13 @@
+[Default Applications]
+application/pdf=firefox-esr.desktop
+application/xhtml+xml=firefox-esr.desktop
+text/html=firefox-esr.desktop
+x-scheme-handler/http=firefox-esr.desktop
+x-scheme-handler/https=firefox-esr.desktop
+
+[Added Associations]
+application/pdf=firefox-esr.desktop;
+application/xhtml+xml=firefox-esr.desktop;
+text/html=firefox-esr.desktop;
+x-scheme-handler/http=firefox-esr.desktop;
+x-scheme-handler/https=firefox-esr.desktop;

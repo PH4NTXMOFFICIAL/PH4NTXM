@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+USER="ph4ntxm"
+ZSH="/usr/bin/zsh"
+
+if [ -e /var/lib/live/config/ph4ntxm-shell ]; then
+    exit 0
+fi
+
+if [ ! -x "$ZSH" ]; then
+    exit 0
+fi
+
+if ! grep -Fxq "$ZSH" /etc/shells 2>/dev/null; then
+    echo "$ZSH" >> /etc/shells
+fi
+
+if id "$USER" >/dev/null 2>&1; then
+    chsh -s "$ZSH" "$USER" 2>/dev/null || usermod -s "$ZSH" "$USER"
+fi
+
+mkdir -p /var/lib/live/config
+touch /var/lib/live/config/ph4ntxm-shell

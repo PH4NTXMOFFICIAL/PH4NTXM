@@ -1,0 +1,13 @@
+[Unit]
+Description=PH4NTXM Core Randomization
+After=ph4ntxm-gpu-randomization.service
+Requires=ph4ntxm-gpu-randomization.service
+ConditionPathExists=/run/ph4ntxm/mode-normal
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-cores-randomization.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target

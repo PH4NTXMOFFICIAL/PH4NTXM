@@ -1,0 +1,7 @@
+[Unit]
+Description=PH4NTXM Initialization Chain
+DefaultDependencies=no
+Requires=ph4ntxm-mode.service ph4ntxm-link-block.service ph4ntxm-net-prep.service
+After=ph4ntxm-mode.service ph4ntxm-link-block.service ph4ntxm-net-prep.service
+Before=network-pre.target
+AllowIsolate=no

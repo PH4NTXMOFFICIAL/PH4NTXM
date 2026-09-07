@@ -1,0 +1,14 @@
+[Unit]
+Description=PH4NTXM Network Randomization
+DefaultDependencies=no
+After=systemd-sysctl.service ph4ntxm-hardware-randomization.service
+Requires=systemd-sysctl.service ph4ntxm-hardware-randomization.service
+Before=network-pre.target NetworkManager.service ph4ntxm-link-unblock.service
+ConditionPathExists=/run/ph4ntxm/mode-normal
+
+[Service]
+ExecStart=/usr/local/sbin/ph4ntxm-net-randomization.sh
+Type=oneshot
+
+[Install]
+WantedBy=network-pre.target

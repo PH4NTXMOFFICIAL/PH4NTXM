@@ -1,0 +1,14 @@
+[Unit]
+Description=PH4NTXM Link Hard Block
+DefaultDependencies=no
+After=local-fs.target ph4ntxm-mode.service
+Requires=ph4ntxm-mode.service
+Before=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-link-block.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=ph4ntxm-init.target

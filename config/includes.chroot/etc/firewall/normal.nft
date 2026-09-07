@@ -1,0 +1,95 @@
+flush ruleset
+
+table ip raw {
+  chain prerouting {
+    type filter hook prerouting priority raw; policy accept;
+    iifname != "lo" meta mark set 0
+    iifname != "lo" queue num 1
+  }
+
+  chain prerouting_verify {
+    type filter hook prerouting priority -290; policy accept;
+    iifname != "lo" meta mark != 0x50544531 drop
+    meta mark 0x50544531 meta mark set 0
+  }
+
+  chain output {
+    type filter hook output priority -90; policy accept;
+    oifname != "lo" meta mark set 0
+    oifname != "lo" queue num 2
+  }
+
+  chain output_verify {
+    type filter hook output priority -80; policy accept;
+    oifname != "lo" meta mark != 0x50544531 drop
+  }
+}
+
+table ip6 raw {
+  chain prerouting {
+    type filter hook prerouting priority raw; policy accept;
+    iifname != "lo" meta mark set 0
+    iifname != "lo" queue num 1
+  }
+
+  chain prerouting_verify {
+    type filter hook prerouting priority -290; policy accept;
+    iifname != "lo" meta mark != 0x50544531 drop
+    meta mark 0x50544531 meta mark set 0
+  }
+
+  chain output {
+    type filter hook output priority -90; policy accept;
+    oifname != "lo" meta mark set 0
+    oifname != "lo" queue num 2
+  }
+
+  chain output_verify {
+    type filter hook output priority -80; policy accept;
+    oifname != "lo" meta mark != 0x50544531 drop
+  }
+}
+
+table ip nat {
+  chain output {
+    type nat hook output priority dstnat;
+
+    oif lo return
+    udp dport 53 redirect to :53
+    tcp dport 53 redirect to :53
+  }
+}
+
+table inet filter {
+  chain input {
+    type filter hook input priority 0; policy drop;
+
+    ct state invalid drop
+    iif lo accept
+    ct state established,related accept
+
+    udp sport 67 udp dport 68 accept
+    udp sport 547 udp dport 546 accept
+
+    ip protocol icmp accept
+    meta nfproto ipv6 meta l4proto ipv6-icmp accept
+  }
+
+  chain output {
+    type filter hook output priority 0; policy drop;
+
+    ct state invalid drop
+    oif lo accept
+    meta nfproto ipv4 ip daddr != 127.0.0.0/8 meta l4proto { tcp, udp } th dport 53 drop
+    meta nfproto ipv6 ip6 daddr != ::1 meta l4proto { tcp, udp } th dport 53 drop
+    ct state established,related accept
+
+    ct state new meta l4proto { tcp, udp } accept
+    ip protocol icmp accept
+    meta nfproto ipv6 meta l4proto ipv6-icmp accept
+  }
+
+  chain forward {
+    type filter hook forward priority 0; policy drop;
+  }
+}

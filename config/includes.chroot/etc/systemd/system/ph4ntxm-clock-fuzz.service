@@ -1,0 +1,28 @@
+[Unit]
+Description=PH4NTXM Clock Fuzz
+DefaultDependencies=no
+After=local-fs.target ph4ntxm-mode.service ph4ntxm-identity-randomization.service ph4ntxm-lonewolf-identity-randomization.service
+Requires=ph4ntxm-mode.service ph4ntxm-identity-randomization.service ph4ntxm-lonewolf-identity-randomization.service
+Before=time-sync.target systemd-timesyncd.service network-pre.target NetworkManager.service
+Conflicts=systemd-timesyncd.service
+
+[Service]
+Type=notify
+NotifyAccess=all
+ExecStart=/usr/local/sbin/ph4ntxm-clock-fuzz.sh
+Restart=always
+RestartSec=2
+CapabilityBoundingSet=CAP_SYS_TIME
+AmbientCapabilities=CAP_SYS_TIME
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=yes
+RestrictRealtime=yes
+
+[Install]
+WantedBy=network-pre.target

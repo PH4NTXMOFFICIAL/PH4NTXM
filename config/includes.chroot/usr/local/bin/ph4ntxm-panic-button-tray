@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+import gi
+import subprocess
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, GObject
+
+APP_ICON = "ph4ntxm-panic-button"
+TOOLTIP_IDLE = "PH4NTXM Panic Button"
+
+panic_active = False
+
+def trigger_panic(_):
+    global panic_active
+    if panic_active:
+        return
+    panic_active = True
+    status_icon.set_tooltip_text("Panic confirmation open")
+    process = subprocess.Popen(["/usr/local/bin/ph4ntxm-panic-button"])
+    GObject.child_watch_add(process.pid, panic_dialog_closed)
+
+def panic_dialog_closed(_pid, _status):
+    global panic_active
+    panic_active = False
+    status_icon.set_from_icon_name(APP_ICON)
+    status_icon.set_tooltip_text(TOOLTIP_IDLE)
+
+def quit_app(_):
+    Gtk.main_quit()
+
+status_icon = Gtk.StatusIcon()
+status_icon.set_from_icon_name(APP_ICON)
+status_icon.set_tooltip_text(TOOLTIP_IDLE)
+status_icon.set_visible(True)
+
+menu = Gtk.Menu()
+
+item_trigger = Gtk.MenuItem(label="Nuke PH4NTXM")
+item_trigger.connect("activate", trigger_panic)
+menu.append(item_trigger)
+
+item_quit = Gtk.MenuItem(label="Quit")
+item_quit.connect("activate", quit_app)
+menu.append(item_quit)
+
+menu.show_all()
+
+def on_right_click(icon, button, time):
+    menu.popup(None, None, None, None, button, time)
+
+status_icon.connect("popup-menu", on_right_click)
+
+def blink_icon():
+    if panic_active:
+        current = status_icon.get_from_icon_name()
+        status_icon.set_from_icon_name(APP_ICON if current != APP_ICON else "dialog-warning")
+    return True
+
+GObject.timeout_add(500, blink_icon)
+
+Gtk.main()

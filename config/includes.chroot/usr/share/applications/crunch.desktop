@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Crunch
+Comment=Show Crunch help inside a terminal
+Exec=xfce4-terminal --disable-server --class=Crunch --title="Crunch" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review Crunch options.\033[0m\"; crunch -h; exec zsh'"
+StartupWMClass=Crunch
+Icon=ph4ntxm-crunch
+Terminal=false
+Categories=X-PentestingPH4NTXM;

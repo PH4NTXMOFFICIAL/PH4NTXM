@@ -1,0 +1,14 @@
+[Unit]
+Description=PH4NTXM Lone Wolf Screen Generator
+After=ph4ntxm-lonewolf-screen-randomization.service ph4ntxm-lonewolf-cores-randomization.service ph4ntxm-lonewolf-cpu-spoof.service
+Requires=ph4ntxm-lonewolf-screen-randomization.service ph4ntxm-lonewolf-cores-randomization.service ph4ntxm-lonewolf-cpu-spoof.service
+Before=display-manager.service
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-screen-generator.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=ph4ntxm-lonewolf-multi-user.target

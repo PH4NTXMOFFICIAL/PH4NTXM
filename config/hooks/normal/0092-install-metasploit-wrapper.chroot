@@ -1,0 +1,61 @@
+#!/bin/bash
+set -e
+
+install -d -m 0755 /usr/local/bin
+install -d -m 0755 /usr/share/applications
+
+cat > /usr/local/bin/metasploit <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ph4ntxm"
+MSF_DIR="$CACHE_DIR/metasploit-framework"
+READY_FILE="$MSF_DIR/.ph4ntxm-ready"
+
+umask 077
+install -d -m 0700 "$CACHE_DIR"
+
+for required_command in git ruby bundle; do
+  if ! command -v "$required_command" >/dev/null 2>&1; then
+    printf 'Metasploit dependency is missing: %s\n' "$required_command" >&2
+    exit 1
+  fi
+done
+
+if [ -x "$MSF_DIR/msfconsole" ] && [ -f "$READY_FILE" ]; then
+  echo "[+] Using cached Metasploit"
+  cd "$MSF_DIR"
+  exec ./msfconsole "$@"
+fi
+
+if [ ! -d "$MSF_DIR/.git" ]; then
+  echo "[+] Metasploit not found. Bootstrapping..."
+  echo "[+] Cloning Metasploit Framework..."
+  git clone --depth 1 https://github.com/rapid7/metasploit-framework.git "$MSF_DIR"
+fi
+
+cd "$MSF_DIR"
+echo "[+] Installing gems (first run takes time)..."
+bundle config set --local path vendor/bundle
+bundle config set --local without 'development test'
+bundle install
+touch "$READY_FILE"
+
+echo "[+] Launching Metasploit..."
+exec ./msfconsole "$@"
+EOF
+
+chmod 0755 /usr/local/bin/metasploit
+
+cat > /usr/share/applications/metasploit.desktop <<'EOF'
+[Desktop Entry]
+Name=Metasploit Framework
+Comment=Metasploit - Penetration Testing Framework
+Exec=xfce4-terminal --disable-server --class=Metasploit --title="Metasploit Framework" --hold --command="/usr/local/bin/metasploit"
+Terminal=false
+Type=Application
+Categories=X-PentestingPH4NTXM;
+Icon=ph4ntxm-metasploit
+EOF
+
+exit 0

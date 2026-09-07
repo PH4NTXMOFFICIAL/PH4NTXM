@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+STATE_DIR=/run/ph4ntxm
+FLAG_FILE=$STATE_DIR/usb-nuke-armed
+
+[ "$(id -u)" -eq 0 ] || exit 1
+[ "$#" -eq 1 ] || exit 2
+
+install -d -o root -g root -m 0755 "$STATE_DIR"
+
+case "$1" in
+    enable)
+        umask 077
+        rm -f "$STATE_DIR/usb-nuke-triggered"
+        : > "$FLAG_FILE"
+        chmod 0644 "$FLAG_FILE"
+        ;;
+    disable)
+        rm -f "$FLAG_FILE" "$STATE_DIR/usb-nuke-triggered"
+        ;;
+    *)
+        exit 2
+        ;;
+esac

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="88.684219"
+   height="88.684219"
+   version="1.1"
+   viewBox="0 0 23.463904 23.463904"
+   id="svg24"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <defs
+     id="defs10">
+    <linearGradient
+       id="linearGradient3">
+      <stop
+         style="stop-color:#00abff;stop-opacity:0;"
+         offset="0"
+         id="stop6" />
+      <stop
+         style="stop-color:#00abff;stop-opacity:1;"
+         offset="1"
+         id="stop3" />
+    </linearGradient>
+    <linearGradient
+       xlink:href="#linearGradient3"
+       id="linearGradient6"
+       x1="12.142792"
+       y1="25.276831"
+       x2="12.142792"
+       y2="10.655919"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       style="color-interpolation-filters:sRGB"
+       id="filter6"
+       x="-0.026999999"
+       y="-0.026999999"
+       width="1.054"
+       height="1.054">
+      <feGaussianBlur
+         stdDeviation="0.2504449"
+         id="feGaussianBlur6" />
+    </filter>
+  </defs>
+  <metadata
+     id="metadata12">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     id="g6"
+     transform="translate(-0.38799971,-0.46189557)">
+    <path
+       id="path1"
+       style="color:#dedede;display:inline;opacity:0.6;fill:#00abff;fill-opacity:1;stroke-width:1.39135;filter:url(#filter6)"
+       class="ColorScheme-Text"
+       d="M 12.119952,1.0629633 A 11.130789,11.130789 0 0 0 0.98906744,12.193848 11.130789,11.130789 0 0 0 12.119952,23.324732 11.130789,11.130789 0 0 0 23.250836,12.193848 11.130789,11.130789 0 0 0 12.119952,1.0629633 Z m 0,1.3916189 A 9.73944,9.73944 0 0 1 21.859217,12.193848 9.73944,9.73944 0 0 1 12.119952,21.933113 9.73944,9.73944 0 0 1 2.3806864,12.193848 9.73944,9.73944 0 0 1 12.119952,2.4545822 Z M 10.72885,6.6284055 v 6.9570615 h 6.956544 V 12.193848 H 12.119952 V 6.6284055 Z" />
+    <path
+       id="path2"
+       style="color:#dedede;fill:url(#linearGradient6);fill-opacity:1;stroke-width:1.39135"
+       class="ColorScheme-Text"
+       d="M 12.119952,1.0629633 A 11.130789,11.130789 0 0 0 0.98906744,12.193848 11.130789,11.130789 0 0 0 12.119952,23.324732 11.130789,11.130789 0 0 0 23.250836,12.193848 11.130789,11.130789 0 0 0 12.119952,1.0629633 Z m 0,1.3916189 A 9.73944,9.73944 0 0 1 21.859217,12.193848 9.73944,9.73944 0 0 1 12.119952,21.933113 9.73944,9.73944 0 0 1 2.3806864,12.193848 9.73944,9.73944 0 0 1 12.119952,2.4545822 Z M 10.72885,6.6284055 v 6.9570615 h 6.956544 V 12.193848 H 12.119952 V 6.6284055 Z" />
+  </g>
+</svg>

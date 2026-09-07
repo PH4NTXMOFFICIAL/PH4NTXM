@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Health
+Comment=Show Health
+Exec=xfce4-terminal --disable-server --class=PH4NTXM-Health --title="PH4NTXM Health" --hold --command="/usr/local/bin/ph4ntxm-health"
+StartupWMClass=PH4NTXM-Health
+Icon=ph4ntxm-health
+Terminal=false
+Categories=System;X-PH4NTXMApps;
+StartupNotify=false

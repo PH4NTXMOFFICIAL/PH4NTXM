@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="40.836838"
+   height="41.251953"
+   version="1.1"
+   viewBox="0 0 10.804534 10.914365"
+   id="svg43"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <defs
+     id="defs21">
+    <linearGradient
+       id="linearGradient1">
+      <stop
+         style="stop-color:#00abff;stop-opacity:0;"
+         offset="0"
+         id="stop4" />
+      <stop
+         style="stop-color:#00abff;stop-opacity:1;"
+         offset="1"
+         id="stop1" />
+    </linearGradient>
+    <style
+       type="text/css"
+       id="style864" />
+    <filter
+       style="color-interpolation-filters:sRGB"
+       id="filter8"
+       x="-0.030780001"
+       y="-0.024046876"
+       width="1.06156"
+       height="1.0480938">
+      <feGaussianBlur
+         stdDeviation="0.320625"
+         id="feGaussianBlur8" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB"
+       id="filter7"
+       x="-0.027000001"
+       y="-0.027000001"
+       width="1.054"
+       height="1.054">
+      <feGaussianBlur
+         stdDeviation="0.18"
+         id="feGaussianBlur7" />
+    </filter>
+    <linearGradient
+       xlink:href="#linearGradient1"
+       id="linearGradient5"
+       x1="14.781734"
+       y1="34.691624"
+       x2="14.781734"
+       y2="5.4533305"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       xlink:href="#linearGradient6"
+       id="linearGradient7"
+       x1="14.851349"
+       y1="33.925858"
+       x2="14.851349"
+       y2="3.991416"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="linearGradient6">
+      <stop
+         style="stop-color:#ff3dfb;stop-opacity:0;"
+         offset="0"
+         id="stop7" />
+      <stop
+         style="stop-color:#ff3dfb;stop-opacity:1;"
+         offset="1"
+         id="stop6" />
+    </linearGradient>
+  </defs>
+  <metadata
+     id="metadata23">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     id="g8"
+     transform="matrix(0.38285067,0,0,0.38285067,-0.94266456,-0.94266345)">
+    <g
+       id="g2"
+       data-name="5-User"
+       transform="matrix(0.85,0,0,0.85,3.1163002,3.1162973)"
+       style="display:inline">
+      <path
+         d="m 2,29 c 0,-0.78 1.92,-1.7 3.24,-2 h 0.11 l 8,-3 A 1,1 0 0 0 14,23 V 20.31 A 1,1 0 0 0 13.43,19.41 6,6 0 0 1 10,14 1,1 0 0 0 9,13 v -2 a 1,1 0 0 0 1,-1 V 8 a 6,6 0 0 1 12,0 v 2 a 1,1 0 0 0 1,1 v 2 h 2 V 11 A 2,2 0 0 0 24,9.27 V 8 A 8,8 0 0 0 8,8 V 9.27 A 2,2 0 0 0 7,11 v 2 a 2,2 0 0 0 1,1.75 8.07,8.07 0 0 0 4,6.16 V 22.3 L 4.7,25 C 3.79,25.23 0,26.37 0,29 v 2 a 1,1 0 0 0 1,1 H 15 V 30 H 2 Z"
+         id="path1"
+         style="opacity:0.4;fill:#00abff;fill-opacity:1;filter:url(#filter8)" />
+      <path
+         d="m 24,16 a 8,8 0 1 0 8,8 8,8 0 0 0 -8,-8 z m -6,8 a 6,6 0 0 1 9.47,-4.89 l -8.36,8.36 A 6,6 0 0 1 18,24 Z m 6,6 a 6,6 0 0 1 -3.47,-1.11 l 8.36,-8.36 A 6,6 0 0 1 24,30 Z"
+         id="path2"
+         style="opacity:0.4;fill:#ff3dfb;fill-opacity:1;filter:url(#filter7)" />
+    </g>
+    <g
+       id="g4"
+       data-name="5-User"
+       transform="matrix(0.85,0,0,0.85,3.1163002,3.1162973)">
+      <path
+         d="m 2,29 c 0,-0.78 1.92,-1.7 3.24,-2 h 0.11 l 8,-3 A 1,1 0 0 0 14,23 V 20.31 A 1,1 0 0 0 13.43,19.41 6,6 0 0 1 10,14 1,1 0 0 0 9,13 v -2 a 1,1 0 0 0 1,-1 V 8 a 6,6 0 0 1 12,0 v 2 a 1,1 0 0 0 1,1 v 2 h 2 V 11 A 2,2 0 0 0 24,9.27 V 8 A 8,8 0 0 0 8,8 V 9.27 A 2,2 0 0 0 7,11 v 2 a 2,2 0 0 0 1,1.75 8.07,8.07 0 0 0 4,6.16 V 22.3 L 4.7,25 C 3.79,25.23 0,26.37 0,29 v 2 a 1,1 0 0 0 1,1 H 15 V 30 H 2 Z"
+         id="path3"
+         style="fill:url(#linearGradient5);fill-opacity:1" />
+      <path
+         d="m 24,16 a 8,8 0 1 0 8,8 8,8 0 0 0 -8,-8 z m -6,8 a 6,6 0 0 1 9.47,-4.89 l -8.36,8.36 A 6,6 0 0 1 18,24 Z m 6,6 a 6,6 0 0 1 -3.47,-1.11 l 8.36,-8.36 A 6,6 0 0 1 24,30 Z"
+         id="path4"
+         style="fill:url(#linearGradient7);fill-opacity:1" />
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,145 @@
+# ---- System Core (Live / Boot / Kernel) ----
+linux-image-amd64
+live-boot
+live-config
+live-config-systemd
+systemd-sysv
+sudo
+util-linux
+bsdextrautils
+procps
+kmod
+iproute2
+adjtimex
+kexec-tools
+busybox
+cpio
+
+# ---- Hardware & Drivers (Firmware / Networking Base) ----
+firmware-linux
+firmware-linux-free
+firmware-linux-nonfree
+firmware-misc-nonfree
+firmware-iwlwifi
+firmware-brcm80211
+firmware-realtek
+firmware-atheros
+wireless-regdb
+iw
+wpasupplicant
+isc-dhcp-client
+network-manager
+network-manager-gnome
+modemmanager
+rfkill
+
+# ---- Browser ----
+firefox-esr
+gnupg
+xz-utils
+
+# ---- Firewall / Hardening ----
+nftables
+conntrack
+fail2ban
+
+# ---- Storage / Disk / Block Device Layer ----
+hdparm
+secure-delete
+cryptsetup
+
+# ---- Anonymity / Privacy ----
+tor
+dnsmasq-base
+proxychains4
+wireguard-tools
+onionshare
+macchanger
+unbound
+exiftool
+
+# ---- Recon & Scanning ----
+nmap
+masscan
+dnsutils
+whois
+traceroute
+nikto
+dirb
+gobuster
+whatweb
+
+# ---- Web App Testing ----
+wfuzz
+sqlmap
+
+# ---- Password / Credential Attacks ----
+hydra
+john
+hashcat
+crunch
+
+# ---- Wireless Attacks ----
+aircrack-ng
+
+# ---- Packet Capture / Network Analysis ----
+tcpdump
+wireshark
+netcat-openbsd
+arp-scan
+
+# ---- Binary / File Analysis ----
+binwalk
+file
+
+# ---- Development / Runtime ----
+gcc
+binutils
+libc6-dev
+rustc
+clang
+llvm
+libnetfilter-queue-dev
+libmnl-dev
+libnfnetlink-dev
+libbpf-dev
+libelf-dev
+python3
+python3-gi
+python3-dbus
+python3-scapy
+python3-pip
+python3-setuptools
+python3-wheel
+libnetfilter-queue1
+libbpf1
+openjdk-21-jre
+jq
+curl
+git
+ruby
+ruby-dev
+ruby-bundler
+build-essential
+libpq-dev
+libsqlite3-dev
+zlib1g-dev
+libxml2-dev
+libxslt1-dev
+libpcap-dev
+libyaml-dev
+libffi-dev
+libreadline-dev
+libssl-dev
+
+# ---- Desktop / UI ----
+zsh
+gir1.2-ayatanaappindicator3-0.1
+gir1.2-gtk-3.0
+libnotify-bin
+gnome-themes-extra
+task-xfce-desktop
+lightdm
+lightdm-gtk-greeter
+xfce4-goodies
+ttf-mscorefonts-installer

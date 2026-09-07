@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+
+USER="ph4ntxm"
+
+if [ -e /var/lib/live/config/ph4ntxm-user ]; then
+    exit 0
+fi
+
+if id "$USER" >/dev/null 2>&1; then
+
+    echo "$USER:$USER" | chpasswd
+
+    usermod -aG adm "$USER"
+    gpasswd -d "$USER" sudo >/dev/null 2>&1 || true
+
+fi
+
+mkdir -p /var/lib/live/config
+rm -f /etc/sudoers.d/live
+touch /var/lib/live/config/ph4ntxm-user /var/lib/live/config/sudo

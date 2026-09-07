@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=John the Ripper
+Comment=Launch John the Ripper in a terminal
+Exec=xfce4-terminal --disable-server --class=John-The-Ripper --title="John The Ripper" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review John options.\033[0m\"; /usr/sbin/john; exec zsh'"
+StartupWMClass=John-The-Ripper
+Icon=ph4ntxm-john
+Terminal=false
+Categories=X-PentestingPH4NTXM;
