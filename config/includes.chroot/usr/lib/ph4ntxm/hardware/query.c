@@ -15,6 +15,7 @@
 #include <sys/mman.h>
 #include <sched.h>
 #include <sys/sysinfo.h>
+#include <sys/syscall.h>
 #include <sys/utsname.h>
 #include <unistd.h>
 
@@ -22,6 +23,8 @@ static __thread char mapped[PATH_MAX];
 
 static const char *translate(int fd, const char *path)
 {
+    if (getenv("PH4_INVENTORY_SYSCALLS"))
+        return path;
     static const char *roots[] = {"/proc/cpuinfo",
                                   "/proc/meminfo",
                                   "/proc/stat",
@@ -78,6 +81,8 @@ static const char *translate(int fd, const char *path)
 
 static int firmware_tables(int fd, const char *path)
 {
+    if (getenv("PH4_INVENTORY_SYSCALLS"))
+        return 0;
     const char *base = getenv("PH4_INVENTORY_ROOT");
     if (!base || !*base)
         return 0;
@@ -239,6 +244,8 @@ static void refresh_snapshot(int fd)
 
 static int memory_path(const char *path)
 {
+    if (getenv("PH4_INVENTORY_SYSCALLS"))
+        return 0;
     const char *root = getenv("PH4_INVENTORY_ROOT");
     if (!root || !path)
         return 0;
@@ -573,7 +580,8 @@ int sched_getaffinity(pid_t pid, size_t size, cpu_set_t *mask)
     int (*original)(pid_t, size_t, cpu_set_t *) = dlsym(RTLD_NEXT, "sched_getaffinity");
     int result = original(pid, size, mask);
     unsigned long count = value("PH4_REPORTED_CORES");
-    if (!result && count && (pid == 0 || pid == getpid())) {
+    if (!getenv("PH4_INVENTORY_SYSCALLS") && !result && count &&
+        (pid == 0 || pid == getpid())) {
         if (size * CHAR_BIT < count) {
             errno = EINVAL;
             return -1;
@@ -583,4 +591,16 @@ int sched_getaffinity(pid_t pid, size_t size, cpu_set_t *mask)
             CPU_SET_S(cpu, size, mask);
     }
     return result;
+}
+
+int sched_getcpu(void)
+{
+    if (getenv("PH4_INVENTORY_SYSCALLS")) {
+        unsigned int cpu;
+        if (syscall(SYS_getcpu, &cpu, NULL, NULL) < 0)
+            return -1;
+        return (int)cpu;
+    }
+    int (*original)(void) = dlsym(RTLD_NEXT, "sched_getcpu");
+    return original();
 }

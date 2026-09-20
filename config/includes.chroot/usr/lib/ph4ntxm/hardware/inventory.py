@@ -6,9 +6,8 @@ import hashlib
 import os
 from pathlib import Path
 import re
-import select
 import shutil
-import signal
+import shlex
 import struct
 import sys
 import tempfile
@@ -86,6 +85,26 @@ def cpuinfo(env):
             '\n'.join(f'{key}\t: {value}' for key, value in fields.items()) + '\n\n'
         )
     return ''.join(cpuinfo)
+
+
+def node_memory(ram):
+    fields = {}
+    for node in sorted(Path('/sys/devices/system/node').glob('node[0-9]*/meminfo')):
+        for line in node.read_text().splitlines():
+            match = re.fullmatch(r'Node [0-9]+ ([^:]+):\s+([0-9]+)(?:\s+(kB))?', line)
+            if match:
+                key, amount, unit = match.groups()
+                previous = fields.get(key, (0, unit))[0]
+                fields[key] = (previous + int(amount), unit)
+    total = fields.get('MemTotal', (0, None))[0]
+    if not total:
+        raise ValueError('Native NUMA memory information is unavailable')
+    lines = []
+    for key, (amount, unit) in fields.items():
+        if unit == 'kB' and key != 'SwapCached':
+            amount = amount * (ram // 1024) // total
+        lines.append(f'Node 0 {key}: {amount:8d}' + (' kB' if unit else '') + '\n')
+    return ''.join(lines)
 
 
 def prepare(
@@ -228,7 +247,7 @@ def prepare(
     write('/sys/devices/system/node/node0/cpumap', format((1 << count) - 1, 'x') + '\n')
     write(
         '/sys/devices/system/node/node0/meminfo',
-        ''.join('Node 0 ' + line + '\n' for line in memory_text.splitlines()),
+        node_memory(ram),
     )
     stat = Path('/proc/stat').read_text().splitlines()
     cpus = [line.split()[1:] for line in stat if re.match(r'^cpu\d+ ', line)]
@@ -752,6 +771,7 @@ def main():
         return 0
     tool, real, *arguments = sys.argv[1:]
     if tool not in (
+        'run',
         'lshw',
         'hwinfo',
         'inxi',
@@ -776,20 +796,21 @@ def main():
     library = Path('/usr/lib/ph4ntxm/hardware/query.so')
     if not library.is_file():
         raise ValueError('Inventory library is missing')
+    supervisor = Path('/usr/lib/ph4ntxm/hardware/supervisor')
+    if not supervisor.is_file():
+        raise ValueError('Hardware supervisor is missing')
     temporary = tempfile.mkdtemp(prefix='.ph4ntxm-inventory-')
     try:
         environment = os.environ.copy()
-        if tool in ('nproc', 'free'):
-            validate(environment)
-            ram = usable_memory(environment)
-            environment.update(
-                PH4_INVENTORY_ROOT=temporary, PH4_INVENTORY_RAM_BYTES=str(ram)
-            )
-        else:
-            environment.update(prepare(Path(temporary), environment))
+        environment.update(prepare(Path(temporary), environment))
         environment['LD_PRELOAD'] = str(library) + (
             ':' + environment['LD_PRELOAD'] if environment.get('LD_PRELOAD') else ''
         )
+        for variable in ('LD_PRELOAD', 'LD_LIBRARY_PATH', 'LD_AUDIT'):
+            environment.pop('PH4_CHILD_' + variable, None)
+            if variable in environment:
+                environment['PH4_CHILD_' + variable] = environment.pop(variable)
+        environment['PH4_INVENTORY_ARGV0'] = real if tool == 'run' else tool
         if tool == 'lscpu':
             arguments = ['--sysroot', temporary, *arguments]
         if tool.startswith(('hwloc-', 'lstopo')):
@@ -798,31 +819,19 @@ def main():
             arg in ('-version', '-help', '--help') for arg in arguments
         ):
             arguments += ['-disable', 'cpuid']
-        descriptor = os.pidfd_open(os.getpid())
-        try:
-            cleaner = os.fork()
-        except BaseException:
-            os.close(descriptor)
-            raise
-        if cleaner == 0:
-            try:
-                signal.signal(signal.SIGINT, signal.SIG_IGN)
-                signal.signal(signal.SIGHUP, signal.SIG_IGN)
-                signal.signal(signal.SIGTERM, signal.SIG_IGN)
-                os.setsid()
-                for stream in (0, 1, 2):
-                    try:
-                        os.close(stream)
-                    except OSError:
-                        pass
-                watcher = select.poll()
-                watcher.register(descriptor, select.POLLIN)
-                watcher.poll()
-                shutil.rmtree(temporary, ignore_errors=True)
-            finally:
-                os._exit(0)
-        os.close(descriptor)
-        os.execve(real, [tool, *arguments], environment)
+        environment['PH4_INVENTORY_SYSCALLS'] = '1'
+        (Path(temporary) / 'environment').write_text(
+            ''.join(
+                key + '=' + shlex.quote(value) + '\n'
+                for key, value in sorted(environment.items())
+                if (key.startswith(('PH4_CPU_', 'PH4_CACHE_', 'PH4_INVENTORY_'))
+                    or key == 'PH4_REPORTED_CORES')
+                and key not in ('PH4_INVENTORY_ARGV0', 'PH4_INVENTORY_OWNED')
+                and re.fullmatch(r'[A-Z0-9_]+', key)
+            )
+        )
+        environment['PH4_INVENTORY_OWNED'] = '1'
+        os.execve(supervisor, [str(supervisor), real, *arguments], environment)
     except BaseException:
         shutil.rmtree(temporary, ignore_errors=True)
         raise

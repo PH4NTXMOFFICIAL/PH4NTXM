@@ -158,7 +158,7 @@ When armed, removal of a USB storage disk triggers the Panic and Nuke sequence.
 
 ## [ SYSTEM WRAPPERS ]
 
-Hardware wrappers share `/usr/lib/ph4ntxm/hardware` and execute native inventory tools with session CPU/RAM/DMI data. A common model table supplies total and active CPU topology in Linux, Windows and Lone Wolf modes and the boot CPU view. Native output formats and diagnostics are preserved.
+Hardware wrappers share `/usr/lib/ph4ntxm/hardware` and execute native inventory tools with session CPU/RAM/DMI data. A common model table supplies total and active CPU topology in Linux, Windows and Lone Wolf modes and the boot CPU view. Native output formats and diagnostics are preserved. Private mount namespaces and a temporary seccomp supervisor extend the view to direct hardware-query syscalls and descendants; `ph4ntxm-hardware-run` applies the same view to an explicitly launched application.
 
 ## [ OPSEC SUITE ]
 

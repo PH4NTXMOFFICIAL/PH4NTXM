@@ -9,19 +9,41 @@ real="$0-real"
 if [[ "$tool" == "hwloc-ls" ]]; then
     real="${0%/*}/lstopo-real"
 fi
-if (($# == 1)); then
+if [[ "$tool" == "ph4ntxm-hardware-run" ]]; then
+    if (($# == 0)) || [[ "$1" == "--help" ]]; then
+        printf 'Usage: ph4ntxm-hardware-run COMMAND [ARGUMENT...]\n'
+        exit 0
+    fi
+    real=$(type -P -- "$1") || exit 127
+    tool=run
+    shift
+fi
+if [[ "$tool" != "run" ]] && (($# == 1)); then
     case "$1" in
         --help | --version | -help | -version)
             exec -a "$tool" "$real" "$@"
             ;;
     esac
 fi
-if [[ -n "${PH4_INVENTORY_ROOT:-}" && -r "$PH4_INVENTORY_ROOT/proc/cpuinfo" ]]; then
+if [[ -r /usr/lib/ph4ntxm/hardware/view/environment ]]; then
+    set -a
+    source /usr/lib/ph4ntxm/hardware/view/environment
+    set +a
+    case ":${LD_PRELOAD:-}:" in
+        *:/usr/lib/ph4ntxm/hardware/query.so:*) ;;
+        *) export LD_PRELOAD="/usr/lib/ph4ntxm/hardware/query.so${LD_PRELOAD:+:$LD_PRELOAD}" ;;
+    esac
+    case "$tool" in
+        hwloc-* | lstopo*) export HWLOC_COMPONENTS=-x86 ;;
+    esac
     if [[ "$tool" == "lshw" ]]; then
         exec -a "$tool" "$real" "$@" -disable cpuid
     fi
     if [[ "$tool" == "lscpu" ]]; then
         exec -a "$tool" "$real" --sysroot "$PH4_INVENTORY_ROOT" "$@"
+    fi
+    if [[ "$tool" == "run" ]]; then
+        exec "$real" "$@"
     fi
     exec -a "$tool" "$real" "$@"
 fi

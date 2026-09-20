@@ -4,14 +4,22 @@
 
 set -eu
 
-install -d -m 0755 /usr/lib/ph4ntxm/hardware
+install -d -m 0755 /usr/lib/ph4ntxm/hardware/view
 gcc -std=c11 -O2 -Wall -Wextra -Werror -fPIC -shared \
     -Wl,-z,relro,-z,now,-z,noexecstack \
     /usr/lib/ph4ntxm/hardware/query.c -ldl \
     -o /usr/lib/ph4ntxm/hardware/query.so
-strip --strip-unneeded /usr/lib/ph4ntxm/hardware/query.so
-chmod 0755 /usr/lib/ph4ntxm/hardware/query.so
+gcc -std=c11 -O2 -Wall -Wextra -Werror -fPIE -pie \
+    -fstack-protector-strong -D_FORTIFY_SOURCE=3 \
+    -Wl,-z,relro,-z,now,-z,noexecstack \
+    /usr/lib/ph4ntxm/hardware/supervisor.c \
+    -o /usr/lib/ph4ntxm/hardware/supervisor
+strip --strip-unneeded /usr/lib/ph4ntxm/hardware/query.so \
+    /usr/lib/ph4ntxm/hardware/supervisor
+chmod 0755 /usr/lib/ph4ntxm/hardware/query.so \
+    /usr/lib/ph4ntxm/hardware/supervisor
 sh /usr/lib/ph4ntxm/hardware/build-fastfetch
-rm -f /usr/lib/ph4ntxm/hardware/query.c
+rm -f /usr/lib/ph4ntxm/hardware/query.c \
+    /usr/lib/ph4ntxm/hardware/supervisor.c
 rm -f /usr/lib/ph4ntxm/hardware/build-fastfetch \
     /usr/lib/ph4ntxm/hardware/fastfetch-profile.patch
