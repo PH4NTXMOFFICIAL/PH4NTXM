@@ -11,7 +11,7 @@ The same source revision does not guarantee a byte-identical ISO.
 
 ## [ BUILDING PH4NTXM ]
 
-Follow [INSTALLATION.md](INSTALLATION.md) to build and prepare live media.
+Verify the selected source revision below, then follow [INSTALLATION.md](INSTALLATION.md) to build and prepare live media.
 
 ## [ AUTHENTICITY & INTEGRITY ]
 
@@ -25,17 +25,32 @@ Confirm the fingerprint through a trusted independent channel before importing i
 
 ```bash
 gpg --import ph4ntxm-public-key.asc
+git tag --list
+```
+
+For example, select `v1.1.0` below. Replace it with the release you want.
+
+Verify the tag and confirm the signer matches the trusted key:
+
+```bash
+git verify-tag v1.1.0
+```
+
+If verification succeeds, switch to that release and verify its commit. Run each command separately and stop if either fails:
+
+```bash
+git switch --detach v1.1.0
 git verify-commit HEAD
 ```
 
-Stop on a bad signature or unexpected signer.  
+Build only after both signatures match the trusted key.  
 A good signature with an owner-trust warning still requires fingerprint confirmation.  
-The signature covers the commit, not local changes or the built ISO.
+The signatures cover source revisions, not local changes or the built ISO.
 
-From the ISO folder, record its SHA256 and compare it after transfer. Replace `ph4ntxm.iso` with your ISO filename:
+Each exported build includes `SHA256SUMS`. Run this from its `output/` subdirectory alongside the ISO, and repeat after transfer:
 
 ```bash
-sha256sum ph4ntxm.iso
+sha256sum --check SHA256SUMS
 ```
 
 ## [ REDISTRIBUTION ]

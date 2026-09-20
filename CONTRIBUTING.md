@@ -5,37 +5,35 @@ Contributions are welcome but must respect the core principles of the system.
 
 ## [ BEFORE YOU CONTRIBUTE ]
 
-All changes must maintain the identity graph, cross-layer consistency, stateless execution, and deterministic identity behavior.  
+Keep the session identity chain consistent across hardware, browser and network components. Preserve stateless execution and the active mode's behavior.
 
 ## [ WAYS TO CONTRIBUTE ]
 
-You can help by auditing system behavior, testing edge cases, improving documentation, proposing architectural improvements, or submitting patches.  
-Focus on work that preserves deterministic, persona-aligned behavior across all layers.
+You can help by auditing system behavior, testing edge cases, improving documentation, proposing architectural improvements, or submitting patches.
 
 ## [ REPORTING ISSUES ]
 
-Include expected versus observed behavior and distinguish bare-metal tests from VM tests.
+Include the source commit or release tag, edition, boot mode, reproduction steps, and expected versus observed behavior. Distinguish bare-metal tests from VM tests.
 
 ## [ SUBMITTING CHANGES ]
 
-Fork the repository, create a focused branch, keep changes minimal and scoped, and submit a pull request with a clear explanation.  
-Every change must align with the session identity model and preserve cross-layer coherence.
+Fork the repository, create a focused branch, and submit a pull request explaining the change and its checks. Report which checks passed, failed, or were not run.  
+Each commit should contain one complete change, including its related code, build integration, required tests and documentation. Keep unrelated work in separate commits.
 
-## [ CONTRIBUTION GUIDELINES ]
+## [ COMMIT MESSAGES ]
 
-Do not introduce persistence mechanisms, bypass identity generation logic, or modify system behavior outside the identity model.  
-Avoid unnecessary complexity. Maintain deterministic and coherent behavior.
+Use `type(scope): description`, naming the affected component and the resulting behavior. Use `feat` for new functionality and `fix` for bug fixes. Other focused changes use `docs`, `test`, `build`, or `refactor`; refactoring preserves behavior.  
+Related documentation and tests can belong in the feature or fix commit. Sign commits with `git commit -S` and use the current date.
 
 ## [ CODE & DESIGN EXPECTATIONS ]
 
-All changes should be explainable in terms of the identity model.  
-Avoid ad-hoc patches or isolated fixes; prefer systemic solutions over local modifications.  
-Ensure alignment between hardware, OS, and network layers.
+Match the surrounding layout and indentation, and preserve the PH4NTXM/GPL banners. Keep explanations in the component documentation rather than inline comments or docstrings.  
+Avoid unnecessary complexity, persistence mechanisms, identity-generation bypasses, and changes outside the session model.
 
 ## [ REVIEW PROCESS ]
 
 All contributions are reviewed manually.  
-Acceptance depends on alignment with project philosophy, system-wide impact, and consistency with existing architecture.  
+Acceptance depends on alignment with project philosophy, validation results, and consistency with the existing architecture.
 
 ## [ SECURITY CONSIDERATIONS ]
 

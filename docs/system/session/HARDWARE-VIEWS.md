@@ -4,13 +4,23 @@
 
 Runs native `dmidecode`, `lscpu`, `free`, `nproc`, `lshw`, `hwinfo`, `inxi`, `fastfetch`, `screenfetch`, `getconf`, `vmstat`, `lsmem`, `lstopo` and hwloc inventory tools with session CPU/RAM/DMI values. Neofetch is wrapped when installed at build time. Native fields, formatting, supported options and diagnostics remain in use.
 
+## [ STARTUP ]
+
+A wrapped command starts its own temporary supervisor after reading the session profile. The supervisor exits and removes its snapshot after the last participating process ends.
+
 ## [ RUNTIME ]
 
 Linux, Windows and Lone Wolf share one hardware catalog. CPU topology, memory layouts, DMI identity and BIOS/UEFI reporting follow the selected persona. Active CPUs and usable RAM are sized for the host; session serials and UUIDs are generated locally.
 
-Each command uses a read-only hardware snapshot in a private mount namespace. A temporary seccomp supervisor supplies session values to direct hardware-query syscalls, including static executables and child processes. Counters refresh during repeated reads; the supervisor and snapshot are removed after the last participating process exits.
+Private mount namespaces provide read-only hardware views. Seccomp supplies session values to supported direct hardware-query syscalls in launched programs and their child processes, including static executables. Counters refresh during repeated reads.
 
-Use `ph4ntxm-hardware-run COMMAND [ARGUMENT...]` to launch another application with the same CPU/RAM/DMI view. The selected command keeps its normal output format and exit status; the host boot configuration is unchanged.
+Use `ph4ntxm-hardware-run` to launch another application with the same view. For example, ask Python for the available CPU count:
+
+```bash
+ph4ntxm-hardware-run /usr/bin/python3 -c 'import os; print(os.cpu_count())'
+```
+
+The selected command keeps its normal output format and exit status; the host boot configuration is unchanged.
 
 ## [ SOURCE ]
 
