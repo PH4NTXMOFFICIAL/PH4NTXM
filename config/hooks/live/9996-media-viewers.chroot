@@ -1,0 +1,23 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+HELPERS=/usr/local/libexec/ph4ntxm-media
+for player in ristretto parole; do
+    path="/usr/bin/$player"
+    backend="$HELPERS/$player"
+    diversion=$(dpkg-divert --truename "$path")
+    if [ "$diversion" = "$path" ]; then
+        dpkg-divert --add --rename --divert "$backend" "$path"
+    elif [ "$diversion" != "$backend" ]; then
+        printf 'Conflicting media diversion: %s\n' "$path" >&2
+        exit 1
+    fi
+    [ -f "$backend" ]
+    chmod 0755 "$backend"
+    ln -sf /usr/local/bin/ph4ntxm-media "$path"
+done
+chmod 0755 "$HELPERS/bwrap" "$HELPERS/filter" /usr/local/bin/ph4ntxm-media
+update-desktop-database /usr/share/applications

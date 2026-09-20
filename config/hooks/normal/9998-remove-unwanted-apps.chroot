@@ -9,7 +9,6 @@ PACKAGES=(
     dictionary
     exfalso
     quodlibet
-    parole
     plymouth
     avahi-daemon
     libnss-mdns

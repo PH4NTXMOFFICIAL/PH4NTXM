@@ -121,6 +121,11 @@ LONE WOLF: Tor Browser uses system Tor in an isolated runtime environment withou
 Selected documents and images are rendered inside a disposable offline KVM guest with no network adapter or shared host directories.  
 A bounded host broker validates returned pixels and builds an image-only PDF for preview and explicit export.
 
+## [ MEDIA VIEWERS ]
+
+Ristretto and Parole run in disposable offline namespaces with selected read-only media, a private display and session bus.  
+A separate audio bridge accepts fixed-format PCM; memory and process limits cover the session. Desktop thumbnails are disabled.
+
 ## [ IDENTITY ]
 
 Read-only system identity view for the active mode, hostname, machine ID, MAC, clock, and generated persona.  

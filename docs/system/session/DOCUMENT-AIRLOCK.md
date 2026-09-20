@@ -6,7 +6,8 @@ Converts supported PDF, Office documents and single-frame images into an image-o
 
 ## [ STARTUP ]
 
-Available through the applications menu and default associations for supported files. Opening a file starts conversion.  
+Available through the applications menu and default associations for PDF and Office documents. Opening a file starts conversion.  
+Supported images remain available through Open With or the document chooser.  
 Runs from the desktop account after checking KVM access, isolation support and available memory.
 
 ## [ RUNTIME ]

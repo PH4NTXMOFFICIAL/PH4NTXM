@@ -39,4 +39,4 @@ Each edition supplies matching desktop, login and bootloader artwork. Both keep 
 
 ## [ VALIDATION ]
 
-The build runs Airlock unit tests and Packet Transformation Engine Rust, differential, fuzz-smoke and native self-tests. Before a release, build both editions and check their UEFI and BIOS menus, LightDM, panel, terminal and application dialogs.
+The build runs Airlock and media-viewer unit tests and Packet Transformation Engine Rust, differential, fuzz-smoke and native self-tests. Before a release, build both editions and check their UEFI and BIOS menus, LightDM, panel, terminal and application dialogs.

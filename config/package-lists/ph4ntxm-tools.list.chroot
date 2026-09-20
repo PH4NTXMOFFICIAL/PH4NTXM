@@ -54,6 +54,12 @@ exiftool
 
 qemu-system-x86
 bubblewrap
+parole
+ristretto
+webp-pixbuf-loader
+xserver-xephyr
+wmctrl
+pulseaudio-utils
 debootstrap
 squashfs-tools
 poppler-utils
