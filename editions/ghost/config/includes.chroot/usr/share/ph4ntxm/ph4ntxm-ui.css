@@ -1,3 +1,5 @@
+@define-color ph4ntxm_app_outline alpha(#d3e0e7, 0.4);
+
 window {
     background-color: #f3f6f8;
     color: #163042;
@@ -9,7 +11,7 @@ window {
 
 .top-panel {
     background-color: #ffffff;
-    border-bottom: 1px solid #d3e0e7;
+    border-bottom: 1px solid @ph4ntxm_app_outline;
     padding: 20px 22px;
 }
 
@@ -26,7 +28,7 @@ window {
 
 .section {
     background-color: #ffffff;
-    border: 1px solid #d3e0e7;
+    border: 1px solid @ph4ntxm_app_outline;
     border-radius: 8px;
     padding: 14px;
 }
@@ -91,7 +93,7 @@ window {
 
 .danger-panel {
     background-color: #fff2f4;
-    border: 1px solid #dfafbc;
+    border: 1px solid alpha(#dfafbc, 0.55);
     border-radius: 8px;
     padding: 16px;
 }
@@ -110,9 +112,16 @@ button {
     background-image: none;
     background-color: #e8f0f5;
     color: #163042;
-    border: 1px solid #c4d5df;
+    border: 1px solid alpha(#c4d5df, 0.65);
     border-radius: 6px;
     padding: 8px 16px;
+    box-shadow: none;
+    text-shadow: none;
+    -gtk-icon-shadow: none;
+    outline-color: alpha(#00abff, 0.85);
+    outline-style: solid;
+    outline-width: 0;
+    outline-offset: -3px;
 }
 
 button:hover {
@@ -120,29 +129,103 @@ button:hover {
     border-color: #79bcca;
 }
 
-button.primary {
+button:active,
+button:checked {
+    background-color: #d9f2f8;
+    border-color: #70b8c9;
+}
+
+button.primary,
+button.suggested-action {
     background-color: #ddf4fa;
-    border-color: #008ca9;
+    border-color: alpha(#008ca9, 0.65);
     color: #00647c;
+}
+
+button.primary:hover,
+button.suggested-action:hover {
+    background-color: #ccecf5;
+}
+
+button.primary:active,
+button.primary:checked,
+button.suggested-action:active,
+button.suggested-action:checked {
+    background-color: #bde3ee;
 }
 
 button.safe {
     background-color: #e4f6eb;
-    border-color: #84b99a;
+    border-color: alpha(#84b99a, 0.65);
     color: #12673b;
 }
 
-button.danger {
+button.safe:hover {
+    background-color: #d4efdf;
+}
+
+button.safe:active,
+button.safe:checked {
+    background-color: #c2e5d0;
+}
+
+button.danger,
+button.destructive-action {
     background-color: #ffe8ed;
-    border-color: #cd8091;
+    border-color: alpha(#cd8091, 0.65);
     color: #a51937;
 }
 
-button.danger:hover {
+button.danger:hover,
+button.destructive-action:hover {
     background-color: #fbd4de;
     border-color: #b62443;
 }
 
+button.danger:active,
+button.danger:checked,
+button.destructive-action:active,
+button.destructive-action:checked {
+    background-color: #f3bdcb;
+}
+
+button:focus {
+    border-color: #008ca9;
+    outline-width: 1px;
+}
+
+button:disabled,
+button.primary:disabled,
+button.suggested-action:disabled,
+button.safe:disabled,
+button.danger:disabled,
+button.destructive-action:disabled {
+    color: #8195a3;
+    background-color: #edf2f5;
+    border-color: alpha(#c4d5df, 0.4);
+    box-shadow: none;
+    outline-width: 0;
+}
+
+button label,
+button image {
+    color: inherit;
+    background-color: transparent;
+    border-color: transparent;
+}
+
+scrollbar button {
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background-image: none;
+    background-color: transparent;
+    box-shadow: none;
+    outline-width: 0;
+}
+
 separator {
-    background-color: #d3e0e7;
+    background-color: @ph4ntxm_app_outline;
 }

@@ -1,13 +1,15 @@
+@import url("ph4ntxm-ui.css");
+
 window {
     background: #f3f6f8;
-    color: #243748;
+    color: #163042;
 }
 
 .top-panel,
 .section,
 .wifi-panel {
     background: #ffffff;
-    border-color: #d3e0e7;
+    border-color: @ph4ntxm_app_outline;
 }
 
 .subtitle,
@@ -46,16 +48,16 @@ window {
 }
 
 .wifi-title {
-    color: #243748;
+    color: #163042;
 }
 
 .network-list {
     background: #ffffff;
-    color: #243748;
+    color: #163042;
 }
 
 .network-list row {
-    border-color: #d3e0e7;
+    border-color: @ph4ntxm_app_outline;
 }
 
 .network-list row:selected {
@@ -64,5 +66,5 @@ window {
 
 .footer {
     background: #f3f6f8;
-    border-color: #d3e0e7;
+    border-color: @ph4ntxm_app_outline;
 }

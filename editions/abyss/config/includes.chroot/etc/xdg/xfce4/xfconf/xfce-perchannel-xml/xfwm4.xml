@@ -45,11 +45,11 @@
     <property name="repeat_urgent_blink" type="bool" value="false"/>
     <property name="resize_opacity" type="int" value="100"/>
     <property name="scroll_workspaces" type="bool" value="true"/>
-    <property name="shadow_delta_height" type="int" value="0"/>
+    <property name="shadow_delta_height" type="int" value="2"/>
     <property name="shadow_delta_width" type="int" value="0"/>
     <property name="shadow_delta_x" type="int" value="0"/>
     <property name="shadow_delta_y" type="int" value="-3"/>
-    <property name="shadow_opacity" type="int" value="50"/>
+    <property name="shadow_opacity" type="int" value="35"/>
     <property name="show_app_icon" type="bool" value="true"/>
     <property name="show_dock_shadow" type="bool" value="true"/>
     <property name="show_frame_shadow" type="bool" value="true"/>

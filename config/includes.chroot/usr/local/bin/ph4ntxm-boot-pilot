@@ -14,7 +14,7 @@ import time
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk, GLib
+from gi.repository import Gtk, Gdk, GLib, Pango
 
 STATE_DIR = "/run/ph4ntxm"
 SYSTEMCTL = "/usr/bin/systemctl"
@@ -546,14 +546,23 @@ class IndicatorRow(Gtk.Box):
         dot.set_valign(Gtk.Align.CENTER)
         self.pack_start(dot, False, False, 0)
         label = Gtk.Label(label=check["label"])
-        label.set_halign(Gtk.Align.START)
+        label.set_halign(Gtk.Align.FILL)
+        label.set_xalign(0)
         label.set_hexpand(True)
+        label.set_line_wrap(True)
+        label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        label.set_max_width_chars(28)
         self.pack_start(label, True, True, 0)
         detail = Gtk.Label(label=check["detail"])
-        detail.set_halign(Gtk.Align.END)
+        detail.set_halign(Gtk.Align.FILL)
+        detail.set_xalign(1)
+        detail.set_justify(Gtk.Justification.RIGHT)
+        detail.set_line_wrap(True)
+        detail.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        detail.set_max_width_chars(32)
         detail.set_selectable(True)
         detail.get_style_context().add_class(f"text-{check['state']}")
-        self.pack_end(detail, False, False, 0)
+        self.pack_end(detail, True, True, 0)
 
 
 class WifiDialog(Gtk.Dialog):
@@ -909,25 +918,25 @@ class BootPilot(Gtk.Window):
         provider = Gtk.CssProvider()
         provider.load_from_data(b"""
             window { background: #0d1117; color: #d7e0ea; }
-            .top-panel { background: #121a24; padding: 22px; border-bottom: 1px solid #263241; }
-            .title { font-size: 26px; font-weight: 700; }
+            .top-panel { background: #121a24; padding: 20px 22px; border-bottom: 1px solid #263241; }
+            .title { font-size: 24px; font-weight: 700; }
             .subtitle { color: #90a4b8; font-size: 13px; }
-            .overall-dot { font-size: 48px; }
+            .overall-dot { font-size: 38px; }
             .section { background: #121a24; border: 1px solid #263241; border-radius: 8px; padding: 14px; }
-            .section-title { color: #7dcfff; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+            .section-title { color: #7dcfff; font-size: 13px; font-weight: 700; }
             .check-row { padding: 5px 2px; }
             .dot-pass, .dot-ready, .text-pass, .text-ready { color: #44d17a; }
             .dot-warn, .dot-pending, .text-warn, .text-pending { color: #ffb020; }
             .dot-fail, .dot-unsafe, .text-fail, .text-unsafe { color: #ff4d5a; }
             .dot-info, .text-info { color: #7f91a4; }
-            .status-pill { background: #1b2633; border-radius: 12px; padding: 5px 10px; }
-            .wifi-panel { background: #121a24; border: 1px solid #263241; border-radius: 8px; padding: 13px; }
+            .status-pill { background: #1b2633; border-radius: 12px; padding: 6px 12px; }
+            .wifi-panel { background: #121a24; border: 1px solid #263241; border-radius: 8px; padding: 14px; }
             .wifi-title { color: #d7e0ea; font-size: 14px; font-weight: 700; }
             .network-list { background: #0d1117; color: #d7e0ea; }
             .network-list row { border-bottom: 1px solid #263241; }
             .network-list row:selected { background: #173047; }
             .footer { background: #0d1117; border-top: 1px solid #263241; padding: 12px 18px; }
-            button { padding: 7px 14px; }
+            button { padding: 8px 16px; }
         """)
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
@@ -950,7 +959,11 @@ class BootPilot(Gtk.Window):
         self.header_title.get_style_context().add_class("title")
         self.header_title.set_halign(Gtk.Align.START)
         self.header_subtitle.get_style_context().add_class("subtitle")
-        self.header_subtitle.set_halign(Gtk.Align.START)
+        self.header_subtitle.set_halign(Gtk.Align.FILL)
+        self.header_subtitle.set_xalign(0)
+        self.header_subtitle.set_line_wrap(True)
+        self.header_subtitle.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        self.header_subtitle.set_max_width_chars(44)
         title_box.pack_start(self.header_title, False, False, 0)
         title_box.pack_start(self.header_subtitle, False, False, 0)
         top.pack_start(title_box, True, True, 0)

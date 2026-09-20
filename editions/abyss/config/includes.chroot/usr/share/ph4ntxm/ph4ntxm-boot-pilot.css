@@ -1,3 +1,5 @@
+@import url("ph4ntxm-ui.css");
+
 window {
     background: #101b2a;
     color: #e2eaf2;
@@ -7,7 +9,7 @@ window {
 .section,
 .wifi-panel {
     background: #172638;
-    border-color: #2b4056;
+    border-color: @ph4ntxm_app_outline;
 }
 
 .subtitle,
@@ -55,7 +57,7 @@ window {
 }
 
 .network-list row {
-    border-color: #2b4056;
+    border-color: @ph4ntxm_app_outline;
 }
 
 .network-list row:selected {
@@ -64,5 +66,5 @@ window {
 
 .footer {
     background: #101b2a;
-    border-color: #2b4056;
+    border-color: @ph4ntxm_app_outline;
 }

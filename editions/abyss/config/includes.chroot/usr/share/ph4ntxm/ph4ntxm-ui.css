@@ -1,3 +1,5 @@
+@define-color ph4ntxm_app_outline alpha(black, 0.08);
+
 window {
     background-color: #101b2a;
     color: #e2eaf2;
@@ -9,7 +11,7 @@ window {
 
 .top-panel {
     background-color: #172638;
-    border-bottom: 1px solid #2b4056;
+    border-bottom: 1px solid @ph4ntxm_app_outline;
     padding: 20px 22px;
 }
 
@@ -26,7 +28,7 @@ window {
 
 .section {
     background-color: #172638;
-    border: 1px solid #2b4056;
+    border: 1px solid @ph4ntxm_app_outline;
     border-radius: 8px;
     padding: 14px;
 }
@@ -91,7 +93,7 @@ window {
 
 .danger-panel {
     background-color: #251c2d;
-    border: 1px solid #6c354d;
+    border: 1px solid alpha(#6c354d, 0.55);
     border-radius: 8px;
     padding: 16px;
 }
@@ -110,49 +112,120 @@ button {
     background-image: none;
     background-color: #172638;
     color: #e2eaf2;
-    border: 1px solid #2b4056;
+    border: 1px solid alpha(black, 0.16);
     border-radius: 6px;
     padding: 8px 16px;
+    box-shadow: none;
+    text-shadow: none;
+    -gtk-icon-shadow: none;
+    outline-color: alpha(#00abff, 0.85);
+    outline-style: solid;
+    outline-width: 0;
+    outline-offset: -3px;
 }
 
 button:hover {
     background-color: #1c3045;
-    border-color: #426581;
+    border-color: alpha(#00abff, 0.35);
 }
 
-button.primary {
+button:active,
+button:checked {
     background-color: #123b55;
-    border-color: #00abff;
+    border-color: #357292;
+}
+
+button.primary,
+button.suggested-action {
+    background-color: #123b55;
+    border-color: alpha(#00abff, 0.55);
     color: #b5e5ff;
+}
+
+button.primary:hover,
+button.suggested-action:hover {
+    background-color: #174967;
+}
+
+button.primary:active,
+button.primary:checked,
+button.suggested-action:active,
+button.suggested-action:checked {
+    background-color: #0d3047;
 }
 
 button.safe {
     background-color: #14332c;
-    border-color: #347e60;
+    border-color: alpha(#347e60, 0.65);
     color: #70e1ab;
 }
 
-button.danger {
+button.safe:hover {
+    background-color: #1a4438;
+}
+
+button.safe:active,
+button.safe:checked {
+    background-color: #0f2923;
+}
+
+button.danger,
+button.destructive-action {
     background-color: #442033;
-    border-color: #ad4c69;
+    border-color: alpha(#ad4c69, 0.65);
     color: #ffdce4;
 }
 
-button.danger:hover {
+button.danger:hover,
+button.destructive-action:hover {
     background-color: #602840;
     border-color: #ff6b88;
 }
 
-separator {
-    background-color: #2b4056;
+button.danger:active,
+button.danger:checked,
+button.destructive-action:active,
+button.destructive-action:checked {
+    background-color: #351827;
+}
+
+button:focus {
+    border-color: #00abff;
+    outline-width: 1px;
 }
 
 button:disabled,
 button.primary:disabled,
+button.suggested-action:disabled,
 button.safe:disabled,
-button.danger:disabled {
+button.danger:disabled,
+button.destructive-action:disabled {
     color: #71869b;
     background-color: #101b2a;
-    border-color: #223347;
+    border-color: alpha(black, 0.12);
     box-shadow: none;
+    outline-width: 0;
+}
+
+button label,
+button image {
+    color: inherit;
+    background-color: transparent;
+    border-color: transparent;
+}
+
+scrollbar button {
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background-image: none;
+    background-color: transparent;
+    box-shadow: none;
+    outline-width: 0;
+}
+
+separator {
+    background-color: @ph4ntxm_app_outline;
 }

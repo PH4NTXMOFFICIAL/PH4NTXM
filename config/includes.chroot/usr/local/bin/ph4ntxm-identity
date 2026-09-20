@@ -8,7 +8,7 @@ import sys
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk, Gdk, Pango
 
 CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
 ICON_FILE = "/usr/share/icons/Lyra-blue-dark/apps/scalable/ph4ntxm-identity.svg"
@@ -74,11 +74,13 @@ def data_row(label_text, value_text, selectable=True):
     label.set_valign(Gtk.Align.START)
     row.pack_start(label, False, False, 0)
     value = add_class(Gtk.Label(label=value_text), "data-value")
-    value.set_halign(Gtk.Align.END)
+    value.set_halign(Gtk.Align.FILL)
+    value.set_xalign(1)
     value.set_valign(Gtk.Align.START)
     value.set_justify(Gtk.Justification.RIGHT)
     value.set_selectable(selectable)
     value.set_line_wrap(True)
+    value.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
     value.set_max_width_chars(46)
     row.pack_end(value, True, True, 0)
     return row
@@ -88,7 +90,7 @@ class IdentityWindow(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self, title="PH4NTXM Identity")
         self.set_default_size(560, 430)
-        self.set_resizable(False)
+        self.set_resizable(True)
         self.set_position(Gtk.WindowPosition.CENTER)
         if os.path.exists(ICON_FILE):
             self.set_icon_from_file(ICON_FILE)
@@ -139,7 +141,11 @@ class IdentityWindow(Gtk.Window):
         section.pack_start(
             data_row("Clock Persona", info["Clock"], False), False, False, 0
         )
-        content.pack_start(section, True, True, 0)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_shadow_type(Gtk.ShadowType.NONE)
+        scroll.add(section)
+        content.pack_start(scroll, True, True, 0)
         controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         report = Gtk.Button(label="Detailed Health Report")
         add_class(report, "primary")
