@@ -494,7 +494,17 @@ impl Engine {
                 state.fin_in = true
             }
         }
-        if info.rst {
+        if info.rst
+            && (outbound
+                || (!state.delta_in_ready
+                    && info.ack
+                    && info.options.is_empty()
+                    && read_u32(&raw, meta.offset + 8)
+                        == state
+                            .original_isn_out
+                            .wrapping_add(state.delta_out)
+                            .wrapping_add(1)))
+        {
             state.reset = true;
         }
         let mut output =
@@ -1155,8 +1165,212 @@ impl Engine {
 
 #[cfg(test)]
 mod tests {
-    use super::{DerivePart, Engine, Mode};
-    use crate::packet::{checksum, read_u32, write_u32};
+    use super::{DerivePart, Engine, Mode, TCP_CLOSED_TIMEOUT, TCP_FLOW_TIMEOUT};
+    use crate::packet::{checksum, finalize_packet, parse_packet, read_u32, write_u16, write_u32};
+    use std::time::Duration;
+
+    const LOCAL_ISN: u32 = u32::MAX;
+    const REMOTE_ISN: u32 = 0x5060_7080;
+    const SYN_OPTIONS: [u8; 12] = [2, 4, 5, 180, 1, 3, 3, 7, 1, 1, 4, 2];
+
+    fn tcp_packet(
+        family: u8,
+        outbound: bool,
+        sequence: u32,
+        acknowledgement: u32,
+        flags: u8,
+        options: &[u8],
+    ) -> Vec<u8> {
+        let offset = if family == 4 { 20 } else { 40 };
+        let mut packet = vec![0u8; offset + 20 + options.len()];
+        if family == 4 {
+            packet[0] = 0x45;
+            let length = packet.len() as u16;
+            write_u16(&mut packet, 2, length);
+            packet[8] = 64;
+            packet[9] = 6;
+            let (source, destination) = if outbound {
+                ([192, 0, 2, 10], [198, 51, 100, 20])
+            } else {
+                ([198, 51, 100, 20], [192, 0, 2, 10])
+            };
+            packet[12..16].copy_from_slice(&source);
+            packet[16..20].copy_from_slice(&destination);
+        } else {
+            packet[0] = 0x60;
+            write_u16(&mut packet, 4, (20 + options.len()) as u16);
+            packet[6] = 6;
+            packet[7] = 64;
+            packet[8..12].copy_from_slice(&[0x20, 1, 0x0d, 0xb8]);
+            packet[24..28].copy_from_slice(&[0x20, 1, 0x0d, 0xb8]);
+            packet[23] = if outbound { 1 } else { 2 };
+            packet[39] = if outbound { 2 } else { 1 };
+        }
+        write_u16(&mut packet, offset, if outbound { 49_000 } else { 443 });
+        write_u16(&mut packet, offset + 2, if outbound { 443 } else { 49_000 });
+        write_u32(&mut packet, offset + 4, sequence);
+        write_u32(&mut packet, offset + 8, acknowledgement);
+        packet[offset + 12] = (((20 + options.len()) / 4) as u8) << 4;
+        packet[offset + 13] = flags;
+        write_u16(&mut packet, offset + 14, 32_000);
+        packet[offset + 20..].copy_from_slice(options);
+        let meta = parse_packet(&packet, 2, true).unwrap();
+        finalize_packet(packet, &meta, false).unwrap()
+    }
+
+    fn tcp_flow(mode: Mode, family: u8, established: bool) -> (Engine, Vec<u8>, u32, u32) {
+        let offset = if family == 4 { 20 } else { 40 };
+        let mut engine = Engine::new(mode, [0x11; 32]);
+        let syn = tcp_packet(family, true, LOCAL_ISN, 0, 0x02, &SYN_OPTIONS);
+        let wire_syn = engine.process(&syn, true, 2, false).unwrap();
+        let wire_isn = read_u32(&wire_syn, offset + 4);
+        let mut local_peer_isn = 0;
+        if established {
+            let syn_ack = tcp_packet(
+                family,
+                false,
+                REMOTE_ISN,
+                wire_isn.wrapping_add(1),
+                0x12,
+                &SYN_OPTIONS,
+            );
+            let local_syn_ack = engine.process(&syn_ack, false, 2, false).unwrap();
+            local_peer_isn = read_u32(&local_syn_ack, offset + 4);
+            let ack = tcp_packet(family, true, 0, local_peer_isn.wrapping_add(1), 0x10, &[]);
+            engine.process(&ack, true, 2, false).unwrap();
+        }
+        (engine, syn, wire_isn, local_peer_isn)
+    }
+
+    fn maintain_after_idle(engine: &mut Engine, idle: Duration) {
+        let last = engine.tcp_flows.values().map(|state| state.last).max().unwrap();
+        engine.remove_stale(last + idle);
+    }
+
+    #[test]
+    fn inbound_reset_preserves_established_mapping_until_normal_expiry() {
+        for mode in [Mode::Linux, Mode::Windows] {
+            for family in [4, 6] {
+                let offset = if family == 4 { 20 } else { 40 };
+                for flags in [0x04, 0x14] {
+                    let (mut engine, _, wire_isn, local_peer_isn) = tcp_flow(mode, family, true);
+                    let rst = tcp_packet(
+                        family,
+                        false,
+                        REMOTE_ISN.wrapping_add(0x4000_0000),
+                        if flags & 0x10 != 0 {
+                            wire_isn.wrapping_add(1)
+                        } else {
+                            0
+                        },
+                        flags,
+                        &[],
+                    );
+                    let local_rst = engine.process(&rst, false, 2, false).unwrap();
+                    assert_eq!(
+                        read_u32(&local_rst, offset + 4),
+                        local_peer_isn.wrapping_add(0x4000_0000)
+                    );
+                    maintain_after_idle(&mut engine, TCP_CLOSED_TIMEOUT + Duration::from_secs(1));
+                    let inbound = tcp_packet(
+                        family,
+                        false,
+                        REMOTE_ISN.wrapping_add(1),
+                        wire_isn.wrapping_add(1),
+                        0x10,
+                        &[],
+                    );
+                    let local = engine.process(&inbound, false, 2, false).unwrap();
+                    assert_eq!(read_u32(&local, offset + 4), local_peer_isn.wrapping_add(1));
+                    assert_eq!(read_u32(&local, offset + 8), 0);
+                    let outbound =
+                        tcp_packet(family, true, 0, local_peer_isn.wrapping_add(1), 0x10, &[]);
+                    let wire = engine.process(&outbound, true, 2, false).unwrap();
+                    assert_eq!(read_u32(&wire, offset + 4), wire_isn.wrapping_add(1));
+                    assert_eq!(read_u32(&wire, offset + 8), REMOTE_ISN.wrapping_add(1));
+                    maintain_after_idle(&mut engine, TCP_FLOW_TIMEOUT + Duration::from_secs(1));
+                    assert_eq!(
+                        engine.process(&outbound, true, 2, false).unwrap_err(),
+                        "unmapped TCP flow"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn outbound_reset_keeps_closed_idle_expiry() {
+        for mode in [Mode::Linux, Mode::Windows] {
+            for family in [4, 6] {
+                let (mut engine, _, _, local_peer_isn) = tcp_flow(mode, family, true);
+                let rst = tcp_packet(family, true, 0, local_peer_isn.wrapping_add(1), 0x14, &[]);
+                engine.process(&rst, true, 2, false).unwrap();
+                maintain_after_idle(&mut engine, TCP_CLOSED_TIMEOUT + Duration::from_secs(1));
+                assert!(engine.tcp_flows.is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn unconfirmed_pending_reset_preserves_syn_retransmission_mapping() {
+        for mode in [Mode::Linux, Mode::Windows] {
+            for family in [4, 6] {
+                let offset = if family == 4 { 20 } else { 40 };
+                for (ack_increment, options) in [
+                    (2, &[][..]),
+                    (1, &[1, 1, 1, 1][..]),
+                    (1, &[1, 1, 8, 10, 0, 0, 0, 1, 0, 0, 0, 1][..]),
+                ] {
+                    let (mut engine, syn, wire_isn, _) = tcp_flow(mode, family, false);
+                    let rst = tcp_packet(
+                        family,
+                        false,
+                        0,
+                        wire_isn.wrapping_add(ack_increment),
+                        0x14,
+                        options,
+                    );
+                    let result = engine.process(&rst, false, 2, false);
+                    if mode == Mode::Windows && options.len() == 12 {
+                        assert_eq!(result.unwrap_err(), "unexpected inbound TCP timestamp");
+                    } else {
+                        result.unwrap();
+                    }
+                    maintain_after_idle(&mut engine, TCP_CLOSED_TIMEOUT + Duration::from_secs(1));
+                    assert_eq!(engine.tcp_flows.len(), 1);
+                    let repeated = engine.process(&syn, true, 2, false).unwrap();
+                    assert_eq!(read_u32(&repeated, offset + 4), wire_isn);
+                    let replacement = tcp_packet(
+                        family,
+                        true,
+                        LOCAL_ISN.wrapping_add(4096),
+                        0,
+                        0x02,
+                        &SYN_OPTIONS,
+                    );
+                    engine.process(&replacement, true, 2, false).unwrap();
+                    assert_eq!(engine.tcp_flows.len(), 1);
+                    assert_eq!(
+                        engine.tcp_flows.values().next().unwrap().original_isn_out,
+                        LOCAL_ISN.wrapping_add(4096)
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn plain_syn_refusal_keeps_closed_idle_expiry() {
+        for mode in [Mode::Linux, Mode::Windows] {
+            for family in [4, 6] {
+                let (mut engine, _, wire_isn, _) = tcp_flow(mode, family, false);
+                let rst = tcp_packet(family, false, 0, wire_isn.wrapping_add(1), 0x14, &[]);
+                engine.process(&rst, false, 2, false).unwrap();
+                maintain_after_idle(&mut engine, TCP_CLOSED_TIMEOUT + Duration::from_secs(1));
+                assert!(engine.tcp_flows.is_empty());
+            }
+        }
+    }
 
     fn ipv4_tcp(
         source: [u8; 4],

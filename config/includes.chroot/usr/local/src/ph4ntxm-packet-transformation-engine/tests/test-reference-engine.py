@@ -737,7 +737,16 @@ def transform_tcp(raw, meta, info, direction):
                     struct.pack_into("!H", header, 14, advertised)
         if info["fin"]:
             state["fin_out" if direction == "out" else "fin_in"] = True
-        if info["rst"]:
+        if info["rst"] and (
+            direction == "out"
+            or (
+                not state["delta_in_ready"]
+                and info["ack"]
+                and not info["options"]
+                and struct.unpack_from("!I", raw, offset + 8)[0]
+                == (state["orig_isn_out"] + state["delta_out"] + 1) & 0xFFFFFFFF
+            )
+        ):
             state["reset"] = True
         header[16:18] = b"\x00\x00"
         return raw[:offset] + bytes(header) + options + payload
