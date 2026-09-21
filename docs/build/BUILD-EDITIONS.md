@@ -16,6 +16,8 @@ Abyss is the default dark navy edition; Ghost is the light pearl-white edition. 
 
 Preparation copies the shared configuration and selected edition into `build/<edition>/config/`. Each ISO includes only its selected PH4NTXM theme and backgrounds; both editions remain in the repository. Shared icons, cursors and distribution fallback themes are retained.
 
+Boot menu entries remain in the shared configuration. Edition-specific GRUB and Syslinux appearance files belong under `editions/<name>/config/bootloaders/`.
+
 Keep source, artwork, build tools and required tests in Git. Generated build trees, package caches and exported images are excluded.
 
 ## [ BUILD ]
@@ -33,9 +35,9 @@ Successful builds export `ph4ntxm-<edition>-amd64.hybrid.iso`, manifests and `SH
 
 ## [ APPEARANCE ]
 
-Abyss pairs deep navy surfaces and pale text with anthracite hexagons. Ghost pairs pearl-white surfaces and dark text with light hexagons. Both use cyan and magenta accents across GTK 2, GTK 3, XFWM, LightDM, the panel and PH4NTXM applications.
+Abyss pairs deep navy surfaces and pale text with blue glass ribbons. Ghost pairs pearl-white surfaces and dark text with clear glass ribbons. Both use cyan and magenta accents across GTK 2, GTK 3, XFWM, LightDM, the panel and PH4NTXM applications.
 
-Each edition supplies matching desktop, login and bootloader artwork. Both keep Lyra-blue-dark icons, LyraB cursors and terminal backgrounds at 85% opacity. Selecting another XFCE theme manually does not switch the complete edition; build the desired edition to apply all appearance settings together.
+Each edition supplies matching desktop, login and bootloader artwork. Both keep Lyra-blue-dark (modified for PH4NTXM) and custom icons, LyraB cursors and terminal backgrounds at 85% opacity. Selecting another XFCE theme manually does not switch the complete edition; build the desired edition to apply all appearance settings together.
 
 ## [ VALIDATION ]
 
