@@ -10,11 +10,11 @@
      id="defs10" />
 
   <path
-     style="opacity:1;fill:#4d4d4d;fill-opacity:1;stroke:none"
+     style="opacity:1;fill:#00ABFF;fill-opacity:1;stroke:none"
      d="M 11.999999,1 C 5.924868,1 1,5.92487 1,12 1,18.07513 5.924868,23 11.999999,23 18.075132,23 23,18.07513 23,12 23,5.92487 18.075132,1 11.999999,1 Z"
-     id="path4" />
+     id="path4" fill="#00ABFF"/>
   <path
      d="m 12.000002,6 -5.7171445,8.57143 11.4342855,0 M 6.0000005,16.28571 18,16.28571 18,18 6.0000005,18 l 0,-1.71429 z"
-     style="fill:#ffffff"
-     id="path6" />
+     style="fill:#00ABFF"
+     id="path6" fill="#00ABFF"/>
 </svg>

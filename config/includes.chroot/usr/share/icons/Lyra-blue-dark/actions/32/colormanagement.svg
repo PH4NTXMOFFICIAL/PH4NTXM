@@ -17,10 +17,10 @@
   </defs>
   <g transform="matrix(1.8733145,0,0,1.8733295,-4.6070532,-1934.8123)" id="g3389">
     <g transform="matrix(0.38637,0.10353,-0.10353,0.38637,-92.63,796.68)" id="g3391">
-      <use height="100%" width="100%" y="0" x="0" xlink:href="#H" clip-path="url(#5)" transform="translate(384.57,499.8)" id="use3393"/>
-      <use height="100%" width="100%" y="0" x="0" xlink:href="#J" clip-path="url(#6)" id="use3395"/>
+      <use height="100%" width="100%" y="0" x="0" xlink:href="#H" clip-path="url(#5)" transform="translate(384.57,499.8)" id="use3393" fill="#00ABFF"/>
+      <use height="100%" width="100%" y="0" x="0" xlink:href="#J" clip-path="url(#6)" id="use3395" fill="#00ABFF"/>
       <path style="fill:#00abff" d="m 408.57143,507.798 c 8.86399,0 16,7.13601 16,16 l -16,0 0,-16" clip-path="url(#7)" id="path3397"/>
-      <use height="100%" width="100%" y="0" x="0" xlink:href="#I" clip-path="url(#8)" id="use3399"/>
+      <use height="100%" width="100%" y="0" x="0" xlink:href="#I" clip-path="url(#8)" id="use3399" fill="#00ABFF"/>
     </g>
     <g style="opacity:0.7" transform="matrix(0.4,0,0,0.4,-152.43,831.84)" id="g3401">
       <use height="100%" width="100%" y="0" x="0" style="filter:url(#4)" xlink:href="#H" clip-path="url(#9)" transform="translate(384.57,499.8)" id="use3403"/>

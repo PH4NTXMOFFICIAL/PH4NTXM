@@ -7,6 +7,6 @@
         color:#00abff;
       }</style>
     </defs>
-    <path id="path4" class="ColorScheme-Text" d="m3 11v1h7v-1zm9 0v1h7v-1z" fill="currentColor"/>
-    <path id="path6" class="ColorScheme-Highlight" d="m11 8-3 6h6zm0 2.236328 1.382812 2.763672h-2.765624z" fill="currentColor"/>
+    <path id="path4" class="ColorScheme-Text" d="m3 11v1h7v-1zm9 0v1h7v-1z" fill="#00ABFF"/>
+    <path id="path6" class="ColorScheme-Highlight" d="m11 8-3 6h6zm0 2.236328 1.382812 2.763672h-2.765624z" fill="#FF3DFB"/>
 </svg>

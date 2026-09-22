@@ -4,9 +4,9 @@
    .ColorScheme-Text { color:#dedede; } .ColorScheme-Highlight { color:#00abff; }
   </style>
  </defs>
- <path d="m3 8a5 5 0 0 0 5 5v-5z" style="fill:currentColor" class="ColorScheme-Text" opacity=".35"/>
- <path d="m13 8a5 5 0 0 1-5 5v-5z" style="fill:currentColor" class="ColorScheme-Text" opacity=".75"/>
- <path d="m8 1a7 7 0 0 0-7 7 7 7 0 0 0 7 7 7 7 0 0 0 7-7 7 7 0 0 0-7-7zm0 1a6 6 0 0 1 6 6 6 6 0 0 1-6 6 6 6 0 0 1-6-6 6 6 0 0 1 6-6z" style="fill:currentColor" class="ColorScheme-Text"/>
- <path d="m13 8a5 5 0 0 0-5-5v5z" style="fill:currentColor" class="ColorScheme-Text" opacity=".5"/>
- <path d="m3 8a5 5 0 0 1 5-5v5z" style="fill:currentColor" class="ColorScheme-Text" opacity=".15"/>
+ <path d="m3 8a5 5 0 0 0 5 5v-5z" style="fill:#00ABFF" class="ColorScheme-Text" opacity=".35" fill="#00ABFF"/>
+ <path d="m13 8a5 5 0 0 1-5 5v-5z" style="fill:#00ABFF" class="ColorScheme-Text" opacity=".75" fill="#00ABFF"/>
+ <path d="m8 1a7 7 0 0 0-7 7 7 7 0 0 0 7 7 7 7 0 0 0 7-7 7 7 0 0 0-7-7zm0 1a6 6 0 0 1 6 6 6 6 0 0 1-6 6 6 6 0 0 1-6-6 6 6 0 0 1 6-6z" style="fill:#00ABFF" class="ColorScheme-Text" fill="#00ABFF"/>
+ <path d="m13 8a5 5 0 0 0-5-5v5z" style="fill:#00ABFF" class="ColorScheme-Text" opacity=".5" fill="#00ABFF"/>
+ <path d="m3 8a5 5 0 0 1 5-5v5z" style="fill:#00ABFF" class="ColorScheme-Text" opacity=".15" fill="#00ABFF"/>
 </svg>

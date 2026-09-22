@@ -10,6 +10,6 @@
     
     
   </defs>
-  <path id="rect4156" d="M 11 3 L 11 4 L 4 4 L 4 11 L 3 11 L 3 12 L 3 13 L 4 13 L 5 13 L 5 12 L 12 12 L 12 5 L 13 5 L 13 3 L 11 3 z " style="fill:#00abff;stroke-width:6;stroke-linecap:round;stroke-linejoin:round"/>
-  <path id="path6" class="ColorScheme-Text" d="m10 2v3.281l-4.719 4.719h-3.281v4h4v-3.281l4.719-4.719h3.281v-4zm1 1h2v2h-2zm-8 8h2v2h-2z" style="fill:currentColor;fill-opacity:1;stroke:none"/>
+  <path id="rect4156" d="M 11 3 L 11 4 L 4 4 L 4 11 L 3 11 L 3 12 L 3 13 L 4 13 L 5 13 L 5 12 L 12 12 L 12 5 L 13 5 L 13 3 L 11 3 z " style="fill:#FF3DFB;stroke-width:6;stroke-linecap:round;stroke-linejoin:round" fill="#FF3DFB"/>
+  <path id="path6" class="ColorScheme-Text" d="m10 2v3.281l-4.719 4.719h-3.281v4h4v-3.281l4.719-4.719h3.281v-4zm1 1h2v2h-2zm-8 8h2v2h-2z" style="fill:#00ABFF;fill-opacity:1;stroke:none" fill="#00ABFF"/>
 </svg>

@@ -6,5 +6,5 @@
       }
       </style>
   </defs>
-    <path style="fill:currentColor" class="ColorScheme-Text" d="M 3 7 L 3 9 L 13 9 L 13 7 L 3 7 z" transform="translate(3 3)"/>
+    <path style="fill:#00ABFF" class="ColorScheme-Text" d="M 3 7 L 3 9 L 13 9 L 13 7 L 3 7 z" transform="translate(3 3)" fill="#00ABFF"/>
 </svg>

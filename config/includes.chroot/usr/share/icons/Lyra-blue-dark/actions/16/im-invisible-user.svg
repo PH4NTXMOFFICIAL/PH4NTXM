@@ -6,11 +6,10 @@
       }
       </style>
   </defs>
-  <path style="fill:currentColor;fill-opacity:1;stroke:none" 
+  <path style="fill:#00ABFF;fill-opacity:1;stroke:none" 
      d="M 8 2 A 3 3 0 0 0 5 5 A 3 3 0 0 0 8 8 A 3 3 0 0 0 11 5 A 3 3 0 0 0 8 2 z M 9.2929688 3 L 10 3.7070312 L 6.7070312 7 L 6 6.2929688 L 9.2929688 3 z M 8 9 A 5 4.5 0 0 0 3 13.5 A 5 4.5 0 0 0 3.0332031 14 L 12.962891 14 A 5 4.5 0 0 0 13 13.5 A 5 4.5 0 0 0 8 9 z M 8 10 A 4 3.5 0 0 1 11.955078 13 L 4.0449219 13 A 4 3.5 0 0 1 8 10 z "
-     class="ColorScheme-Text"
-     />
+     class="ColorScheme-Text" fill="#00ABFF"/>
   <path
-     style="fill:#ffffff"
-     d="M 9.3,3 10.007,3.707 6.714,7 6.007,6.293 Z" />
+     style="fill:#00ABFF"
+     d="M 9.3,3 10.007,3.707 6.714,7 6.007,6.293 Z" fill="#00ABFF"/>
 </svg>

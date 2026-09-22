@@ -11,6 +11,6 @@ a
   
   
 </defs>
- <path style="fill:currentColor;fill-opacity:1;stroke:none" d="M 4 5 L 4 19 L 20 19 L 20 5 L 4 5 z M 11.941406 6 A 6 6 0 0 1 18 11.921875 L 18 12 A 6 6 0 0 1 12.019531 18 A 6 6 0 0 1 6 12.039062 A 6 6 0 0 1 11.941406 6 z " class="ColorScheme-Text"/>
-<path style="opacity:1;fill:#00abff;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:square;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="m 18,12 a 6,6 0 0 1 -5.98036,5.99997 6,6 0 0 1 -6.01951,-5.9607 6,6 0 0 1 5.94097,-6.03898 6,6 0 0 1 6.05839,5.92118" id="path16"/>
+ <path style="fill:#00ABFF;fill-opacity:1;stroke:none" d="M 4 5 L 4 19 L 20 19 L 20 5 L 4 5 z M 11.941406 6 A 6 6 0 0 1 18 11.921875 L 18 12 A 6 6 0 0 1 12.019531 18 A 6 6 0 0 1 6 12.039062 A 6 6 0 0 1 11.941406 6 z " class="ColorScheme-Text" fill="#00ABFF"/>
+<path style="opacity:1;fill:#FF3DFB;fill-opacity:1;stroke:none;stroke-width:2;stroke-linecap:square;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="m 18,12 a 6,6 0 0 1 -5.98036,5.99997 6,6 0 0 1 -6.01951,-5.9607 6,6 0 0 1 5.94097,-6.03898 6,6 0 0 1 6.05839,5.92118" id="path16" fill="#FF3DFB"/>
 </svg>

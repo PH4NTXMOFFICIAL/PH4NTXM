@@ -4,5 +4,5 @@
   <defs id="defs10"/>
 
   <circle style="opacity:1;fill:#ff3dfb;fill-opacity:1;stroke:none;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" id="path4140" cx="12" cy="12" r="11"/>
-  <path style="fill:#ffffff;fill-opacity:1;stroke:none" d="m 3.75,10.625 0,2.75 16.5,0 0,-2.75 -16.5,0 z" id="path6"/>
+  <path style="fill:#00ABFF;fill-opacity:1;stroke:none" d="m 3.75,10.625 0,2.75 16.5,0 0,-2.75 -16.5,0 z" id="path6" fill="#00ABFF"/>
 </svg>

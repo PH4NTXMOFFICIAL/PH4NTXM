@@ -10,10 +10,10 @@
  </defs>
  <g transform="matrix(1.24886 0 0 1.24887 -2.738 -1289.52)">
   <g transform="matrix(0.38637 0.10353 -0.10353 0.38637 -92.63 796.68)">
-   <use xlink:href="#H" clip-path="url(#5)" transform="matrix(1 0 0 1 384.57 499.8)"/>
-   <use xlink:href="#J" clip-path="url(#6)"/>
+   <use xlink:href="#H" clip-path="url(#5)" transform="matrix(1 0 0 1 384.57 499.8)" fill="#00ABFF"/>
+   <use xlink:href="#J" clip-path="url(#6)" fill="#00ABFF"/>
    <path fill="#00abff" d="m408.57143 507.798c8.86399 0 16 7.13601 16 16h-16v-16" clip-path="url(#7)"/>
-   <use xlink:href="#I" clip-path="url(#8)"/>
+   <use xlink:href="#I" clip-path="url(#8)" fill="#00ABFF"/>
   </g>
   <g opacity="0.7" transform="matrix(0.4 0 0 0.4 -152.43 831.84)">
    <use filter="url(#4)" xlink:href="#H" clip-path="url(#9)" transform="matrix(1 0 0 1 384.57 499.8)"/>

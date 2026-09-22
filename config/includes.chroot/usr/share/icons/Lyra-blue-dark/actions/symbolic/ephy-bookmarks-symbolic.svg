@@ -20,10 +20,10 @@
      color="#000000"
      color-rendering="auto"
      dominant-baseline="auto"
-     fill="#dedede"
+     fill="#00ABFF"
      image-rendering="auto"
      shape-rendering="auto"
      solid-color="#000000"
      style="font-variant-ligatures:normal;font-variant-position:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-alternates:normal;font-feature-settings:normal;text-indent:0;text-decoration:none;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:#000000;text-transform:none;text-orientation:mixed;white-space:normal;shape-padding:0;isolation:auto;mix-blend-mode:normal"
-     id="path2" />
+     id="path2" class="success"/>
 </svg>

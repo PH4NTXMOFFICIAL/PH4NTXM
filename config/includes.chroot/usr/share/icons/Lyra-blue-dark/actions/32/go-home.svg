@@ -7,9 +7,9 @@
  
  <image x="-.5" y="-.5" width="33" height="33" image-rendering="optimizeQuality" preserveAspectRatio="none" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACEAAAAhCAYAAABX5MJvAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAA GXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAAXxJREFUWIXtl9GSgyAMRW9Ft273 /791x1qlD+QWjCgq2OlDM5NB2hiOMSQIfIBcMu+l2kB3i8kAMAB+RKt3QxDgCuAG4FfmFsAoIyN0 CoQGuMm1gY8G7SrRpNQHAf7gItAEC/LpG7iIQMZedMiFIEAL/woa+Ce9BPMrfEQeAP4FZsRCzmyB SAFQGA36tPJbj0R+pCC2AoT2ep5M0rXE2Quw5CMJsrQ7SgEALhcG0WhOxCBKAIS+QphoQdMQTKwW 0214BCCEMPDlfbZLjLqhhq8DbSbAZhATGPIVlIhACmRSNwhRwTWiMwA0CP2+kjWseKz1u5pPBgjX elFZuBJ7l3GMOCgho1rHLkH0yDgbrAh99msQFr6glAbQIJN1KmUQjmfJbJ3SO+CQfCEoXwjKR0Jk fUltkKh/fcZkIRki/5UAiJ6w6ojRHUCHaestBdCJ/wmIftpRDAFX42vkd1WGn72pg2qQMedstfy0 W7LbAwH4A+/seLfm/IwzRTThnzQwdLO8jqarAAAAAElFTkSuQmCC "/>
  <path d="m16 3-12 12v12c0 1.662 1.338 3 3 3h18c1.662 0 3-1.338 3-3v-12l-12-12z" fill="#f6f6f6"/>
- <path d="m7 20h4v4h-4z" fill="#00abff"/>
- <path d="m21 20h4v4h-4z" fill="#00abff"/>
+ <path d="m7 20h4v4h-4z" fill="#FF3DFB"/>
+ <path d="m21 20h4v4h-4z" fill="#FF3DFB"/>
  <path d="m13 20h6v10h-6z" fill="#ff3dfb"/>
- <path d="m20 5v2l4 4v-6z" fill="#232629"/>
+ <path d="m20 5v2l4 4v-6z" fill="#00ABFF"/>
  <path d="m16 1.5859-14.008 14.008 1.4141 1.4141 12.594-12.594 12.594 12.594 1.4141-1.4141z" fill="#2a2e32"/>
 </svg>

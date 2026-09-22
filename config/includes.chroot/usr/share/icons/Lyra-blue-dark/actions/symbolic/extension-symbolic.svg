@@ -7,7 +7,7 @@
       </style>
   </defs>
  <path 
-     style="fill:currentColor;fill-opacity:1;stroke:none" 
+     style="fill:#00ABFF;fill-opacity:1;stroke:none" 
      d="m4 3v1h-2v9h12v-9h-2v-1h-3v1h-2v-1zm-1 2h10v7h-10z"
-     class="ColorScheme-Text"/>
+     class="success" fill="#00ABFF"/>
 </svg>

@@ -10,9 +10,8 @@
       </style>
   </defs>
   <path
-     style="fill:currentColor;fill-opacity:1;stroke:none"
+     style="fill:#00ABFF;fill-opacity:1;stroke:none"
      d="m 6 6 0 20 20 0 0 -20 z"
      id="path91"
-     class="ColorScheme-Text"
-     />
+     class="ColorScheme-Text" fill="#00ABFF"/>
 </svg>

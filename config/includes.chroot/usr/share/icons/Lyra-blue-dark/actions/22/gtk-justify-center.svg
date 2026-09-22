@@ -7,8 +7,7 @@
       </style>
   </defs>
  <path 
-    style="fill:currentColor;fill-opacity:1;stroke:none" 
+    style="fill:#00ABFF;fill-opacity:1;stroke:none" 
     d="m3 1033.3622v1h16v-1zm2 2v1h12.1v-1zm-2 4v1h16v-1zm4 2v1h8v-1zm-4 3v1h16v-1zm2 2v1h12v-1zm5 2v1h2v-1z" transform="translate(0-1030.3622)"
-    class="ColorScheme-Text"
-    />  
+    class="ColorScheme-Text" fill="#00ABFF"/>  
 </svg>

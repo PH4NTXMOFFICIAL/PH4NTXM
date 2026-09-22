@@ -5,11 +5,11 @@
       }</style>
  </defs>
  <g class="ColorScheme-Text" style="fill:currentColor">
-  <rect x="2" y="3" width="1" height="1" ry="0" class="ColorScheme-Text" style="fill:currentColor"/>
-  <rect x="4" y="3" width="10" height="1" ry="0" class="ColorScheme-Text" style="fill:currentColor"/>
-  <rect x="2" y="8" width="1" height="1" ry="0" class="ColorScheme-Text" style="fill:currentColor"/>
-  <rect x="4" y="8" width="10" height="1" ry="0" class="ColorScheme-Text" style="fill:currentColor"/>
-  <rect x="2" y="13" width="1" height="1" ry="0" class="ColorScheme-Text" style="fill:currentColor"/>
-  <rect x="4" y="13" width="10" height="1" ry="0" class="ColorScheme-Text" style="fill:currentColor"/>
+  <rect x="2" y="3" width="1" height="1" ry="0" class="ColorScheme-Text" style="fill:#00ABFF" fill="#00ABFF"/>
+  <rect x="4" y="3" width="10" height="1" ry="0" class="ColorScheme-Text" style="fill:#00ABFF" fill="#00ABFF"/>
+  <rect x="2" y="8" width="1" height="1" ry="0" class="ColorScheme-Text" style="fill:#00ABFF" fill="#00ABFF"/>
+  <rect x="4" y="8" width="10" height="1" ry="0" class="ColorScheme-Text" style="fill:#00ABFF" fill="#00ABFF"/>
+  <rect x="2" y="13" width="1" height="1" ry="0" class="ColorScheme-Text" style="fill:#00ABFF" fill="#00ABFF"/>
+  <rect x="4" y="13" width="10" height="1" ry="0" class="ColorScheme-Text" style="fill:#00ABFF" fill="#00ABFF"/>
  </g>
 </svg>

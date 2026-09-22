@@ -18,8 +18,8 @@
       </style>
   </defs>
   <path
-     style="fill:currentColor;fill-opacity:1;stroke:none"
+     style="fill:#00ABFF;fill-opacity:1;stroke:none"
      d="m 10,5 0,2 2,0 0,-2 -2,0 m 0,5 0,2 2,0 0,-2 -2,0 m 0,5 0,2 2,0 0,-2 -2,0"
      class="ColorScheme-Text"
-     id="path6" />
+     id="path6" fill="#00ABFF"/>
 </svg>

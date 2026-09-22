@@ -3,10 +3,10 @@
   <style id="current-color-scheme" type="text/css">.ColorScheme-Text { color:#dedede; } .ColorScheme-Highlight { color:#00abff; }</style>
  </defs>
  <g fill="currentColor" stroke-width="1.2">
-  <path class="ColorScheme-Text" d="m5 11a6 6 0 0 0 6 6v-6z" opacity=".35"/>
-  <path class="ColorScheme-Text" d="m17 11a6 6 0 0 1-6 6v-6z" opacity=".75"/>
-  <path class="ColorScheme-Text" d="m17 11a6 6 0 0 0-6-6v6z" opacity=".5"/>
-  <path class="ColorScheme-Text" d="m5 11a6 6 0 0 1 6-6v6z" opacity=".15"/>
+  <path class="ColorScheme-Text" d="m5 11a6 6 0 0 0 6 6v-6z" opacity=".35" fill="#00ABFF"/>
+  <path class="ColorScheme-Text" d="m17 11a6 6 0 0 1-6 6v-6z" opacity=".75" fill="#00ABFF"/>
+  <path class="ColorScheme-Text" d="m17 11a6 6 0 0 0-6-6v6z" opacity=".5" fill="#00ABFF"/>
+  <path class="ColorScheme-Text" d="m5 11a6 6 0 0 1 6-6v6z" opacity=".15" fill="#00ABFF"/>
  </g>
- <path d="m11 3a8 8 0 0 0-8 8 8 8 0 0 0 8 8 8 8 0 0 0 8-8 8 8 0 0 0-8-8zm-0.09375 1a7 7 0 0 1 0.09375 0 7 7 0 0 1 7 7 7 7 0 0 1-7 7 7 7 0 0 1-7-7 7 7 0 0 1 6.9062-7z" fill="#dedede" stroke-linecap="square" stroke-width="2"/>
+ <path d="m11 3a8 8 0 0 0-8 8 8 8 0 0 0 8 8 8 8 0 0 0 8-8 8 8 0 0 0-8-8zm-0.09375 1a7 7 0 0 1 0.09375 0 7 7 0 0 1 7 7 7 7 0 0 1-7 7 7 7 0 0 1-7-7 7 7 0 0 1 6.9062-7z" fill="#00ABFF" stroke-linecap="square" stroke-width="2"/>
 </svg>

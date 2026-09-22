@@ -3,7 +3,7 @@
   <svg:defs id="defs16"/>
 
 
-  <svg:path d="m20.621 1.0002c9.081 0 10.379 1.387 10.379 11.108v7.7845c0 9.7205-1.2978 11.108-10.379 11.108h-9.2423c-9.081 0-10.379-1.387-10.379-11.108v-7.7845c0-9.7205 1.2978-11.108 10.379-11.108z" enable-background="new" fill="#fff" stroke-width="2.0615" id="path4" style="opacity:0.6"/>
+  <svg:path d="m20.621 1.0002c9.081 0 10.379 1.387 10.379 11.108v7.7845c0 9.7205-1.2978 11.108-10.379 11.108h-9.2423c-9.081 0-10.379-1.387-10.379-11.108v-7.7845c0-9.7205 1.2978-11.108 10.379-11.108z" enable-background="new" fill="#00ABFF" stroke-width="2.0615" id="path4" style="opacity:0.6"/>
   <svg:g style="fill:#323232;fill-opacity:1;fill-rule:evenodd" transform="matrix(0.9999874,0,0,0.9999874,-168.99782,42.186094)" id="g89">
     <svg:path d="m 185,-36 c -2.77,0 -5,2.23 -5,5 v 3 h -2 c -1.108,0 -2,0.892 -2,2 v 6 c 0,1.108 0.892,2 2,2 h 14 c 1.108,0 2,-0.892 2,-2 v -6 c 0,-1.108 -0.892,-2 -2,-2 h -2 v -3 c 0,-2.77 -2.23,-5 -5,-5 z m 0,1 c 2.216,0 4,1.784 4,4 v 3 h -8 v -3 c 0,-2.216 1.784,-4 4,-4 z m -7,8 h 14 c 0.554,0 1,0.446 1,1 v 6 c 0,0.554 -0.446,1 -1,1 h -14 c -0.554,0 -1,-0.446 -1,-1 v -6 c 0,-0.554 0.446,-1 1,-1 z" style="opacity:1;fill:#323232;fill-opacity:1;paint-order:stroke fill markers" id="path85"/>
     <svg:rect x="184.5" y="-25" width="1" height="3" ry="0.5" style="opacity:1;fill:#323232;fill-opacity:1;paint-order:stroke fill markers" id="rect87"/>

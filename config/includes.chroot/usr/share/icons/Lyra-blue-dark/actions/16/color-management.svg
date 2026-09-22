@@ -18,10 +18,10 @@
 
   <g id="g3389" transform="matrix(0.93665727,0,0,0.93660767,-2.303527,-967.34673)">
     <g id="g3391" transform="matrix(0.38637,0.10353,-0.10353,0.38637,-92.63,796.68)">
-      <use id="use3393" transform="translate(384.57,499.8)" clip-path="url(#5)" xlink:href="#H" x="0" y="0" width="100%" height="100%"/>
-      <use id="use3395" clip-path="url(#6)" xlink:href="#J" x="0" y="0" width="100%" height="100%"/>
+      <use id="use3393" transform="translate(384.57,499.8)" clip-path="url(#5)" xlink:href="#H" x="0" y="0" width="100%" height="100%" fill="#00ABFF"/>
+      <use id="use3395" clip-path="url(#6)" xlink:href="#J" x="0" y="0" width="100%" height="100%" fill="#00ABFF"/>
       <path id="path3397" clip-path="url(#7)" d="m 408.57143,507.798 c 8.86399,0 16,7.13601 16,16 l -16,0 0,-16" style="fill:#00abff"/>
-      <use id="use3399" clip-path="url(#8)" xlink:href="#I" x="0" y="0" width="100%" height="100%"/>
+      <use id="use3399" clip-path="url(#8)" xlink:href="#I" x="0" y="0" width="100%" height="100%" fill="#00ABFF"/>
     </g>
     <g id="g3401" transform="matrix(0.4,0,0,0.4,-152.43,831.84)" style="opacity:0.7">
       <use id="use3403" transform="translate(384.57,499.8)" clip-path="url(#9)" xlink:href="#H" style="filter:url(#4)" x="0" y="0" width="100%" height="100%"/>

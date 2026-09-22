@@ -9,6 +9,6 @@
       }
       </style>
   </defs>
- <path style="fill:currentColor;fill-opacity:1;stroke:none" d="M 12 5 A 8 7 0 0 0 4 12 A 8 7 0 0 0 12 19 A 8 7 0 0 0 20 12 A 8 7 0 0 0 12 5 z M 12 6 A 7 6 0 0 1 19 12 A 7 6 0 0 1 12 18 A 7 6 0 0 1 5 12 A 7 6 0 0 1 12 6 z " class="ColorScheme-Text"/>
- <path style="fill:currentColor;fill-opacity:1;stroke:none" d="M 12 10 A 2 2 0 0 0 10 12 A 2 2 0 0 0 12 14 A 2 2 0 0 0 14 12 A 2 2 0 0 0 12 10 z M 12 11 A 1 1 0 0 1 13 12 A 1 1 0 0 1 12 13 A 1 1 0 0 1 11 12 A 1 1 0 0 1 12 11 z " class="ColorScheme-Highlight"/>
+ <path style="fill:#00ABFF;fill-opacity:1;stroke:none" d="M 12 5 A 8 7 0 0 0 4 12 A 8 7 0 0 0 12 19 A 8 7 0 0 0 20 12 A 8 7 0 0 0 12 5 z M 12 6 A 7 6 0 0 1 19 12 A 7 6 0 0 1 12 18 A 7 6 0 0 1 5 12 A 7 6 0 0 1 12 6 z " class="ColorScheme-Text" fill="#00ABFF"/>
+ <path style="fill:#FF3DFB;fill-opacity:1;stroke:none" d="M 12 10 A 2 2 0 0 0 10 12 A 2 2 0 0 0 12 14 A 2 2 0 0 0 14 12 A 2 2 0 0 0 12 10 z M 12 11 A 1 1 0 0 1 13 12 A 1 1 0 0 1 12 13 A 1 1 0 0 1 11 12 A 1 1 0 0 1 12 11 z " class="ColorScheme-Highlight" fill="#FF3DFB"/>
 </svg>

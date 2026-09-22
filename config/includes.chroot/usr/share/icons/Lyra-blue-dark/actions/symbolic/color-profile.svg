@@ -18,26 +18,26 @@
 
   <g id="g3389" transform="matrix(0.93665727,0,0,0.93660767,-2.303527,-967.34673)">
     <g id="g3391" transform="matrix(0.38637,0.10353,-0.10353,0.38637,-92.63,796.68)">
-      <use id="use3393" transform="translate(384.57,499.8)" clip-path="url(#5)" xlink:href="#H" x="0" y="0" width="100%" height="100%"/>
-      <use id="use3395" clip-path="url(#6)" xlink:href="#J" x="0" y="0" width="100%" height="100%"/>
-      <path id="path3397" clip-path="url(#7)" d="m 408.57143,507.798 c 8.86399,0 16,7.13601 16,16 l -16,0 0,-16" style="fill:#00abff"/>
-      <use id="use3399" clip-path="url(#8)" xlink:href="#I" x="0" y="0" width="100%" height="100%"/>
+      <use id="use3393" transform="translate(384.57,499.8)" clip-path="url(#5)" xlink:href="#H" x="0" y="0" width="100%" height="100%" fill="#00ABFF" class="success"/>
+      <use id="use3395" clip-path="url(#6)" xlink:href="#J" x="0" y="0" width="100%" height="100%" fill="#00ABFF" class="success"/>
+      <path id="path3397" clip-path="url(#7)" d="m 408.57143,507.798 c 8.86399,0 16,7.13601 16,16 l -16,0 0,-16" style="fill:#00ABFF" fill="#00ABFF" class="success"/>
+      <use id="use3399" clip-path="url(#8)" xlink:href="#I" x="0" y="0" width="100%" height="100%" fill="#00ABFF" class="success"/>
     </g>
     <g id="g3401" transform="matrix(0.4,0,0,0.4,-152.43,831.84)" style="opacity:0.7">
-      <use id="use3403" transform="translate(384.57,499.8)" clip-path="url(#9)" xlink:href="#H" style="filter:url(#4)" x="0" y="0" width="100%" height="100%"/>
-      <use id="use3405" clip-path="url(#A)" xlink:href="#J" style="filter:url(#4)" x="0" y="0" width="100%" height="100%"/>
-      <use id="use3407" clip-path="url(#B)" xlink:href="#I" style="filter:url(#4)" x="0" y="0" width="100%" height="100%"/>
-      <path id="path3409" clip-path="url(#C)" d="m 408.57143,507.798 c 8.86399,0 16,7.13601 16,16 l -16,0 0,-16" style="fill:#00abff;filter:url(#4)"/>
+      <use id="use3403" transform="translate(384.57,499.8)" clip-path="url(#9)" xlink:href="#H" style="filter:url(#4)" x="0" y="0" width="100%" height="100%" fill="#00ABFF" class="success"/>
+      <use id="use3405" clip-path="url(#A)" xlink:href="#J" style="filter:url(#4)" x="0" y="0" width="100%" height="100%" fill="#00ABFF" class="success"/>
+      <use id="use3407" clip-path="url(#B)" xlink:href="#I" style="filter:url(#4)" x="0" y="0" width="100%" height="100%" fill="#00ABFF" class="success"/>
+      <path id="path3409" clip-path="url(#C)" d="m 408.57143,507.798 c 8.86399,0 16,7.13601 16,16 l -16,0 0,-16" style="fill:#00ABFF;filter:url(#4)" fill="#00ABFF" class="success"/>
     </g>
-    <use id="use3411" transform="matrix(0.28284,0.28284,-0.28284,0.28284,11,1027.79)" clip-path="url(#9)" xlink:href="#H" style="opacity:0.35" x="0" y="0" width="100%" height="100%"/>
-    <path id="path3413" transform="matrix(0.28284,0.28284,-0.28284,0.28284,43.591,777.65)" clip-path="url(#A)" d="m 408.57143,539.798 c -8.86399,0 -16,-7.13601 -16,-16 l 16,0 0,16" style="opacity:0.35;fill:#ff3dfb"/>
-    <use id="use3415" transform="matrix(0.28284,0.28284,-0.28284,0.28284,43.591,777.65)" clip-path="url(#B)" xlink:href="#I" style="opacity:0.35" x="0" y="0" width="100%" height="100%"/>
-    <path id="path3417" transform="matrix(0.28284,0.28284,-0.28284,0.28284,43.591,777.65)" clip-path="url(#C)" d="m 408.57143,507.798 c 8.86399,0 16,7.13601 16,16 l -16,0 0,-16" style="opacity:0.35;fill:#00abff"/>
+    <use id="use3411" transform="matrix(0.28284,0.28284,-0.28284,0.28284,11,1027.79)" clip-path="url(#9)" xlink:href="#H" style="opacity:0.35" x="0" y="0" width="100%" height="100%" fill="#00ABFF" class="success"/>
+    <path id="path3413" transform="matrix(0.28284,0.28284,-0.28284,0.28284,43.591,777.65)" clip-path="url(#A)" d="m 408.57143,539.798 c -8.86399,0 -16,-7.13601 -16,-16 l 16,0 0,16" style="opacity:0.35;fill:#FF3DFB" fill="#FF3DFB" class="warning"/>
+    <use id="use3415" transform="matrix(0.28284,0.28284,-0.28284,0.28284,43.591,777.65)" clip-path="url(#B)" xlink:href="#I" style="opacity:0.35" x="0" y="0" width="100%" height="100%" fill="#00ABFF" class="success"/>
+    <path id="path3417" transform="matrix(0.28284,0.28284,-0.28284,0.28284,43.591,777.65)" clip-path="url(#C)" d="m 408.57143,507.798 c 8.86399,0 16,7.13601 16,16 l -16,0 0,-16" style="opacity:0.35;fill:#00ABFF" fill="#00ABFF" class="success"/>
     <g id="g3419" transform="matrix(0.10353,0.38637,-0.38637,0.10353,171.08,829.27)">
-      <use id="use3421" transform="translate(384.57,499.8)" clip-path="url(#D)" xlink:href="#H" style="opacity:0.3" x="0" y="0" width="100%" height="100%"/>
-      <use id="use3423" clip-path="url(#E)" xlink:href="#J" style="opacity:0.3" x="0" y="0" width="100%" height="100%"/>
-      <use id="use3425" clip-path="url(#F)" xlink:href="#I" style="opacity:0.3" x="0" y="0" width="100%" height="100%"/>
-      <path id="path3427" clip-path="url(#G)" d="m 408.57143,507.798 c 8.86399,0 16,7.13601 16,16 l -16,0 0,-16" style="opacity:0.3;fill:#00abff"/>
+      <use id="use3421" transform="translate(384.57,499.8)" clip-path="url(#D)" xlink:href="#H" style="opacity:0.3" x="0" y="0" width="100%" height="100%" fill="#00ABFF" class="success"/>
+      <use id="use3423" clip-path="url(#E)" xlink:href="#J" style="opacity:0.3" x="0" y="0" width="100%" height="100%" fill="#00ABFF" class="success"/>
+      <use id="use3425" clip-path="url(#F)" xlink:href="#I" style="opacity:0.3" x="0" y="0" width="100%" height="100%" fill="#00ABFF" class="success"/>
+      <path id="path3427" clip-path="url(#G)" d="m 408.57143,507.798 c 8.86399,0 16,7.13601 16,16 l -16,0 0,-16" style="opacity:0.3;fill:#00ABFF" fill="#00ABFF" class="success"/>
     </g>
   </g>
 </svg>

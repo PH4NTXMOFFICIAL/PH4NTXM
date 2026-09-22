@@ -9,6 +9,6 @@
       }
       </style>
   </defs>
-  <path style="fill:currentColor;fill-opacity:1;stroke:none" d="m 3,2 0,12 10,0 0,-12 z m 1,1 8,0 0,10 -8,0 z" class="ColorScheme-Text"/>
+  <path style="fill:#00ABFF;fill-opacity:1;stroke:none" d="m 3,2 0,12 10,0 0,-12 z m 1,1 8,0 0,10 -8,0 z" class="ColorScheme-Text" fill="#00ABFF"/>
   <path style="fill:currentColor;fill-opacity:1;stroke:none" class="ColorScheme-NegativeText" d="M 7 4 L 7 9 L 9 9 L 9 4 L 7 4 z M 7 10 L 7 12 L 9 12 L 9 10 L 7 10 z "/>
 </svg>

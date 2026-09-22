@@ -7,5 +7,5 @@
       </style>
   </defs>
  <path fill="#ff3dfb" d="m4 4v24h24v-24zm1 1h22v22h-22z"/>
- <path style="fill:currentColor;fill-opacity:1;stroke:none" d="m5 5v22h22v-22zm1 1h20v20h-20z" class="ColorScheme-Text"/>
+ <path style="fill:#00ABFF;fill-opacity:1;stroke:none" d="m5 5v22h22v-22zm1 1h20v20h-20z" class="ColorScheme-Text" fill="#00ABFF"/>
 </svg>

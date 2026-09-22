@@ -35,6 +35,7 @@
 @define-color success_color #56d89a;
 
 * {
+    -gtk-icon-palette: success #00ABFF, warning #FF3DFB, error #FF3DFB;
     padding: 0;
     -gtk-icon-shadow: none;
     text-shadow: none;

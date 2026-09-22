@@ -6,5 +6,5 @@
             color:#dedede;
         }
     </style>
-    <path d="M3 6v1h16V6zm.707 4L3 10.707l8 8 8-8-.707-.707L11 17.293 3.707 10z" class="ColorScheme-Text" fill="currentColor"/>
+    <path d="M3 6v1h16V6zm.707 4L3 10.707l8 8 8-8-.707-.707L11 17.293 3.707 10z" class="ColorScheme-Text" fill="#00ABFF"/>
 </svg>

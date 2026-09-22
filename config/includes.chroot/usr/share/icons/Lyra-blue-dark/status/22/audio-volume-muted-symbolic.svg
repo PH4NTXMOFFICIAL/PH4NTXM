@@ -5,7 +5,7 @@
   </style>
  </defs>
  <g class="ColorScheme-Text" fill="currentColor">
-  <path d="m12 8v1l2 2-2 2v1h1l2-2 2 2h1v-1l-2-2 2-2v-1h-1l-2 2-2-2z" opacity=".35"/>
-  <path d="m10 6-3 3h-2c-0.554 0-1 0.445-1 1v2c0 0.553 0.446 1 1 1h2l3 3z" opacity=".35"/>
+  <path d="m12 8v1l2 2-2 2v1h1l2-2 2 2h1v-1l-2-2 2-2v-1h-1l-2 2-2-2z" opacity="1" fill="#00ABFF" class="success"/>
+  <path d="m10 6-3 3h-2c-0.554 0-1 0.445-1 1v2c0 0.553 0.446 1 1 1h2l3 3z" opacity="1" fill="#00ABFF" class="success"/>
  </g>
 </svg>

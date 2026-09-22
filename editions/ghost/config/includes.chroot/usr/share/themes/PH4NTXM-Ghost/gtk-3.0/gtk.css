@@ -1,6 +1,7 @@
 @import url("../../../ph4ntxm/themes/whiskermenu.css");
 
 * {
+  -gtk-icon-palette: success #00ABFF, warning #FF3DFB, error #FF3DFB;
   background-clip: padding-box;
   -GtkToolButton-icon-spacing: 4;
   -GtkTextView-error-underline-color: #d30d03;

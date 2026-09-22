@@ -8,16 +8,16 @@
       }</style>
  </defs>
  <g class="ColorScheme-PositiveText" fill="currentColor">
-  <rect x="8" y="8" width="2" height="2" ry=".5"/>
-  <rect x="11" y="8" width="2" height="2" ry=".5"/>
-  <rect x="14" y="8" width="2" height="2" ry=".5"/>
-  <rect x="8" y="11" width="2" height="2" ry=".5"/>
-  <rect x="11" y="11" width="2" height="2" ry=".5"/>
-  <rect x="14" y="11" width="2" height="2" ry=".5"/>
-  <rect x="5" y="11" width="2" height="2" ry=".5"/>
-  <rect x="5" y="14" width="2" height="2" ry=".5"/>
-  <rect x="8" y="14" width="2" height="2" ry=".5"/>
-  <rect x="11" y="14" width="2" height="2" ry=".5"/>
+  <rect x="8" y="8" width="2" height="2" ry=".5" fill="#FF3DFB"/>
+  <rect x="11" y="8" width="2" height="2" ry=".5" fill="#FF3DFB"/>
+  <rect x="14" y="8" width="2" height="2" ry=".5" fill="#FF3DFB"/>
+  <rect x="8" y="11" width="2" height="2" ry=".5" fill="#FF3DFB"/>
+  <rect x="11" y="11" width="2" height="2" ry=".5" fill="#FF3DFB"/>
+  <rect x="14" y="11" width="2" height="2" ry=".5" fill="#FF3DFB"/>
+  <rect x="5" y="11" width="2" height="2" ry=".5" fill="#FF3DFB"/>
+  <rect x="5" y="14" width="2" height="2" ry=".5" fill="#FF3DFB"/>
+  <rect x="8" y="14" width="2" height="2" ry=".5" fill="#FF3DFB"/>
+  <rect x="11" y="14" width="2" height="2" ry=".5" fill="#FF3DFB"/>
  </g>
- <path d="m5 3c-1.662 0-3 1.338-3 3v10c0 1.662 1.338 3 3 3h11c1.662 0 3-1.338 3-3v-10c0-1.662-1.338-3-3-3zm0 3h11c1.108 0 2 0.892 2 2v8c0 1.108-0.892 2-2 2h-11c-1.108 0-2-0.892-2-2v-8c0-1.108 0.892-2 2-2z" class="ColorScheme-Text" fill="currentColor"/>
+ <path d="m5 3c-1.662 0-3 1.338-3 3v10c0 1.662 1.338 3 3 3h11c1.662 0 3-1.338 3-3v-10c0-1.662-1.338-3-3-3zm0 3h11c1.108 0 2 0.892 2 2v8c0 1.108-0.892 2-2 2h-11c-1.108 0-2-0.892-2-2v-8c0-1.108 0.892-2 2-2z" class="ColorScheme-Text" fill="#00ABFF"/>
 </svg>

@@ -4,6 +4,6 @@
    .ColorScheme-Text { color:#ffffff; } .ColorScheme-Highlight { color:#00abff; }
   </style>
  </defs>
- <path class="warning" d="m12 8v1l2 2-2 2v1h1l2-2 2 2h1v-1l-2-2 2-2v-1h-1l-2 2-2-2z" fill="#ff3dfb"/>
- <path d="m10 6-3 3h-2c-0.554 0-1 0.445-1 1v2c0 0.553 0.446 1 1 1h2l3 3z" fill="#ff3dfb"/>
+ <path class="success" d="m12 8v1l2 2-2 2v1h1l2-2 2 2h1v-1l-2-2 2-2v-1h-1l-2 2-2-2z" fill="#00ABFF"/>
+ <path d="m10 6-3 3h-2c-0.554 0-1 0.445-1 1v2c0 0.553 0.446 1 1 1h2l3 3z" fill="#00ABFF" class="success"/>
 </svg>

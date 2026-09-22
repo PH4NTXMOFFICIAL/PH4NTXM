@@ -6,8 +6,7 @@
       }
       </style>
   </defs>
- <path style="fill:currentColor;fill-opacity:1;stroke:none" 
+ <path style="fill:#00ABFF;fill-opacity:1;stroke:none" 
      d="m3.5 2l-.531.969-.969.531.969.531.531.969.531-.969.969-.531-.969-.531zm7.631 0l-9.125 9.125 2.875 2.875 9.125-9.125zm0 1.438l1.438 1.439-2.781 2.779-1.438-1.438z"
-     class="ColorScheme-Text"
-     />
+     class="success" fill="#00ABFF"/>
 </svg>

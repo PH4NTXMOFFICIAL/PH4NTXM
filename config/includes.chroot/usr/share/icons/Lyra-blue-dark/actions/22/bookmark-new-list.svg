@@ -23,6 +23,6 @@
   <path
      class="ColorScheme-Text"
      d="M 7,0 C 5.892,0 5,0.892 5,2 v 16 l 6,-3 6,3 V 2 C 17,0.892 16.108,0 15,0 Z m 0,1 h 8 c 0.554,0 1,0.446 1,1 V 16.419 L 11,13.8253 6,16.419 V 2 C 6,1.446 6.446,1 7,1 Z"
-     fill="currentColor"
+     fill="#00ABFF"
      id="path5" />
 </svg>

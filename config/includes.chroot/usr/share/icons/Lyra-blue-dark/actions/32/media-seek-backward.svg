@@ -6,5 +6,5 @@
             color:#363636;
         }
     </style>
-    <path d="M16 16l14 10V6zM2 16l14 10V6z" class="ColorScheme-Text" fill="currentColor"/>
+    <path d="M16 16l14 10V6zM2 16l14 10V6z" class="ColorScheme-Text" fill="#00ABFF"/>
 </svg>

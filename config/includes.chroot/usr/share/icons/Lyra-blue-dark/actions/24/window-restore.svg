@@ -6,5 +6,5 @@
             color:#dedede;
         }
     </style><g transform="translate(1,1)">
-    <path d="M11 3.293L3.293 11 11 18.707 18.707 11zm0 1.414L17.293 11 11 17.293 4.707 11z" class="ColorScheme-Text" fill="currentColor"/>
+    <path d="M11 3.293L3.293 11 11 18.707 18.707 11zm0 1.414L17.293 11 11 17.293 4.707 11z" class="ColorScheme-Text" fill="#00ABFF"/>
 </g></svg>

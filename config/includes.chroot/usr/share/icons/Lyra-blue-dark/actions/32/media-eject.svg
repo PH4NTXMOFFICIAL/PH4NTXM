@@ -10,9 +10,8 @@
       </style>
   </defs>
   <path
-     style="fill:currentColor;fill-opacity:1;stroke:none" 
+     style="fill:#00ABFF;fill-opacity:1;stroke:none" 
      d="M 16 6 L 4 20 L 28 20 L 16 6 z M 4 24 L 4 26 L 28 26 L 28 24 L 4 24 z "
      id="path23" 
-     class="ColorScheme-Text"
-     />
+     class="ColorScheme-Text" fill="#00ABFF"/>
 </svg>
