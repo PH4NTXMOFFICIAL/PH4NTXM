@@ -1,0 +1,9 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+CONFIG="$HOME/.config/picom/picom.conf"
+
+pgrep -x picom >/dev/null 2>&1 && exit 0
+
+exec picom --backend xrender --config "$CONFIG"
