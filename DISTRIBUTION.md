@@ -53,6 +53,8 @@ Each exported build includes `SHA256SUMS`. Run this from its `output/` subdirect
 sha256sum --check SHA256SUMS
 ```
 
+Keep the source revision, local change record, edition and exported checksums together when recording a build. They identify what was built and which exported files were checked. A checksum verifies the file against that record. Source authenticity still comes from the trusted signing key.
+
 ## [ REDISTRIBUTION ]
 
 PH4NTXM project code uses [GNU GPLv3](LICENSE).  

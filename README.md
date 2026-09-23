@@ -14,45 +14,63 @@
 
 Codename: Most Wanted.
 
-PH4NTXM is a Linux Live Operating System with an embedded Adaptive Identity Engine.  
-Each session is stateless, disposable, and non-reusable.  
-It’s built for environments where compromise and deep inspection are expected.  
-PH4NTXM builds a linked identity that stays consistent during execution.  
-Every boot starts fresh and the operator selects a boot mode.  
-PH4NTXM builds the required identity profile and applies the matching environment characteristics.  
-The session is then exposed to the user, ready for use.
+## [ OVERVIEW ]
+
+PH4NTXM is a Debian-based Linux operating system that runs live from USB. Once the system has fully loaded into RAM, you can safely remove the boot media.
+
+## [ DISPOSABLE SESSIONS ]
+
+Every boot creates a new, disposable session based on your selected mode. The Adaptive Identity Engine first checks the boot machine ID and creates a random seed, the starting value used to build the session identity. From there, the setup stages generate the computer name and MAC addresses and prepare the reported hardware details, including processor, memory, graphics and screen information. Browser and network settings use the relevant session values and mode to keep the resulting profile consistent.
+
+The session is used once and is not saved for reuse. At shutdown, Nuke blocks networking, ends the live user's programs and starts best-effort available RAM scrub before powering off. The temporary session is discarded. Your next boot creates a new one.
 
 ## [ BOOT MODES ]
 
-During boot, on the GRUB menu, you can choose between:
+Choose a mode in the boot menu. It stays active until shutdown. All three modes use the same Debian desktop and PH4NTXM tools.
 
-LINUX: Linux-aligned profile.  
-WINDOWS: Windows-aligned profile.  
-LONE WOLF: Linux-aligned Tor system-wide profile.
+## [ LINUX ]
 
-The selected mode is fixed for the complete live session.
+Linux uses a Linux-aligned identity profile with matching hardware details, browser settings and network behavior. The browser is Firefox ESR. Application connections pass directly through PH4NTXM's Packet Transformation Engine and firewall. DNS uses encrypted connections to external resolvers.
 
-## [ PH4NTXM ]
+## [ WINDOWS ]
 
-PH4NTXM keeps the linked identity model across the complete runtime chain.  
-Identity, hardware, GPU, screen, browser, DHCP, network, DNS, firewall, and timing values follow the active session profile.  
-Linux and Windows traffic is fail-closed through the Packet Transformation Engine.  
-Lone Wolf uses a dedicated Tor-only firewall and DNS bridge with no clearnet fallback.  
-PH4NTXM Boot Pilot and PH4NTXM Health report the main protection chains from their real runtime state.  
-Normal shutdown and emergency controls use the common Nuke Kernel sequence.
+Windows uses a Windows-aligned identity profile with matching hardware details, browser settings and network behavior. The browser is Firefox ESR. Application connections pass directly through PH4NTXM's Packet Transformation Engine and firewall. DNS uses encrypted connections to external resolvers.
+
+## [ LONE WOLF ]
+
+Lone Wolf uses an independent Linux-aligned identity profile with a dedicated Tor network configuration. The browser is Tor Browser. Supported application connections pass through Tor under PH4NTXM's dedicated firewall rules. DNS also passes through Tor.
+
+Tor Browser opens after the protection and Tor readiness checks pass. If Tor becomes unavailable, the firewall blocks direct application connections. IPv6 and application UDP traffic are blocked outside the permitted connection-setup rules.
+
+## [ DESKTOP TOOLS ]
+
+Check your system:
+
+Boot Pilot shows protection status, helps you connect to Wi-Fi and opens the browser for your mode. Identity displays the current identifiers, and Health explains the checks in more detail. The OpSec Suite includes Network, Kernel, Process, Radio, ConnWatch and Shredder for inspection, monitoring and confirmed remediation actions where supported.
+
+Open documents and media separately from your desktop files:
+
+Document Airlock converts supported documents in a temporary environment without network access. Preview the pages, then export a new PDF made from those page images. Image and media viewers also use isolated offline environments to open the files you select.
+
+Block networking or start an emergency shutdown:
+
+Enable Lockdown to block network traffic, then disable it to restore your mode's network rules. Panic Button starts emergency termination after confirmation. USB Nuke lets a matching storage-device removal trigger the same sequence when armed.
+
+Each tool has a dedicated [component page](docs/README.md) when you want to understand its behavior or follow a reported issue.
 
 ## [ EDITIONS ]
 
-ABYSS: The default dark navy appearance, using PH4NTXM-Abyss with cyan and magenta accents.  
-GHOST: A light pearl-white appearance, using PH4NTXM-Ghost with cyan and magenta accents.
+ABYSS: dark navy, cyan and magenta. The default PH4NTXM appearance.
 
-Choose the edition when building the ISO. Both editions include the same system components, protection settings, and Linux, Windows and Lone Wolf boot modes. Each ISO contains only its selected PH4NTXM theme and backgrounds; both editions remain available in this repository.
+GHOST: pearl-white surfaces with the same cyan and magenta accents.
 
-See [BUILD EDITIONS](docs/build/BUILD-EDITIONS.md) for appearance details and source layout.
+Both share the custom icons, cursor theme, rounded windows and subtle transparency. Choose the appearance you prefer. Every boot mode and protection component is included in either edition.
+
+The edition is selected when building the ISO. See [Build Editions](docs/build/BUILD-EDITIONS.md) for the appearance details.
 
 ## [ GETTING STARTED ]
 
-Build on Debian 13 `trixie` amd64:
+Build your edition on Debian 13 `trixie` amd64:
 
 ```bash
 sudo apt update
@@ -62,28 +80,24 @@ cd PH4NTXM
 sudo ./build.sh --edition abyss
 ```
 
-For Ghost, use `sudo ./build.sh --edition ghost` as the build command instead.
+Prefer Ghost? Use `sudo ./build.sh --edition ghost` for the last command.
 
-Run commands in order and stop if one fails. The build script runs `lb config` and `lb build`, then copies the completed ISO and checksum into a new directory under `output/`.  
-See [INSTALLATION.md](INSTALLATION.md) for rebuild and USB instructions.
+Your completed ISO and checksum appear under `output/`. Follow [INSTALLATION.md](INSTALLATION.md) to verify the image and prepare your boot media.
 
-## [ EXECUTION REQUIREMENTS ]
+On your first boot, start with Boot Pilot and follow the protection checks before opening the browser.
 
-PH4NTXM is intended for bare-metal use.  
-Virtualized environments compromise its security model.
+PH4NTXM is intended to boot directly on a physical computer. Virtual machines are useful for development and functional checks. Document Airlock additionally needs hardware virtualization enabled and access to KVM, Linux's virtualization support.
 
 ## [ DOCUMENTATION ]
 
-[ARCHITECTURE.md](ARCHITECTURE.md)  
-[THREAT_MODEL.md](THREAT_MODEL.md)  
-[DISTRIBUTION.md](DISTRIBUTION.md)  
-[INSTALLATION.md](INSTALLATION.md)  
-[TRADEMARKS.md](TRADEMARKS.md)  
-[LEGAL_NOTICE.md](LEGAL_NOTICE.md)  
-[CONTRIBUTING.md](CONTRIBUTING.md)  
-[SECURITY.md](SECURITY.md)
+Want to see how the pieces connect? Start with [ARCHITECTURE.md](ARCHITECTURE.md). For a particular feature, the [documentation index](docs/README.md) leads to its behavior, checks and source.
 
-Component documentation is available in [docs](docs/README.md).
+- [INSTALLATION.md](INSTALLATION.md). Build and boot-media instructions.
+- [THREAT_MODEL.md](THREAT_MODEL.md). The model behind the system and its scope.
+- [SECURITY.md](SECURITY.md). Security reporting and review.
+- [DISTRIBUTION.md](DISTRIBUTION.md). The distribution model.
+- [CONTRIBUTING.md](CONTRIBUTING.md). How to contribute.
+- [TRADEMARKS.md](TRADEMARKS.md) / [LEGAL_NOTICE.md](LEGAL_NOTICE.md). Project identity and legal notices.
 
 ## [ CONTRIBUTING ]
 

@@ -13,6 +13,8 @@ Include the source commit, build date, boot mode, affected component, and reprod
 Describe expected and observed behavior, security impact, and any local modifications.  
 Attach relevant logs or packet captures with credentials and unrelated personal data removed.
 
+Include the edition and whether the test ran on bare metal or in a VM. Name the failed service or readiness check and the action that triggered it. Keep timestamps with their boot mode, since Clock Fuzz deliberately shifts the session clock.
+
 ## [ VALIDATION ]
 
 Test only systems you own or are authorized to assess.  

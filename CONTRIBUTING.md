@@ -22,12 +22,14 @@ Each commit should contain one complete change, including its related code, buil
 
 ## [ COMMIT MESSAGES ]
 
-Use `type(scope): description`, naming the affected component and the resulting behavior. Use `feat` for new functionality and `fix` for bug fixes. Other focused changes use `docs`, `test`, `build`, or `refactor`; refactoring preserves behavior.  
+Use `type(scope): description`, naming the affected component and the resulting behavior. Use `feat` for new functionality and `fix` for bug fixes. Other focused changes use `docs`, `test`, `build`, or `refactor`. Refactoring preserves behavior.  
 Related documentation and tests can belong in the feature or fix commit. Sign commits with `git commit -S` and use the current date.
 
 ## [ CODE & DESIGN EXPECTATIONS ]
 
-Match the surrounding layout and indentation, and preserve the PH4NTXM/GPL banners. Keep explanations in the component documentation rather than inline comments or docstrings.  
+Match the surrounding layout and indentation, and preserve the PH4NTXM/GPL banners. Keep explanations in the component documentation rather than inline comments or docstrings.
+
+For session docs, keep the shared OVERVIEW, STARTUP, RUNTIME, CHECKS and SOURCE layout. Describe the actual inputs, output and failure behavior. Compare related normal-mode and Lone Wolf pages, and keep examples tied to commands the current scripts support.  
 Avoid unnecessary complexity, persistence mechanisms, identity-generation bypasses, and changes outside the session model.
 
 ## [ REVIEW PROCESS ]

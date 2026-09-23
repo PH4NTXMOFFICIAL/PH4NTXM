@@ -6,13 +6,27 @@ Maintains a small anonymous memory region filled with changing synthetic noise.
 
 ## [ STARTUP ]
 
-Targets approximately one percent of RAM reported by the kernel's `sysinfo()` call. Allocates a private anonymous mapping for the active process.
+The compiled engine runs as a background service and allocates a private anonymous mapping sized to one percent of RAM reported by `sysinfo`. It requires a valid page size and at least one page of target space.
+
+Initial noise state comes from nonblocking `getrandom`, with time/PID fallback if a full seed is unavailable. Allocation failure exits rather than starting an empty loop.
 
 ## [ RUNTIME ]
 
-Fills the region with non-zero bytes and inserts bounded fragments resembling file, protocol, or application markers. Selected pages are mutated periodically.  
-Requests memory locking for the mapping and attempts smaller lock requests if the full request fails. Available resources determine locking success.  
-Stopping the service releases the mapping. Shutdown ordering stops the seeder before the common Nuke scrub so those pages can become available for overwrite.
+The entire mapping is filled with generated noise. Zero bytes are replaced during that fill, then sparse fragments resembling common file signatures, protocol strings, paths and application data are inserted at changing offsets.
+
+The fragments are generated from the engine's built-in string set inside its own allocation. Some insertions also include pointer-shaped values into that same mapping.
+
+The engine requests `MADV_WILLNEED` and `MADV_RANDOM`, then tries to lock the full mapping into RAM. If that fails, it attempts locking in one-MiB chunks. Chunk failures are tolerated, so process liveness does not establish that every page was locked.
+
+Each loop touches a sparse set of pages, changes its fragment offset state and sometimes reseeds fragments. It sleeps for 300–599 seconds between passes.
+
+The common Nuke sequence stops this service before its available-memory scrub. Stopping the engine releases its allocation before the separate scrub stage runs.
+
+## [ CHECKS ]
+
+Check the service result, process mapping size and locked-memory accounting when validating deployment. A running process with lower locked memory can reflect the tolerated `mlock` fallback.
+
+For termination behavior, follow [Nuke Kernel](NUKE-KERNEL.md) and [RAM Scrub](RAM-SCRUB.md), which run after seeding stops.
 
 ## [ SOURCE ]
 

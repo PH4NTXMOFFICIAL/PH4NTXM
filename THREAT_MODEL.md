@@ -68,7 +68,7 @@ Mitigation: Armed USB removal trigger, Panic Button, mandatory nuke path, best-e
 ## [ FAILURE POLICY ]
 
 Physical network links remain blocked until identity, firewall, packet-processing, clock, and crashkernel readiness gates succeed.  
-Linux and Windows require native Packet Transformation Engine provenance for IP egress. Raw DHCP, ARP, and EAPOL cross a separate strict TC/eBPF contract; every other unmarked physical-egress frame is dropped.  
+Linux and Windows require native Packet Transformation Engine provenance for IP egress. Raw DHCP, ARP, and EAPOL cross a separate strict TC/eBPF contract. Every other unmarked physical-egress frame is dropped.  
 Lone Wolf does not allow application clearnet fallback when Tor is unavailable.  
 Unexpected firewall state activates Lockdown before restoration.  
 PH4NTXM Health and Boot Pilot expose failed runtime chains instead of treating missing state as healthy.
@@ -76,9 +76,10 @@ PH4NTXM Health and Boot Pilot expose failed runtime chains instead of treating m
 ## [ COMPONENT BOUNDARIES ]
 
 Hardware, CPU, GPU, and display personas cover selected reporting surfaces, not complete hardware emulation.  
-Browser wrappers configure participating launches; accounts, extensions, and direct executable access remain operator-controlled.  
+Browser wrappers configure participating launches. Accounts, extensions, and direct executable access remain operator-controlled.  
 Packet transformation covers supported packet layouts, while TLS, HTTP, traffic correlation, and application identifiers require separate assessment.  
 Document Airlock isolates its selected document parsing in an offline KVM guest and exports validated pixels through a bounded broker. Visible sensitive content, direct host opening, hypervisor escapes and a compromised host remain outside its guarantees.  
+Media viewers isolate selected local files with offline namespaces, a private display and bounded resources. This limits the viewer's access. It still depends on the host kernel and does not sanitize the original media file. Exporting or opening a file outside its wrapper crosses a separate boundary.  
 RAM seeding supplies synthetic noise, not encryption or concealment of genuine secrets. Memory scrub and file overwrite remain best effort.
 
 ## [ OUT OF SCOPE ]
@@ -92,4 +93,4 @@ Live operator privilege: The `ph4ntxm` account has full passwordless sudo access
 Global correlation: A global observer may correlate Tor or direct traffic using timing and volume.  
 Advanced side-channel analysis: Acoustic, thermal, electromagnetic, DMA, or power-consumption profiling outside the managed runtime.  
 Operator OpSec failure: Real-world identities, credential reuse, account login, unsafe documents, or other human errors during a session.  
-Guaranteed physical erasure: RAM scrub and file overwrite are best effort; flash translation layers, snapshots, remapped storage blocks and unavailable memory are not guaranteed to be erased.
+Guaranteed physical erasure: RAM scrub and file overwrite are best effort. Flash translation layers, snapshots, remapped storage blocks and unavailable memory are not guaranteed to be erased.

@@ -6,13 +6,27 @@ Provides the Windows-aligned PH4NTXM session mode on the Linux live system.
 
 ## [ STARTUP ]
 
-Initializes the session seed and linked hardware profile, applies Windows-aligned network settings, and prepares Firefox ESR, Unbound, and the Packet Transformation Engine.
+Windows is selected for the boot session before physical network preparation. The mode file and normal-mode marker select the shared normal service chain. The desktop edition is a separate visual choice.
+
+Link Block holds physical adapters down while identity, network policy and emergency termination prerequisites are prepared. The selected profile runs on the shared Debian base.
 
 ## [ RUNTIME ]
 
-IP traffic passes through the Packet Transformation Engine and the normal firewall profile. The physical-output guard verifies processed traffic and validates supported raw control frames.  
-DHCP uses Windows-aligned client settings with the `MSFT 5.0` vendor class. Unbound forwards DNS through authenticated DNS-over-TLS to Cloudflare and Google.  
-Firefox ESR inherits the Windows persona. Network Drift and Ghost Stack provide their normal-mode behavior. Boot Pilot checks protection readiness, and termination follows the common Nuke sequence.
+Identity initialization saves the boot machine ID, creates or reuses `persona_seed`, selects a compatible hardware catalog entry and applies the hostname and per-interface MAC addresses. Hardware, GPU, core, CPU and screen stages derive their related values from that session state.
+
+The kernel network profile uses ordinary TTL/hop limit 128 and the Windows-style upper dynamic-port range. Required sysctl writes are read back. The Packet Transformation Engine adds coordinated packet-level handling, with nftables queues and physical-interface protection enforcing its path.
+
+DNS uses local Unbound and the configured Cloudflare and Google TLS endpoints. Browser policy disables its separate DoH path so the prepared resolver remains relevant. The normal Firefox wrapper validates runtime identity files and builds the selected mode's preferences in a private runtime profile.
+
+After release and connection setup, Network Drift can apply bounded netem timing changes. Ghost Stack supplies optional local virtual topology. Neither replaces the firewall or provides Tor routing.
+
+Lockdown temporarily requests restrictive policy. Disabling it restores this mode's validated normal path. Thermal monitoring, RAM seeding, the OpSec Suite and the armed termination path remain separate session components.
+
+## [ CHECKS ]
+
+Use Boot Pilot for current feature readiness and Health for the underlying checks. Compare a failed component with its generated files and service result instead of assuming the mode marker proves the whole chain completed.
+
+Inspect the packet worker, physical-interface guard and local resolver together when checking the normal network path.
 
 ## [ SOURCE ]
 

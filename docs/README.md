@@ -2,6 +2,10 @@
 
 Technical documentation for PH4NTXM's builds, runtime components and operation.
 
+Start with the active mode, then follow the component involved. Session pages share OVERVIEW, STARTUP, RUNTIME, CHECKS and SOURCE sections so related components can be read side by side. Runtime paths refer to the booted live system. Source links point to the files used to build it.
+
+Run session checks in the live environment. For one-shot services, inspect the completion result as well as the generated state. An exited process can be expected after successful setup. Long-running services and fresh readiness records need checking during operation.
+
 ## [ BUILD AND APPEARANCE ]
 
 [BUILD EDITIONS](build/BUILD-EDITIONS.md)  
@@ -88,8 +92,6 @@ Technical documentation for PH4NTXM's builds, runtime components and operation.
 [WIFI CONTROL](system/session/WIFI-CONTROL.md)  
 [OPERATIONAL TOOLS](system/session/OPERATIONAL-TOOLS.md)  
 [PH4NTXM OPSEC SUITE](system/session/PH4NTXM-OPSEC-SUITE.md)  
-[OPSEC CONNWATCH](system/session/OPSEC-CONNWATCH.md)  
-[OPSEC CONNWATCH MONITOR](system/session/OPSEC-CONNWATCH-MONITOR.md)
 
 ## [ CONTAINMENT AND TERMINATION ]
 
