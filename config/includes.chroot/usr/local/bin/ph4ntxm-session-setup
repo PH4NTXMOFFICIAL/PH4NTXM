@@ -76,7 +76,7 @@ class SetupWindow(Gtk.Window):
         add_class(card, 'setup-card')
         card.set_halign(Gtk.Align.CENTER)
         card.set_valign(Gtk.Align.CENTER)
-        card.set_size_request(460, -1)
+        card.set_size_request(440, -1)
         outer.pack_start(card, True, True, 0)
         brand = add_class(Gtk.Label(label='PH4NTXM  /  SESSION SETUP'), 'setup-brand')
         brand.set_halign(Gtk.Align.START)

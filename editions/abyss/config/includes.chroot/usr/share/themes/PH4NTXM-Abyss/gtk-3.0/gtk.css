@@ -1058,3 +1058,7 @@ frame > border.flat,
     background-color: @abyss_surface;
     border-color: #223347;
 }
+
+#login_window #login_box {
+    min-width: 440px;
+}

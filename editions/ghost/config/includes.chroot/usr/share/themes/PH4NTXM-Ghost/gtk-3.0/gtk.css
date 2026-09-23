@@ -7978,3 +7978,7 @@ headerbar button.titlebutton.minimize:hover,
   background-image: none;
   background-color: #d9f2f8;
 }
+
+#login_window #login_box {
+  min-width: 440px;
+}
