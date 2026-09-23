@@ -2,7 +2,7 @@
 Version=1.0
 Type=Application
 Name=PH4NTXM Panic Button
-Comment=Emergency network containment and poweroff
+Comment=Open emergency shutdown controls
 Exec=/usr/local/bin/ph4ntxm-panic-button
 Icon=ph4ntxm-panic-button
 Terminal=false

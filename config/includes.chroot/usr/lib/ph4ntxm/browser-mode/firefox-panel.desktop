@@ -2,7 +2,7 @@
 Version=1.0
 Name=Firefox Web Browser
 GenericName=Web Browser
-Comment=Access the Internet
+Comment=Browse the web with Firefox ESR
 Exec=/usr/bin/firefox-esr %u
 StartupNotify=true
 Terminal=false

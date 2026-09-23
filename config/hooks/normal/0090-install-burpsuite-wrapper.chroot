@@ -67,7 +67,7 @@ chmod 0755 /usr/local/bin/burpsuite
 cat >/usr/share/applications/burpsuite.desktop <<'EOF'
 [Desktop Entry]
 Name=Burp Suite Community
-Comment=Burp Suite - Web security testing toolkit (Community)
+Comment=Open Burp Suite Community
 Exec=/usr/local/bin/burpsuite
 Terminal=false
 Type=Application

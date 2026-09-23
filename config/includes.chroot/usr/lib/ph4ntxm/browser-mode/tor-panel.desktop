@@ -2,7 +2,7 @@
 Version=1.0
 Name=Tor Browser
 GenericName=Web Browser
-Comment=Browse privately through the Tor network
+Comment=Browse the web with Tor Browser
 Exec=/usr/bin/firefox-esr %u
 StartupNotify=true
 StartupWMClass=Tor Browser

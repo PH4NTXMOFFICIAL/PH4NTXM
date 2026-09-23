@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=PH4NTXM OpSec ConnWatch
-Comment=PH4NTXM Operational Security ConnWatch
+Comment=Monitor network connections in a terminal
 Exec=xfce4-terminal --disable-server --class=PH4NTXM-OpSec-Connwatch --title="PH4NTXM OpSec ConnWatch" --command="/usr/local/bin/ph4ntxm-opsec-connwatch"
 StartupWMClass=PH4NTXM-OpSec-Connwatch
 Icon=ph4ntxm-opsec-connwatch

@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=PH4NTXM Identity
-Comment=Show Identity
+Comment=Show the current session identity
 Exec=/usr/local/bin/ph4ntxm-identity
 Icon=ph4ntxm-identity
 Terminal=false

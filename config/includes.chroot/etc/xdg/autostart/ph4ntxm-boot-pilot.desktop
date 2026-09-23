@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=PH4NTXM Boot Pilot
-Comment=Establish network connectivity and verify boot protection gates
+Comment=Show session readiness and network connection controls
 Exec=/usr/bin/python3 /usr/local/bin/ph4ntxm-boot-pilot
 Icon=ph4ntxm-boot-pilot
 Terminal=false

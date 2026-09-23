@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Picom
-Comment=PH4NTXM compositor
+Comment=Apply desktop compositing effects
 Exec=/usr/local/bin/ph4ntxm-picom
 OnlyShowIn=XFCE;
 X-GNOME-Autostart-enabled=true

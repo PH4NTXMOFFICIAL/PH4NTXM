@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=PH4NTXM Image Viewer
-Comment=Open local images in a disposable offline sandbox
+Comment=Open local images in an offline disposable sandbox
 Exec=/usr/local/bin/ph4ntxm-media --kind image -- %F
 Icon=ph4ntxm-image-viewer
 Terminal=false

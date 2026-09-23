@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=PH4NTXM Identity Tray
+Comment=Show the session identity shortcut in the system tray
 Exec=/usr/local/bin/ph4ntxm-identity-tray
 Hidden=false
 NoDisplay=false

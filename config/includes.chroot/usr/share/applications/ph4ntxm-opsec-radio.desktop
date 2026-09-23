@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=PH4NTXM OpSec Radio
-Comment=PH4NTXM Operational Security Radio Report
+Comment=Show the radio security report in a terminal
 Exec=xfce4-terminal --disable-server --class=PH4NTXM-OpSec-Radio --title="PH4NTXM OpSec Radio" --hold --command="sudo /usr/local/bin/ph4ntxm-opsec-radio"
 StartupWMClass=PH4NTXM-OpSec-Radio
 Icon=ph4ntxm-opsec-radio

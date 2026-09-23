@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=PH4NTXM Media Player
-Comment=Open local media in a disposable offline sandbox
+Comment=Open local media in an offline disposable sandbox
 Exec=/usr/local/bin/ph4ntxm-media --kind video -- %F
 Icon=ph4ntxm-video-viewer
 Terminal=false

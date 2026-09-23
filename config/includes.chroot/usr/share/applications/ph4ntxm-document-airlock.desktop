@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=PH4NTXM Document Airlock
-Comment=Convert documents and images offline in a disposable virtual machine
+Comment=Open document conversion controls for an offline disposable virtual machine
 Exec=/usr/local/bin/ph4ntxm-document-airlock -- %f
 Icon=ph4ntxm-document-airlock
 Terminal=false

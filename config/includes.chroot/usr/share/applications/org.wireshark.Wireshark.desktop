@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Wireshark
-Comment=Launch Wireshark
+Comment=Open Wireshark
 Exec=wireshark
 StartupWMClass=Wireshark
 Icon=org.wireshark.Wireshark

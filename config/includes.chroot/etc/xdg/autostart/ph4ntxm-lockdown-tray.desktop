@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=PH4NTXM Lockdown Tray
-Comment=Shows Lockdown Mode status in the tray
+Comment=Show network lockdown controls in the system tray
 Exec=/usr/local/bin/ph4ntxm-lockdown-tray
 Icon=ph4ntxm-lockdown
 Terminal=false

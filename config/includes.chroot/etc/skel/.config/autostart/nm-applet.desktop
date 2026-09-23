@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Network Manager
+Comment=Show network connection controls in the system tray
 Exec=nm-applet --indicator
 OnlyShowIn=XFCE;
 X-GNOME-Autostart-enabled=true

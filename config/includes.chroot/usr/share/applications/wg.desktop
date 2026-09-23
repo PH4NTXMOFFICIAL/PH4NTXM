@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=WireGuard Tools
-Comment=Show WireGuard Tools help inside a terminal
+Comment=Show WireGuard Tools options in a terminal
 Exec=xfce4-terminal --disable-server --class=WireGuard-Tools --title="WireGuard Tools" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review WireGuard Tools options.\033[0m\"; wg --help; exec zsh'"
 StartupWMClass=WireGuard-Tools
 Icon=ph4ntxm-wg

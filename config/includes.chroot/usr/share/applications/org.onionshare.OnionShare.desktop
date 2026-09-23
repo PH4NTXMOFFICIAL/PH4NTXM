@@ -1,9 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=OnionShare
-Comment=Open OnionShare GUI in terminal
+Comment=Open OnionShare
 Exec=onionshare
 StartupWMClass=onionshare
-Icon=org.onionshare.OnionShare
+Icon=org.onionshare
 Terminal=false
 Categories=X-AnonymityPH4NTXM;
+Path=
+StartupNotify=false

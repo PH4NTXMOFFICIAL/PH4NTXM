@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=TCP Dump
-Comment=Show TCP Dump usage inside a terminal
+Comment=Show TCP Dump options in a terminal
 Exec=xfce4-terminal --disable-server --class=TCP-Dump --title="TCP Dump" --hold -e "zsh -c 'echo -e \"\033[38;2;0;171;255m[+] Review TCP Dump options.\033[0m\"; tcpdump --help; exec zsh'"
 StartupWMClass=TCP-Dump
 Terminal=false

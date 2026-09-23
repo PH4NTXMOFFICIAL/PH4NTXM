@@ -56,7 +56,7 @@ chmod 0755 /usr/local/bin/metasploit
 cat >/usr/share/applications/metasploit.desktop <<'EOF'
 [Desktop Entry]
 Name=Metasploit Framework
-Comment=Metasploit - Penetration Testing Framework
+Comment=Open Metasploit Framework in a terminal
 Exec=xfce4-terminal --disable-server --class=Metasploit --title="Metasploit Framework" --hold --command="/usr/local/bin/metasploit"
 Terminal=false
 Type=Application

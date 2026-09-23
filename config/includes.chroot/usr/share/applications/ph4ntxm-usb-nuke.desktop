@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=PH4NTXM USB Nuke
-Comment=Toggle USB Nuke Arming
+Comment=Open USB Nuke arming controls
 Exec=/usr/local/bin/ph4ntxm-usb-nuke
 Icon=ph4ntxm-usb-nuke
 Terminal=false

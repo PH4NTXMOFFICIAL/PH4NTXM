@@ -1,6 +1,7 @@
 [Desktop Entry]
 Version=1.0
 Name=Firefox Web Browser
+Comment=Browse the web with Firefox ESR
 Exec=/usr/bin/firefox-esr
 StartupNotify=true
 Terminal=false
