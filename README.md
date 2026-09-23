@@ -10,6 +10,11 @@
   <img src="https://img.shields.io/badge/OpSec-Active-magenta" alt="OpSec">
 </p>
 
+<p align="center">
+  <a href="https://iguru.gr/ph4ntxm-proto-elliniko-debian-live-linux-gia-cybersecurity-kai-privacy/"><img src="https://img.shields.io/badge/iGuru.gr-Featured-cyan" alt="Featured on iGuru.gr"></a>
+  <a href="https://linuxsecurity.com/features/ph4ntxm-linux-disposable-identity"><img src="https://img.shields.io/badge/LinuxSecurity.com-Featured-gold" alt="Featured on LinuxSecurity.com"></a>
+</p>
+
 # [ PH4NTXM OFFICIAL REPOSITORY ]
 
 Codename: Most Wanted.
