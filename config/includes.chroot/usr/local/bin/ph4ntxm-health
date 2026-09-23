@@ -155,11 +155,12 @@ if ! id ph4ntxm >/dev/null 2>&1; then
     print_line "Live User:" "Missing" "$RED"
 else
     print_line "Live User:" "Present" "$GREEN"
-    if sudo -n -l 2>/dev/null | grep -q 'NOPASSWD: ALL'; then
-        print_line "Live User Privilege:" "Full admin" "$GREEN"
+    if sudo -n /usr/local/sbin/ph4ntxm-session-status auth-ready 2>/dev/null \
+        && ! sudo -n /usr/bin/true 2>/dev/null; then
+        print_line "Live User Privilege:" "Session password required" "$GREEN"
     else
         critical_error
-        print_line "Live User Privilege:" "Admin policy missing" "$RED"
+        print_line "Live User Privilege:" "Session authentication failed" "$RED"
     fi
 fi
 
@@ -172,7 +173,7 @@ fi
 
 SUDO_POLICY_META=$(stat -c '%U:%G:%a' /etc/sudoers.d/ph4ntxm 2>/dev/null || true)
 if [[ "$SUDO_POLICY_META" == "root:root:440" ]]; then
-    print_line "PH4NTXM Sudo Policy:" "Full NOPASSWD admin" "$GREEN"
+    print_line "PH4NTXM Sudo Policy:" "Session admin policy" "$GREEN"
 else
     error
     print_line "PH4NTXM Sudo Policy:" "Invalid owner or mode" "$RED"
@@ -187,7 +188,7 @@ check_runtime_file() {
     local FILE=$1
     local LABEL=$2
 
-    if sudo -n /usr/bin/test -s "$FILE" 2>/dev/null; then
+    if sudo -n /usr/local/sbin/ph4ntxm-session-status nonempty "$FILE" 2>/dev/null; then
         print_line "$LABEL:" "Active" "$GREEN"
     else
         warning
@@ -254,9 +255,9 @@ separator
 section "Identity & Hardware Persona"
 
 if [[ -d "$DMI_DIR" ]]; then
-    DMI_VENDOR=$(sudo -n /usr/bin/cat "$DMI_DIR/sys_vendor" 2>/dev/null || echo N/A)
-    DMI_PRODUCT=$(sudo -n /usr/bin/cat "$DMI_DIR/product_name" 2>/dev/null || echo N/A)
-    DMI_UUID=$(sudo -n /usr/bin/cat "$DMI_DIR/product_uuid" 2>/dev/null || echo N/A)
+    DMI_VENDOR=$(sudo -n /usr/local/sbin/ph4ntxm-session-status read "$DMI_DIR/sys_vendor" 2>/dev/null || echo N/A)
+    DMI_PRODUCT=$(sudo -n /usr/local/sbin/ph4ntxm-session-status read "$DMI_DIR/product_name" 2>/dev/null || echo N/A)
+    DMI_UUID=$(sudo -n /usr/local/sbin/ph4ntxm-session-status read "$DMI_DIR/product_uuid" 2>/dev/null || echo N/A)
     print_line "DMI Profile:" "Active" "$GREEN"
     print_line "System Vendor:" "$DMI_VENDOR" "$GREEN"
     print_line "Product Name:" "$DMI_PRODUCT" "$GREEN"

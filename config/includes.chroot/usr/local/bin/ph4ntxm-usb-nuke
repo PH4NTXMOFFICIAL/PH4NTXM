@@ -30,7 +30,7 @@ def install_style():
 
 def set_usb_nuke(action):
     return (
-        subprocess.run(["/usr/bin/sudo", CONTROL, action], check=False).returncode == 0
+        subprocess.run(["/usr/bin/sudo", "-n" if action == "enable" else "-A", CONTROL, action], check=False).returncode == 0
     )
 
 

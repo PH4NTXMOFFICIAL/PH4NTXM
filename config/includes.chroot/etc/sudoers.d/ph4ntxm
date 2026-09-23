@@ -1,2 +1,10 @@
 Defaults !fqdn
-ph4ntxm ALL=(ALL:ALL) NOPASSWD: ALL
+Defaults:ph4ntxm timestamp_timeout=0
+Defaults:ph4ntxm !setenv
+Defaults:ph4ntxm secure_path=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Full administration requires this session's password.
+ph4ntxm ALL=(root) NOSETENV: PASSWD: ALL
+
+# Fixed protection actions and bounded status reads only.
+ph4ntxm ALL=(root) NOPASSWD: /usr/local/sbin/ph4ntxm-session-status *, /usr/local/sbin/ph4ntxm-firewall-control enable, /usr/local/sbin/ph4ntxm-usb-nuke-control enable, /usr/bin/systemctl start ph4ntxm-panic.service, /usr/local/sbin/ph4ntxm-wifi-control list --enable --rescan, /usr/local/sbin/ph4ntxm-wifi-control connect

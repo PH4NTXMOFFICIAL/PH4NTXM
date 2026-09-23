@@ -72,11 +72,11 @@ class LockdownTray:
         return True
 
     def enable_lockdown(self, _):
-        subprocess.Popen(["sudo", "/usr/local/sbin/ph4ntxm-firewall-control", "enable"])
+        subprocess.Popen(["/usr/bin/sudo", "-n", "/usr/local/sbin/ph4ntxm-firewall-control", "enable"])
 
     def disable_lockdown(self, _):
         subprocess.Popen(
-            ["sudo", "/usr/local/sbin/ph4ntxm-firewall-control", "disable"]
+            ["/usr/bin/sudo", "-A", "/usr/local/sbin/ph4ntxm-firewall-control", "disable"]
         )
 
     def quit_tray(self, _):

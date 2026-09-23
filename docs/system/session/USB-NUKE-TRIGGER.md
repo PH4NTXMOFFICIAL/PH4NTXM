@@ -16,6 +16,8 @@ The helper first attempts to rename `/run/ph4ntxm/usb-nuke-armed` to `usb-nuke-t
 
 After consumption, it installs interruption handlers that restore the arm marker when possible. It then submits `systemctl --no-block start ph4ntxm-panic.service`.
 
+This path runs through udev with root privileges. It does not use the desktop sudo prompt or request the session password. Once armed, a matching USB removal can therefore start Panic while the screen is locked.
+
 If submission fails, it restores the armed state and exits with failure. If systemd accepts the job, it removes those handlers and returns without waiting for the emergency sequence to finish.
 
 The triggered marker records consumption of the arm for a submitted action. [Panic](PANIC.md) owns the later sequence and its returned-path restoration behavior.

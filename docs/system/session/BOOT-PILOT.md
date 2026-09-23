@@ -6,6 +6,8 @@ Opens automatically at desktop startup to show protection readiness and provide 
 
 ## [ STARTUP ]
 
+The desktop opens only after the session password has been set. Protected status reads use a bounded helper. Wi-Fi scans and connection requests retain their exact passwordless helper commands, so refreshing the Pilot does not ask for the administrator password.
+
 Boot Pilot opens in the desktop and groups checks into Identity, Network and System Protection. It reads the selected mode and chooses the corresponding normal or Lone Wolf service chain.
 
 For the first 30 seconds, incomplete checks are shown as pending under Verifying Boot. The grace period changes presentation. It does not mark failed prerequisites as ready.

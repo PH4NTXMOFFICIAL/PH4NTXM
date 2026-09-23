@@ -20,7 +20,7 @@ Link Unblock checks identity, emergency-kernel state and the selected protection
 
 The normal engine guard watches physical egress after release. In Lone Wolf, connectivity lets Tor bootstrap. The DNS bridge then publishes fresh readiness after listener and control checks. Tor readiness therefore follows link release rather than being its prerequisite.
 
-Browser preparation selects and validates the appropriate browser path. Desktop Boot Pilot combines service results, generated state and current guardian records before enabling its Continue/browser actions. Background guards, monitoring and thermal control retain their own lifecycle after that window closes.
+Browser preparation selects and validates the appropriate browser path. After the display server starts, LightDM runs the graphical session setup before starting XFCE. The setup screen uses the edition theme and asks for a new password and confirmation. A failed setup keeps the desktop closed. Desktop Boot Pilot combines service results, generated state and current guardian records before enabling its Continue/browser actions. Background guards, monitoring and thermal control retain their own lifecycle after that window closes.
 
 ## [ CHECKS ]
 

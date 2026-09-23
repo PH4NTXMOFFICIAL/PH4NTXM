@@ -12,7 +12,8 @@ fi
 
 if id "$USER" >/dev/null 2>&1; then
 
-    echo "$USER:$USER" | chpasswd
+    # No known password exists before the session setup runs.
+    usermod --password '!' "$USER"
 
     usermod -aG adm,kvm "$USER"
     gpasswd -d "$USER" sudo >/dev/null 2>&1 || true

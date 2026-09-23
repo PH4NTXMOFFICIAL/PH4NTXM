@@ -6,6 +6,8 @@ Handles privileged Lockdown enable and disable requests.
 
 ## [ STARTUP ]
 
+Enabling Lockdown remains passwordless for immediate isolation. Disabling it requires the session password. The desktop window and tray open a graphical password prompt for that action.
+
 This privileged helper accepts exactly `enable` or `disable`. Here, enable means enabling Lockdown. Disable requests the current mode's normal policy. It validates the protected mode/runtime state and serializes changes with the shared firewall lock.
 
 The normal, Lone Wolf and Lockdown sources are checked against their required manifest or pinned digest before use. Profile selection is never supplied as an arbitrary rules-file path.

@@ -6,7 +6,7 @@ Enables or disables the USB storage removal trigger.
 
 ## [ STARTUP ]
 
-The root helper accepts exactly one action: `enable` or `disable`. Invalid arguments return status 2. A non-root invocation fails. The desktop USB Nuke window calls this helper through sudo.
+The root helper accepts exactly one action: `enable` or `disable`. Invalid arguments return status 2. A non-root invocation fails. The desktop USB Nuke window calls this helper through sudo. Arming remains passwordless. Disarming requires the session password through a graphical prompt.
 
 It prepares `/run/ph4ntxm` as a root-owned runtime directory. Arming state belongs to the current boot and is not written as a persistent device preference.
 

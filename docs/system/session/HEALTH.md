@@ -26,6 +26,8 @@ Route inspection is local. A route lookup such as `ip route get` does not send a
 
 ## [ CHECKS ]
 
+The access check requires a configured session password and rejects unrestricted passwordless sudo. Protected runtime checks use the bounded session-status helper, without opening arbitrary root files or requesting a password on every refresh.
+
 Start with the failed or critical lines, then inspect their source service or runtime artifact. Rerun the report after a change to obtain a new snapshot.
 
 A readable generated file alone does not prove its corresponding mount, module, listener or guardian is active. Use the paired checks rather than only the final percentage.

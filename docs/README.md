@@ -25,6 +25,8 @@ Run session checks in the live environment. For one-shot services, inspect the c
 [MODE ENVIRONMENT](system/session/MODE-ENVIRONMENT.md)  
 [COMMAND PATH](system/session/COMMAND-PATH.md)
 
+[SESSION PASSWORD](system/session/SESSION-PASSWORD.md)
+
 ## [ IDENTITY AND HARDWARE ]
 
 [IDENTITY RANDOMIZATION](system/session/IDENTITY-RANDOMIZATION.md)  

@@ -1,0 +1,222 @@
+#!/usr/bin/python3 -I
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+"""Unprivileged pre-session UI. Communicates only through its parent broker's pipes."""
+import configparser
+import ctypes
+import json
+from pathlib import Path
+import resource
+import sys
+import threading
+
+import gi
+gi.require_version('Gtk', '3.0')
+gi.require_version('Gdk', '3.0')
+from gi.repository import Gdk, GLib, Gtk
+
+
+def valid_pair(password, confirmation):
+    return 6 <= len(password) <= 256 and password == confirmation and not any(
+        ord(c) < 32 or ord(c) == 127 for c in password
+    )
+
+
+def add_class(widget, name):
+    widget.get_style_context().add_class(name)
+    return widget
+
+
+def install_style(config_path='/etc/lightdm/lightdm-gtk-greeter.conf', assets='/usr/share/ph4ntxm'):
+    config = configparser.ConfigParser(interpolation=None)
+    config.read(config_path)
+    theme = config.get('greeter', 'theme-name', fallback='PH4NTXM-Abyss')
+    settings = Gtk.Settings.get_default()
+    settings.set_property('gtk-theme-name', theme)
+    settings.set_property('gtk-icon-theme-name', 'Lyra-blue-dark')
+    settings.set_property('gtk-font-name', 'Sans 11')
+    background = config.get('greeter', 'background', fallback='')
+    provider = Gtk.CssProvider()
+    provider.load_from_path(str(Path(assets) / 'ph4ntxm-ui.css'))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+    extra = Gtk.CssProvider()
+    css = '''
+    .setup-card { border-radius: 16px; padding: 28px; }
+    .setup-brand { color: #00ABFF; font-size: 13px; font-weight: bold; letter-spacing: 2px; }
+    .setup-heading { font-size: 25px; font-weight: bold; }
+    .setup-card entry { min-height: 32px; padding: 5px 12px; }
+    .setup-card entry:focus { border-color: #00ABFF; }
+    .setup-card .setup-start { min-height: 36px; font-weight: bold; }
+    .setup-card .setup-start:not(:disabled) { background-image: none; background-color: #FF3DFB; color: #101b2a; border-color: #FF3DFB; }
+    .setup-card .setup-start:disabled { background-image: none; background-color: transparent; color: #00ABFF; border-color: #00ABFF; }
+    .setup-feedback { font-size: 12px; }
+    '''
+    if background and Path(background).is_file():
+        css += '.setup-background { background-image: url("' + Path(background).as_uri() + '"); background-size: cover; background-position: center; }'
+    extra.load_from_data(css.encode())
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), extra, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
+
+
+class SetupWindow(Gtk.Window):
+    def __init__(self, exchange=None):
+        super().__init__(title='PH4NTXM Session Setup')
+        self.exchange = exchange or self.broker_exchange
+        self.busy = False
+        self.completed = False
+        self.set_decorated(False)
+        self.set_deletable(False)
+        self.connect('delete-event', lambda *_: True)
+        add_class(self, 'setup-background')
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.add(scroll)
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        outer.set_border_width(20)
+        scroll.add(outer)
+        card = add_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14), 'section')
+        add_class(card, 'setup-card')
+        card.set_halign(Gtk.Align.CENTER)
+        card.set_valign(Gtk.Align.CENTER)
+        card.set_size_request(460, -1)
+        outer.pack_start(card, True, True, 0)
+        brand = add_class(Gtk.Label(label='PH4NTXM  /  SESSION SETUP'), 'setup-brand')
+        brand.set_halign(Gtk.Align.START)
+        card.pack_start(brand, False, False, 0)
+        heading = add_class(Gtk.Label(label='Set Session Password'), 'setup-heading')
+        heading.set_xalign(0)
+        card.pack_start(heading, False, False, 0)
+        detail = add_class(Gtk.Label(label='Use this password for administrator actions\nand to unlock your screen during this session.'), 'subtitle')
+        detail.set_xalign(0)
+        card.pack_start(detail, False, False, 0)
+        self.password = self.add_entry(card, 'Session password')
+        self.confirmation = self.add_entry(card, 'Confirm password')
+        reveal = Gtk.CheckButton(label='Show password')
+        reveal.connect('toggled', self.toggle_visibility)
+        card.pack_start(reveal, False, False, 0)
+        self.feedback = add_class(Gtk.Label(label='Use at least 6 characters.'), 'setup-feedback')
+        self.feedback.set_xalign(0)
+        self.feedback.set_line_wrap(True)
+        self.feedback.set_max_width_chars(48)
+        card.pack_start(self.feedback, False, False, 0)
+        self.start = add_class(Gtk.Button(label='Start PH4NTXM'), 'setup-start')
+        self.start.set_sensitive(False)
+        self.start.connect('clicked', self.submit)
+        card.pack_start(self.start, False, False, 0)
+        foot = add_class(Gtk.Label(label='A new boot starts a new session and password setup.'), 'subtitle')
+        foot.set_line_wrap(True)
+        foot.set_max_width_chars(48)
+        card.pack_start(foot, False, False, 0)
+        for entry in (self.password, self.confirmation):
+            entry.connect('changed', self.validate)
+            entry.connect('activate', self.submit)
+        self.password.grab_focus()
+
+    def add_entry(self, card, label):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        title = Gtk.Label(label=label)
+        title.set_xalign(0)
+        box.pack_start(title, False, False, 0)
+        entry = Gtk.Entry()
+        entry.set_visibility(False)
+        entry.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+        entry.set_max_length(256)
+        box.pack_start(entry, False, False, 0)
+        card.pack_start(box, False, False, 0)
+        return entry
+
+    def toggle_visibility(self, toggle):
+        for entry in (self.password, self.confirmation):
+            entry.set_visibility(toggle.get_active())
+
+    def validate(self, *_):
+        password, confirmation = self.password.get_text(), self.confirmation.get_text()
+        valid = valid_pair(password, confirmation)
+        self.start.set_sensitive(valid and not self.busy)
+        if not self.busy:
+            if valid:
+                message = 'Passwords match. You can start PH4NTXM.'
+            elif confirmation and password != confirmation:
+                message = 'The passwords do not match yet.'
+            else:
+                message = 'Use at least 6 characters.'
+            self.feedback.set_text(message)
+
+    @staticmethod
+    def broker_exchange(password, confirmation):
+        request = json.dumps({'password': password, 'confirmation': confirmation}, ensure_ascii=False)
+        sys.stdout.buffer.write(request.encode() + b'\n')
+        sys.stdout.buffer.flush()
+        reply = sys.stdin.buffer.readline(4097)
+        if not reply or len(reply) > 4096 or not reply.endswith(b'\n'):
+            return {'ok': False, 'fatal': True}
+        return json.loads(reply)
+
+    def submit(self, *_):
+        password, confirmation = self.password.get_text(), self.confirmation.get_text()
+        if self.busy or not valid_pair(password, confirmation):
+            return
+        self.busy = True
+        self.start.set_sensitive(False)
+        self.password.set_sensitive(False)
+        self.confirmation.set_sensitive(False)
+        self.password.set_text('')
+        self.confirmation.set_text('')
+        self.feedback.set_text('Preparing your session…')
+        def worker():
+            try:
+                result = self.exchange(password, confirmation)
+            except (OSError, ValueError):
+                result = {'ok': False, 'fatal': True}
+            GLib.idle_add(self.finish, result)
+        threading.Thread(target=worker, daemon=True).start()
+
+    def finish(self, result):
+        if result.get('ok') is True:
+            self.completed = True
+            Gtk.main_quit()
+        elif result.get('fatal'):
+            self.feedback.set_text('Setup was interrupted. Restart PH4NTXM to try again.')
+        else:
+            self.busy = False
+            self.password.set_sensitive(True)
+            self.confirmation.set_sensitive(True)
+            self.feedback.set_text(result.get('error', 'The password could not be set. Please try again.'))
+            self.password.grab_focus()
+        return False
+
+
+def place(window, monitor):
+    geometry = monitor.get_geometry()
+    window.move(geometry.x, geometry.y)
+    window.set_default_size(geometry.width, geometry.height)
+    window.resize(geometry.width, geometry.height)
+    window.show_all()
+
+
+def main():
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+    ctypes.CDLL(None).prctl(4, 0, 0, 0, 0)
+    install_style()
+    display = Gdk.Display.get_default()
+    primary = display.get_primary_monitor() or display.get_monitor(0)
+    window = SetupWindow()
+    backgrounds = []
+    for index in range(display.get_n_monitors()):
+        monitor = display.get_monitor(index)
+        if monitor == primary:
+            continue
+        background = add_class(Gtk.Window(), 'setup-background')
+        background.set_decorated(False)
+        background.connect('delete-event', lambda *_: True)
+        place(background, monitor)
+        backgrounds.append(background)
+    place(window, primary)
+    Gtk.main()
+    for background in backgrounds:
+        background.destroy()
+    window.destroy()
+    return 0 if window.completed else 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

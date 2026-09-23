@@ -12,7 +12,9 @@ Opening the window or pressing Cancel does not change the marker. The initial di
 
 ## [ RUNTIME ]
 
-The action calls the privileged [USB Nuke Control](USB-NUKE-CONTROL.md) helper through sudo with `enable` or `disable`. Successful completion closes the window. A failed helper call leaves an error dialog so the action is not presented as completed.
+The action calls the privileged [USB Nuke Control](USB-NUKE-CONTROL.md) helper through sudo with `enable` or `disable`. Arm works without a password prompt. Disarm opens a graphical prompt for the current session password. Cancelling authentication or entering an incorrect password leaves the armed state unchanged.
+
+Successful completion closes the window. A failed helper call leaves an error dialog so the action is not presented as completed.
 
 Arming creates runtime state for the udev-triggered removal path. The installed udev rules determine which storage-removal events activate the armed trigger.
 

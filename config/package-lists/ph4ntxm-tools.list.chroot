@@ -5,6 +5,8 @@ live-config-systemd
 systemd-sysv
 sudo
 util-linux
+kbd
+x11-utils
 bsdextrautils
 procps
 kmod

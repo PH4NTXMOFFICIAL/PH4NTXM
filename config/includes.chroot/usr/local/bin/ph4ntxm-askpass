@@ -1,0 +1,36 @@
+#!/usr/bin/python3 -I
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+import ctypes
+import resource
+import sys
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+
+resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+ctypes.CDLL(None).prctl(4, 0, 0, 0, 0)
+dialog = Gtk.Dialog(title="PH4NTXM Administrator Access")
+dialog.set_position(Gtk.WindowPosition.CENTER)
+dialog.set_keep_above(True)
+dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+dialog.add_button("Authorize", Gtk.ResponseType.OK)
+dialog.set_default_response(Gtk.ResponseType.OK)
+box = dialog.get_content_area()
+box.set_border_width(18)
+box.set_spacing(12)
+box.add(Gtk.Label(label="Enter your session password to authorize this action."))
+entry = Gtk.Entry()
+entry.set_visibility(False)
+entry.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+entry.set_activates_default(True)
+box.add(entry)
+dialog.show_all()
+response = dialog.run()
+password = entry.get_text() if response == Gtk.ResponseType.OK else ""
+entry.set_text("")
+dialog.destroy()
+if response != Gtk.ResponseType.OK or not password:
+    raise SystemExit(1)
+sys.stdout.write(password + "\n")

@@ -94,7 +94,7 @@ def active(unit):
 
 
 def privileged_read(path):
-    code, output = run([SUDO, "-n", "/usr/bin/cat", path])
+    code, output = run([SUDO, "-n", "/usr/local/sbin/ph4ntxm-session-status", "read", path])
     return output if code == 0 else ""
 
 

@@ -1,0 +1,75 @@
+#!/usr/bin/python3 -I
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+"""Read only enumerated session status files, never arbitrary root files."""
+import os
+import re
+import stat
+import sys
+
+BASE = "/run/ph4ntxm/"
+READABLE = {
+    BASE + name for name in (
+        "persona_seed", "boot_mac", "session_dhcp",
+        "fake_dmi/sys_vendor", "fake_dmi/product_name", "fake_dmi/product_uuid",
+    )
+}
+CHECKABLE = {
+    BASE + name for name in (
+        "mode", "lonewolf_seed", "persona_seed", "gpu_env", "screen_env",
+        "clock-fuzz-profile", "boot_jitter",
+    )
+}
+
+def allowed(action, path):
+    if action == "read":
+        return path in READABLE or bool(re.fullmatch(
+            r"/run/ph4ntxm/boot_mac/[A-Za-z0-9_.:-]{1,15}", path
+        )) and path.rsplit("/", 1)[-1] not in {".", ".."}
+    return action == "nonempty" and path in CHECKABLE
+
+def read_protected(path):
+    # Walk from / without following symlinks, including in parent directories.
+    fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for index, part in enumerate(path.split("/")[1:]):
+            final = index == len(path.split("/")) - 2
+            flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+            if not final:
+                flags |= os.O_DIRECTORY
+            child = os.open(part, flags, dir_fd=fd)
+            os.close(fd)
+            fd = child
+            info = os.fstat(fd)
+            if info.st_uid != 0 or info.st_mode & 0o022:
+                raise ValueError("Untrusted status file")
+        if not stat.S_ISREG(info.st_mode) or info.st_size > 65536:
+            raise ValueError("Invalid status file")
+        return os.read(fd, 65537)
+    finally:
+        os.close(fd)
+
+def main(argv):
+    if os.geteuid() != 0:
+        return 1
+    if argv == ["auth-ready"]:
+        if read_protected("/run/ph4ntxm-session-auth/ready") != b"ready\n":
+            return 1
+        for line in read_protected("/etc/shadow").decode().splitlines():
+            fields = line.split(":")
+            if fields[0] == "ph4ntxm":
+                return 0 if fields[1].startswith("$") else 1
+        return 1
+    if len(argv) != 2 or not allowed(*argv):
+        return 2
+    data = read_protected(argv[1])
+    if argv[0] == "nonempty":
+        return 0 if data else 1
+    sys.stdout.buffer.write(data)
+    return 0
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main(sys.argv[1:]))
+    except (OSError, ValueError, UnicodeError):
+        raise SystemExit(1)

@@ -24,6 +24,8 @@ Every boot creates a new, disposable session based on your selected mode. The Ad
 
 The session is used once and is not saved for reuse. At shutdown, Nuke blocks networking, ends the live user's programs and starts best-effort available RAM scrub before powering off. The temporary session is discarded. Your next boot creates a new one.
 
+At boot, the PH4NTXM setup screen asks you to choose and confirm a password for this session. Select Start PH4NTXM to open the desktop. Use it to unlock the screen and authorize administrator actions. Emergency protection stays available without a password prompt. The next boot asks you to choose a password again.
+
 ## [ BOOT MODES ]
 
 Choose a mode in the boot menu. It stays active until shutdown. All three modes use the same Debian desktop and PH4NTXM tools.

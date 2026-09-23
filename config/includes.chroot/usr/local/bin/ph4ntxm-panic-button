@@ -29,7 +29,7 @@ def install_style():
 def nuke_sequence():
     return (
         subprocess.run(
-            ["/usr/bin/sudo", "/usr/bin/systemctl", "start", "ph4ntxm-panic.service"],
+            ["/usr/bin/sudo", "-n", "/usr/bin/systemctl", "start", "ph4ntxm-panic.service"],
             check=False,
         ).returncode
         == 0
