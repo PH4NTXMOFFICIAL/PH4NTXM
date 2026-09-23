@@ -26,7 +26,7 @@ terminal-border: "0"
   height = 160
 
   item_color = "#163042"
-  selected_item_color = "#9B247D"
+  selected_item_color = "#FF3DFB"
 
   item_height = 36
   item_padding = 0
