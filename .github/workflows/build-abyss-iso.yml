@@ -1,0 +1,59 @@
+name: Build PH4NTXM Abyss Edition Test ISO
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-abyss:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Show source revision
+        run: |
+          git rev-parse HEAD
+          git status --short
+
+      - name: Build Abyss on Debian 13
+        run: |
+          docker run --rm --privileged \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            debian:13 \
+            bash -lc '
+              set -euo pipefail
+
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                git \
+                live-build \
+                python3 \
+                util-linux \
+                ca-certificates
+
+              ./build.sh --edition abyss
+              chmod -R a+rX output
+            '
+
+      - name: Show published outputs
+        run: |
+          find output -maxdepth 3 -type f -printf '%p  %s bytes\n'
+          echo
+          find output -name SHA256SUMS -type f -exec sh -c '
+            echo "==> $1"
+            cat "$1"
+          ' _ {} \;
+
+      - name: Upload PH4NTXM Abyss Edition Test ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: ph4ntxm-abyss-test-${{ github.sha }}
+          path: output/
+          if-no-files-found: error
+          retention-days: 5

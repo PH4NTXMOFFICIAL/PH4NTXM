@@ -2,9 +2,10 @@
 
 ## [ MODEL ]
 
-PH4NTXM is distributed as source through [PH4NTXMOFFICIAL/PH4NTXM](https://github.com/PH4NTXMOFFICIAL/PH4NTXM).  
-We do not provide official pre-built binaries or signed ISO releases.  
-Operators build their own images with Debian live-build.
+PH4NTXM is distributed as source through [PH4NTXMOFFICIAL/PH4NTXM](https://github.com/PH4NTXMOFFICIAL/PH4NTXM).
+
+We do not provide official pre-built binaries or signed ISO releases. Automated Abyss test ISOs may be available through GitHub Actions for testing and convenience. They are not release images.  
+Operators who require independent verification should build their own images with Debian live-build.
 
 Package archives and external downloads can change between builds.  
 The same source revision does not guarantee a byte-identical ISO.
