@@ -12,7 +12,6 @@ fi
 
 if id "$USER" >/dev/null 2>&1; then
 
-    # No known password exists before the session setup runs.
     usermod --password '!' "$USER"
 
     usermod -aG adm,kvm "$USER"

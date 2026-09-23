@@ -101,7 +101,6 @@ if [ -f /etc/sudoers.d/ph4ntxm ]; then
     chmod 0440 /etc/sudoers.d/ph4ntxm
 fi
 
-# Authentication configuration must never be writable by the live user.
 chown root:root /etc/sudo.conf
 chmod 0644 /etc/sudo.conf
 visudo -cf /etc/sudoers.d/ph4ntxm

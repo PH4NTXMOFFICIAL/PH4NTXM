@@ -29,7 +29,6 @@ def allowed(action, path):
     return action == "nonempty" and path in CHECKABLE
 
 def read_protected(path):
-    # Walk from / without following symlinks, including in parent directories.
     fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
     try:
         for index, part in enumerate(path.split("/")[1:]):
