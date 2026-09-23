@@ -2,36 +2,40 @@
 
 ## [ OVERVIEW ]
 
-Reads the boot mode from the kernel command line and writes `/run/ph4ntxm/mode`.
+Records the boot mode and makes that choice available to services, command callers and login shells. Selection happens once at startup. The reader and environment helpers consume the recorded result.
 
 ## [ STARTUP ]
 
 `ph4ntxm-mode.service` runs after local filesystems and before `sysinit.target`. It is a one-shot service whose completed state remains available to later dependencies.
 
-The script creates `/run/ph4ntxm` and reads the kernel command line. Mode selection belongs to this early stage. Later shell helpers consume the recorded result.
+The script creates `/run/ph4ntxm` and scans the kernel command line for `ph4ntxm.mode=`. It starts with `linux` and accepts only `linux`, `windows` or `lonewolf`. If the argument appears more than once, the last occurrence supplies the value to validate. An unsupported final value falls back to Linux.
 
 ## [ RUNTIME ]
 
-The initial value is `linux`. The script scans command-line arguments for `ph4ntxm.mode=` and accepts only `linux`, `windows` or `lonewolf`. An unsupported final value falls back to Linux. If the argument appears more than once, the last occurrence encountered supplies the value that is validated.
+The startup script removes existing mode markers, writes the selected token and newline to a temporary file, sets `0644` permissions and renames it to `/run/ph4ntxm/mode`. It then creates `mode-normal` for Linux/Windows or `mode-lonewolf` for the independent Lone Wolf chain.
 
-It removes both existing mode markers, writes the selected token and newline through a temporary file, sets permissions to `0644`, then renames the file to `/run/ph4ntxm/mode`.
+The file and marker are replaced separately. An interrupted setup can leave a readable token without its matching marker. Downstream checks therefore use service completion and their own prerequisites.
 
-It next creates one empty marker:
+For command callers, `/usr/lib/ph4ntxm/ph4ntxm-mode-select.sh` copies the existing regular file to standard output unchanged. It prints `linux` only when the regular-file check fails. An empty file stays empty, malformed contents pass through, and a read error returns failure. This reader neither exports a variable nor starts any services.
 
-- `mode-normal` selects the shared Linux/Windows service conditions.
-- `mode-lonewolf` selects the independent Lone Wolf chain.
+For login shells, `/etc/profile.d/ph4ntxm-mode.sh` reads one line with `IFS=` and `read -r`, validates the exact lowercase token and exports it as `PH4NTXM_MODE`. An unreadable file, failed read or unsupported value becomes `linux`. This validation differs from the command reader's direct output.
 
-The mode file and marker are replaced separately. A failure between those steps can leave a readable mode without its matching marker, which is why downstream checks use service completion and their own prerequisites.
+Child processes inherit the exported mode from their launching shell. Already-running applications keep their earlier environment, and separate launchers can supply their own values. Changing a shell variable does not rewrite the mode file, switch markers or reconfigure the active session.
 
-The service records the boot choice. It does not reconfigure an already-running session when a user changes a shell variable. [Mode Select](MODE-SELECT.md) reads the file for callers, while [Mode Environment](MODE-ENVIRONMENT.md) exports a validated token to login shells.
+Neither reader is a readiness check. A Linux fallback can mean the startup record was unavailable. The protection chain still has to complete independently.
 
 ## [ CHECKS ]
 
-Compare `ph4ntxm.mode=` in `/proc/cmdline`, the mode file and the single expected marker. Linux and Windows should share `mode-normal`. Lone Wolf should have `mode-lonewolf`.
+Compare `/proc/cmdline`, `/run/ph4ntxm/mode` and the single expected marker. Linux and Windows share `mode-normal`. Lone Wolf uses `mode-lonewolf`.
 
-If state is missing or inconsistent, inspect `journalctl -b -u ph4ntxm-mode.service`. A fallback value printed by a reader is not evidence that this startup stage completed.
+If they disagree, inspect `journalctl -b -u ph4ntxm-mode.service`. For shell differences, compare `printf '%s\n' "$PH4NTXM_MODE"` in a newly opened login shell with the file and the command reader's output and exit status.
 
 ## [ SOURCE ]
 
-[ph4ntxm-mode.sh](../../../config/includes.chroot/usr/lib/ph4ntxm/ph4ntxm-mode.sh)  
+[ph4ntxm-mode.sh](../../../config/includes.chroot/usr/lib/ph4ntxm/ph4ntxm-mode.sh)
+
 [ph4ntxm-mode.service](../../../config/includes.chroot/etc/systemd/system/ph4ntxm-mode.service)
+
+[ph4ntxm-mode-select.sh](../../../config/includes.chroot/usr/lib/ph4ntxm/ph4ntxm-mode-select.sh)
+
+[ph4ntxm-mode.sh](../../../config/includes.chroot/etc/profile.d/ph4ntxm-mode.sh)

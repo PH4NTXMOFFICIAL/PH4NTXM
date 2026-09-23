@@ -21,8 +21,6 @@ Run session checks in the live environment. For one-shot services, inspect the c
 
 [BOOT FLOW](system/session/BOOTFLOW.md)  
 [MODE](system/session/MODE.md)  
-[MODE SELECT](system/session/MODE-SELECT.md)  
-[MODE ENVIRONMENT](system/session/MODE-ENVIRONMENT.md)  
 [COMMAND PATH](system/session/COMMAND-PATH.md)
 
 [SESSION PASSWORD](system/session/SESSION-PASSWORD.md)
@@ -54,7 +52,6 @@ Run session checks in the live environment. For one-shot services, inspect the c
 [BROWSER](system/session/BROWSER.md)  
 [BROWSER MODE](system/session/BROWSER-MODE.md)  
 [BROWSER POLICY](system/session/BROWSER-POLICY.md)  
-[BROWSER USER SETUP](system/session/BROWSER-USER-SETUP.md)  
 [FONTS RANDOMIZATION](system/session/FONTS-RANDOMIZATION.md)  
 [TOR BROWSER](system/session/TOR-BROWSER.md)
 
@@ -88,7 +85,6 @@ Run session checks in the live environment. For one-shot services, inspect the c
 [BOOT PILOT](system/session/BOOT-PILOT.md)  
 [HEALTH](system/session/HEALTH.md)  
 [IDENTITY](system/session/IDENTITY.md)  
-[IDENTITY TRAY](system/session/IDENTITY-TRAY.md)  
 [DOCUMENT AIRLOCK](system/session/DOCUMENT-AIRLOCK.md)  
 [MEDIA VIEWERS](system/session/MEDIA-VIEWERS.md)  
 [WIFI CONTROL](system/session/WIFI-CONTROL.md)  
@@ -98,14 +94,8 @@ Run session checks in the live environment. For one-shot services, inspect the c
 ## [ CONTAINMENT AND TERMINATION ]
 
 [LOCKDOWN](system/session/LOCKDOWN.md)  
-[LOCKDOWN TRAY](system/session/LOCKDOWN-TRAY.md)  
-[FIREWALL CONTROL](system/session/FIREWALL-CONTROL.md)  
 [ARM CRASHKERNEL](system/session/ARM-CRASHKERNEL.md)  
 [NUKE KERNEL](system/session/NUKE-KERNEL.md)  
 [RAM SCRUB](system/session/RAM-SCRUB.md)  
 [PANIC](system/session/PANIC.md)  
-[PANIC BUTTON](system/session/PANIC-BUTTON.md)  
-[PANIC BUTTON TRAY](system/session/PANIC-BUTTON-TRAY.md)  
 [USB NUKE](system/session/USB-NUKE.md)  
-[USB NUKE CONTROL](system/session/USB-NUKE-CONTROL.md)  
-[USB NUKE TRIGGER](system/session/USB-NUKE-TRIGGER.md)

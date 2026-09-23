@@ -2,32 +2,36 @@
 
 ## [ OVERVIEW ]
 
-Displays the current PH4NTXM session identity.
+Displays the current session identity in a desktop window or terminal report. The system tray provides a shortcut to the same viewer.
 
 ## [ STARTUP ]
 
-The Identity application gathers its values when the window opens. It reads the selected mode, `/etc/hostname`, `/etc/machine-id` and interface addresses exposed through sysfs.
+When the window opens, it reads the selected mode, `/etc/hostname`, `/etc/machine-id` and interface addresses exposed through sysfs. Each window holds its own snapshot of those values.
 
-The window presents a snapshot of the applied session identity.
+The desktop tray creates an Ayatana indicator with the PH4NTXM Identity icon and Show Identity and Quit actions. Its active state means the shortcut is present. It does not indicate that identity preparation passed its checks.
 
 ## [ RUNTIME ]
 
-The graphical view shows the mode, hostname, machine ID, available interface MACs and a clock-profile description. The interface scan excludes loopback and all-zero addresses. Other visible interfaces can appear, including virtual devices.
+The graphical view shows the mode, hostname, machine ID, available interface MACs and a clock-profile description. Interface scanning excludes loopback and all-zero addresses. Other visible interfaces, including virtual devices, can appear.
 
-Unreadable or empty scalar values fall back to `Unknown`, while missing interface information can leave the MAC list empty. The viewer remains useful for inspecting partial startup instead of requiring every identity generator to succeed before opening.
+Unreadable or empty scalar values fall back to Unknown. Missing interface information can leave the MAC list empty, allowing inspection of partial startup. The clock line describes the profile rather than measuring its current offset.
 
-The clock line is descriptive text about the active profile. It is not a measured offset or a live verification of Clock Fuzz. Likewise, displayed identifiers are the values read by the viewer, not a complete audit of seed consistency, bind mounts or service readiness.
+`ph4ntxm-identity --print` or `-p` prints the hostname, machine ID, MAC list and clock description. This terminal form does not include the graphical mode badge.
 
-`ph4ntxm-identity --print` or `-p` prints the hostname, machine ID, MAC list and clock description to the terminal. The printed form does not include the graphical mode badge.
+Detailed Report opens [Health](HEALTH.md) in a separate held terminal for broader checks. Closing Identity does not stop that report or any randomization service. Reopening gathers a new snapshot.
 
-Detailed Report opens [Health](HEALTH.md) in a separate held terminal. That report performs broader checks. Closing Identity does not stop the report or any randomization service. Reopening Identity gathers a fresh snapshot after runtime changes.
+Each Show Identity selection can launch another viewer. The tray has no duplicate-window guard, does not poll `identity-ready` and does not change its icon when a MAC or service state changes. Existing viewer windows keep their earlier snapshots.
+
+Launch exceptions are caught without a tray error dialog. Quit ends only the indicator's GTK loop, leaving separately launched viewers and system services running. The normal application launcher remains available.
 
 ## [ CHECKS ]
 
-Compare reported values with the identity-ready marker and generator journal when checking startup. A visible hostname alone does not establish that every physical MAC was applied.
+Compare displayed values with `identity-ready` and the generator journal when checking startup. Use [Boot Pilot](BOOT-PILOT.md) and Health to inspect the wider chain, including physical MAC application and service readiness.
 
-If a virtual interface appears, compare it with [Ghost Stack](NET-GHOST-STACK.md) before interpreting it as an unexpected physical adapter.
+If a virtual interface appears, compare it with [Ghost Stack](NET-GHOST-STACK.md). If the tray shortcut opens no window, run the viewer in a terminal to expose its startup error and check the GTK/indicator environment.
 
 ## [ SOURCE ]
 
 [ph4ntxm-identity](../../../config/includes.chroot/usr/local/bin/ph4ntxm-identity)
+
+[ph4ntxm-identity-tray](../../../config/includes.chroot/usr/local/bin/ph4ntxm-identity-tray)

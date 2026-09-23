@@ -134,7 +134,7 @@ Lockdown uses a shared firewall lock and mode-aware helper. Normal-path transiti
 
 Transitions apply policy and interface changes in sequence. On failure, recovery keeps the restrictive state while the guardian works to restore a verified profile. Conntrack cleanup can interrupt existing connections. Readiness is published after verification.
 
-See [Firewall Control](docs/system/session/FIREWALL-CONTROL.md) and [Engine Guard](docs/system/session/PACKET-TRANSFORMATION-ENGINE-GUARD.md).
+See [Lockdown](docs/system/session/LOCKDOWN.md) and [Engine Guard](docs/system/session/PACKET-TRANSFORMATION-ENGINE-GUARD.md).
 
 ## [ CLOCK, THERMAL AND MEMORY SERVICES ]
 
