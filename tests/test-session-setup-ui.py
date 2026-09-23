@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Run under Xvfb with edition (abyss/ghost) and optional screenshot directory."""
 import importlib.machinery
 import importlib.util
 import os

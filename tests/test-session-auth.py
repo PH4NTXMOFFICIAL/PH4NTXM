@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Run with unshare -Ur python3 tests/test-session-auth.py. No host account changes."""
 import importlib.machinery
 import importlib.util
 import io
