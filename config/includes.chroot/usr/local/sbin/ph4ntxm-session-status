@@ -1,6 +1,7 @@
 #!/usr/bin/python3 -I
 # Copyright (C) PH4NTXM
 # Licensed under the GNU General Public License v3.0.
+
 import os
 import re
 import stat
@@ -20,12 +21,14 @@ CHECKABLE = {
     )
 }
 
+
 def allowed(action, path):
     if action == "read":
         return path in READABLE or bool(re.fullmatch(
             r"/run/ph4ntxm/boot_mac/[A-Za-z0-9_.:-]{1,15}", path
         )) and path.rsplit("/", 1)[-1] not in {".", ".."}
     return action == "nonempty" and path in CHECKABLE
+
 
 def read_protected(path):
     fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
@@ -47,6 +50,7 @@ def read_protected(path):
     finally:
         os.close(fd)
 
+
 def main(argv):
     if os.geteuid() != 0:
         return 1
@@ -65,6 +69,7 @@ def main(argv):
         return 0 if data else 1
     sys.stdout.buffer.write(data)
     return 0
+
 
 if __name__ == "__main__":
     try:

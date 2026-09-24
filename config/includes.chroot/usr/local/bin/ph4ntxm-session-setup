@@ -1,6 +1,7 @@
 #!/usr/bin/python3 -I
 # Copyright (C) PH4NTXM
 # Licensed under the GNU General Public License v3.0.
+
 import configparser
 import ctypes
 import json
