@@ -21,8 +21,7 @@ Run session checks in the live environment. For one-shot services, inspect the c
 
 [BOOT FLOW](system/session/BOOTFLOW.md)  
 [MODE](system/session/MODE.md)  
-[COMMAND PATH](system/session/COMMAND-PATH.md)
-
+[COMMAND PATH](system/session/COMMAND-PATH.md)  
 [SESSION PASSWORD](system/session/SESSION-PASSWORD.md)
 
 ## [ IDENTITY AND HARDWARE ]
