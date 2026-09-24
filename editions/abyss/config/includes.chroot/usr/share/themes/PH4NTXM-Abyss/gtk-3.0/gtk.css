@@ -1113,3 +1113,55 @@ frame > border.flat,
     border-color: #00ABFF;
     outline-color: #00ABFF;
 }
+
+#login_window {
+    border-radius: 16px;
+}
+
+#login_window #content_frame {
+    border-radius: 16px 16px 0 0;
+}
+
+#login_window #buttonbox_frame {
+    border-radius: 0 0 16px 16px;
+}
+
+#login_window entry,
+#login_window #user_combobox button {
+    border-radius: 4px;
+}
+
+#login_window #login_button {
+    border-radius: 6px;
+    font-weight: bold;
+    background-image: none;
+    box-shadow: none;
+    background-color: #123b55;
+    border-color: alpha(#00abff, 0.55);
+    color: #b5e5ff;
+}
+
+#login_window #login_button:hover {
+    background-color: #174967;
+}
+
+#login_window #login_button:active,
+#login_window #login_button:checked {
+    background-color: #0d3047;
+}
+
+#login_window #login_button:disabled {
+    color: #71869b;
+    background-color: #101b2a;
+    border-color: alpha(black, 0.12);
+    box-shadow: none;
+    outline-width: 0;
+}
+
+#login_window #login_button:focus:not(:disabled) {
+    border-color: #00ABFF;
+    outline-color: #00ABFF;
+    outline-style: solid;
+    outline-width: 1px;
+    outline-offset: -3px;
+}

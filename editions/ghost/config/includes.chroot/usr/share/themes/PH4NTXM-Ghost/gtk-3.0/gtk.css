@@ -8033,3 +8033,55 @@ headerbar button.titlebutton.minimize:hover,
   border-color: #00ABFF;
   outline-color: #00ABFF;
 }
+
+#login_window {
+    border-radius: 16px;
+}
+
+#login_window #content_frame {
+    border-radius: 16px 16px 0 0;
+}
+
+#login_window #buttonbox_frame {
+    border-radius: 0 0 16px 16px;
+}
+
+#login_window entry,
+#login_window #user_combobox button {
+    border-radius: 4px;
+}
+
+#login_window #login_button {
+    border-radius: 6px;
+    font-weight: bold;
+    background-image: none;
+    box-shadow: none;
+    background-color: #ddf4fa;
+    border-color: alpha(#008ca9, 0.65);
+    color: #00647c;
+}
+
+#login_window #login_button:hover {
+    background-color: #ccecf5;
+}
+
+#login_window #login_button:active,
+#login_window #login_button:checked {
+    background-color: #bde3ee;
+}
+
+#login_window #login_button:disabled {
+    color: #8195a3;
+    background-color: #edf2f5;
+    border-color: alpha(#c4d5df, 0.4);
+    box-shadow: none;
+    outline-width: 0;
+}
+
+#login_window #login_button:focus:not(:disabled) {
+    border-color: #00ABFF;
+    outline-color: #00ABFF;
+    outline-style: solid;
+    outline-width: 1px;
+    outline-offset: -3px;
+}
