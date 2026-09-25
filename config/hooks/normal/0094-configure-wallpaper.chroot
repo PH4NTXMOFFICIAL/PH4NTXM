@@ -1,0 +1,28 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+EDITION=$(cat /usr/share/ph4ntxm/edition)
+case "$EDITION" in
+    abyss|ghost) ;;
+    *) printf 'Invalid PH4NTXM edition: %s\n' "$EDITION" >&2; exit 1 ;;
+esac
+
+WALLPAPER="/usr/share/backgrounds/ph4ntxm-$EDITION.png"
+FALLBACK=/usr/share/backgrounds/xfce/xfce-x.svg
+
+[ -r "$WALLPAPER" ]
+[ -e "$FALLBACK" ]
+
+dpkg-divert --local --divert "$FALLBACK.ph4ntxm-original" --rename --add "$FALLBACK"
+ln -sfn "$WALLPAPER" "$FALLBACK"
+
+install -d -m 0755 /usr/share/images/desktop-base
+update-alternatives --install /usr/share/images/desktop-base/desktop-background \
+    desktop-background "$WALLPAPER" 250
+update-alternatives --set desktop-background "$WALLPAPER"
+
+[ "$(readlink -f "$FALLBACK")" = "$WALLPAPER" ]
+[ "$(readlink -f /usr/share/images/desktop-base/desktop-background)" = "$WALLPAPER" ]
