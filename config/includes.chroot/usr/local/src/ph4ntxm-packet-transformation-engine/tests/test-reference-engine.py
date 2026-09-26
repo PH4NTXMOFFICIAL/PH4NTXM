@@ -640,7 +640,7 @@ def rewrite_tcp_options(info, direction, state, family):
 
 
 def tcp_state_timeout(state):
-    if state["reset"] or (state["fin_out"] and state["fin_in"]):
+    if state["reset"]:
         return TCP_CLOSED_TIMEOUT
     if state["fin_out"] or state["fin_in"]:
         return TCP_HALF_CLOSED_TIMEOUT

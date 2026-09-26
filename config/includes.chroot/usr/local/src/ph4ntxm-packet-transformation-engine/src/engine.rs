@@ -1138,7 +1138,7 @@ impl Engine {
 
     pub fn remove_stale(&mut self, now: Instant) {
         self.tcp_flows.retain(|_, state| {
-            let timeout = if state.reset || (state.fin_out && state.fin_in) {
+            let timeout = if state.reset {
                 TCP_CLOSED_TIMEOUT
             } else if state.fin_out || state.fin_in {
                 TCP_HALF_CLOSED_TIMEOUT
@@ -1291,6 +1291,51 @@ mod tests {
                     maintain_after_idle(&mut engine, TCP_FLOW_TIMEOUT + Duration::from_secs(1));
                     assert_eq!(
                         engine.process(&outbound, true, 2, false).unwrap_err(),
+                        "unmapped TCP flow"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn unconfirmed_fin_preserves_mapping_until_normal_expiry() {
+        for mode in [Mode::Linux, Mode::Windows] {
+            for family in [4, 6] {
+                for local_half_close in [false, true] {
+                    let offset = if family == 4 { 20 } else { 40 };
+                    let (mut engine, _, wire_isn, local_peer_isn) = tcp_flow(mode, family, true);
+                    let fin = tcp_packet(
+                        family,
+                        false,
+                        REMOTE_ISN.wrapping_add(0x4000_0000),
+                        wire_isn.wrapping_add(1),
+                        0x11,
+                        &[],
+                    );
+                    engine.process(&fin, false, 2, false).unwrap();
+                    if local_half_close {
+                        let local_fin =
+                            tcp_packet(family, true, 0, local_peer_isn.wrapping_add(1), 0x11, &[]);
+                        engine.process(&local_fin, true, 2, false).unwrap();
+                    }
+                    let acknowledged = if local_half_close { 2 } else { 1 };
+                    let peer_ack = tcp_packet(
+                        family,
+                        false,
+                        REMOTE_ISN.wrapping_add(1),
+                        wire_isn.wrapping_add(acknowledged),
+                        0x10,
+                        &[],
+                    );
+                    engine.process(&peer_ack, false, 2, false).unwrap();
+                    maintain_after_idle(&mut engine, TCP_CLOSED_TIMEOUT + Duration::from_secs(1));
+                    let local = engine.process(&peer_ack, false, 2, false).unwrap();
+                    assert_eq!(read_u32(&local, offset + 4), local_peer_isn.wrapping_add(1));
+                    assert_eq!(read_u32(&local, offset + 8), acknowledged - 1);
+                    maintain_after_idle(&mut engine, TCP_FLOW_TIMEOUT + Duration::from_secs(1));
+                    assert_eq!(
+                        engine.process(&peer_ack, false, 2, false).unwrap_err(),
                         "unmapped TCP flow"
                     );
                 }
