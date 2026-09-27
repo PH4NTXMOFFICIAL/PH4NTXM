@@ -2,7 +2,7 @@
 Version=1.0
 Name=Firefox Web Browser
 Comment=Browse the web with Firefox ESR
-Exec=/usr/bin/firefox-esr
+Exec=/usr/bin/firefox-esr %u
 StartupNotify=true
 Terminal=false
 Icon=firefox-esr
