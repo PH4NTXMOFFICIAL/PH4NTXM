@@ -39,6 +39,10 @@ dpkg -l 'plymouth-theme-*' 2>/dev/null | awk '/^ii/ {print $2}' | while read -r 
     apt-get purge -y --no-auto-remove "$pkg" || true
 done
 
+find /usr/share/doc -type f \
+    \( -name 'changelog*' -o -name 'ChangeLog*' -o -name 'NEWS' \
+    -o -name 'NEWS.gz' -o -name 'NEWS.Debian*' \) -delete
+
 rm -rf /usr/share/man/*
 rm -rf /usr/share/info/*
 rm -rf /usr/share/locale/*

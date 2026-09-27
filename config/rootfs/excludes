@@ -1,0 +1,3 @@
+var/cache/apt/*.bin
+var/cache/apt/archives/*.deb
+var/lib/apt/lists/*
