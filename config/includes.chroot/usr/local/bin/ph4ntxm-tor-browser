@@ -108,9 +108,33 @@ SESSION_HOME=$SESSION_DIR/home
 mkdir -m 0700 "$SESSION_HOME"
 BROWSER_PID=0
 
+browser_running() {
+    local processes
+    processes=$(ps -eo pid=,pgid=,stat=) || return 0
+    awk -v pid="$BROWSER_PID" '
+        ($1 == pid || $2 == pid) && $3 !~ /^[ZX]/ { found=1 }
+        END { exit !found }
+    ' <<<"$processes"
+}
+
 cleanup() {
-    if ((BROWSER_PID > 0)) && kill -0 "$BROWSER_PID" 2>/dev/null; then
-        kill "$BROWSER_PID" 2>/dev/null || true
+    local signal attempt attempts
+    trap - EXIT
+    trap '' INT TERM HUP
+    if ((BROWSER_PID > 0)); then
+        for signal in TERM KILL; do
+            attempts=50
+            [[ "$signal" != KILL ]] || attempts=10
+            for ((attempt=0; attempt<attempts; attempt++)); do
+                browser_running || break 2
+                kill -s "$signal" -- "-$BROWSER_PID" "$BROWSER_PID" 2>/dev/null || true
+                sleep 0.1
+            done
+        done
+        if browser_running; then
+            printf 'Tor Browser: browser processes remain active; temporary profile retained\n' >&2
+            return 1
+        fi
         wait "$BROWSER_PID" 2>/dev/null || true
     fi
     case "${SESSION_DIR:-}" in
@@ -121,7 +145,10 @@ cleanup() {
             ;;
     esac
 }
-trap cleanup EXIT INT TERM HUP
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 IFS=: read -r USER_NAME _ PASSWD_UID _ _ USER_HOME _ < <(getent passwd "$USER_ID")
 [[ "$PASSWD_UID" == "$USER_ID" && -n "$USER_NAME" ]] || fail 'UNABLE TO RESOLVE LOCAL USER'
@@ -149,11 +176,20 @@ if [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
     ENVIRONMENT+=("DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS")
 fi
 
-set +e
-env -i "${ENVIRONMENT[@]}" "$START_BROWSER" "$@" &
+SIGNAL_STATUS=0
+trap 'SIGNAL_STATUS=130' INT
+trap 'SIGNAL_STATUS=143' TERM
+trap 'SIGNAL_STATUS=129' HUP
+set +m
+env -i "${ENVIRONMENT[@]}" /usr/bin/setsid "$START_BROWSER" "$@" &
 BROWSER_PID=$!
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+((SIGNAL_STATUS == 0)) || exit "$SIGNAL_STATUS"
+
+set +e
 wait "$BROWSER_PID"
 STATUS=$?
-BROWSER_PID=0
 set -e
 exit "$STATUS"

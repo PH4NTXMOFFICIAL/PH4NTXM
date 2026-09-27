@@ -20,7 +20,7 @@ Only `http://`, `https://` and `file://` launch arguments are accepted. Arbitrar
 
 Each launch creates a temporary session directory and private home under `/run/user/UID`. `env -i` builds a small environment containing desktop access, UTC and the system Tor SOCKS endpoint at `127.0.0.1:9050`. Normal GPU/persona and inherited loader variables are not carried into that environment.
 
-The wrapper waits for the browser child and returns its status. Cleanup attempts to stop a remaining child and removes the owned temporary session directory on normal exit or handled signals. An uncatchable kill cannot run that cleanup.
+The browser launcher and its children run in a separate process group. The wrapper waits for the launcher and returns its status. On exit or handled signals, cleanup requests group termination, allows up to five seconds for exit and then requests forced termination. It removes the owned temporary session directory only after no live browser processes remain. If processes remain after the final wait, the directory is retained and an error is printed. An uncatchable kill cannot run that cleanup.
 
 ## [ CHECKS ]
 
