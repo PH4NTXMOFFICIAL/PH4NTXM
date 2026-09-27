@@ -125,7 +125,7 @@ rubberband,
 
 button {
     min-height: 24px;
-    min-width: 16px;
+    min-width: 20px;
     padding: 5px 12px;
     color: @theme_fg_color;
     background-color: @abyss_raised;
@@ -449,6 +449,11 @@ switch:hover slider {
 
 switch:disabled {
     opacity: 0.45;
+}
+
+switch:focus:not(:disabled),
+scale:focus:not(:disabled) {
+    outline-width: 1px;
 }
 
 scale {
