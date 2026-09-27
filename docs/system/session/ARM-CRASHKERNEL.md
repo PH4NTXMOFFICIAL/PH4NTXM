@@ -12,11 +12,11 @@ Arming loads an image for a later crash transition. It does not start memory scr
 
 ## [ RUNTIME ]
 
-The script collects nonzero `System RAM` ranges from `/proc/iomem`. If that produces no usable map, it checks `/sys/firmware/memmap` for equivalent ranges. An empty map fails instead of loading an image with unknown coverage.
+The script requires a readable `/proc/iomem` and accepts only ranges labelled exactly `System RAM`. A suffixed type such as `System RAM (kmem)` stops arming, even when its addresses are hidden. This avoids remapping driver-managed memory as ordinary RAM or silently leaving part of the session memory outside the map. If ordinary RAM addresses are unavailable, `/sys/firmware/memmap` supplies the fallback ranges. An empty map fails instead of loading an image with unknown coverage.
 
 Each range is passed as `ph4ntxm.memmap` on the emergency kernel command line. The complete append line is limited to 1800 characters. An oversized map stops the stage.
 
-The image is loaded with `kexec -p`, using the dedicated initramfs. Its command line selects the RAM-root init, disables swap and prepares the restricted emergency boot path, including a single CPU and device reset handling.
+The image is loaded with `kexec -p`, using the dedicated initramfs. Its command line selects the RAM-root init and prepares the restricted emergency boot path, including a single CPU and device reset handling. The emergency init scripts do not activate swap.
 
 After a successful load, the script writes `1` to `kernel.kexec_load_disabled`. This prevents later replacement through the locked loading path in the running kernel. Failure to lock loading is still a stage failure even though the crash image may already be loaded.
 
@@ -26,7 +26,7 @@ The two results remain distinct: a loaded image and a locked loader. [Link Unblo
 
 Inspect the arm service journal, `/sys/kernel/kexec_crash_loaded` and `/proc/sys/kernel/kexec_load_disabled`. Both values must be `1` for the release prerequisite.
 
-For failed arming, distinguish missing artifacts, unavailable RAM map, command-line length, kexec loading and loader locking. Checking these files is sufficient for inspection. Triggering a crash is a separate destructive operation.
+For failed arming, distinguish missing artifacts, unsupported RAM types, unavailable RAM map, command-line length, kexec loading and loader locking. Checking these files is sufficient for inspection. Triggering a crash is a separate destructive operation.
 
 ## [ SOURCE ]
 

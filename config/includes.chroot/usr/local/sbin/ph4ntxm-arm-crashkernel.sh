@@ -7,7 +7,18 @@ set -eu
 [ "$(id -u)" -eq 0 ] || exit 1
 [ -r /boot/nuke/vmlinuz-nuke ] && [ -r /boot/nuke/initrd-nuke.img ] || exit 1
 
-RAM_MAP=$(awk '$3 == "System" && $4 == "RAM" && $1 ~ /^[0-9a-fA-F]+-[0-9a-fA-F]+$/ {split($1, range, "-"); if (range[1] ~ /^0+$/ && range[2] ~ /^0+$/) next; printf " ph4ntxm.memmap=%s", $1}' /proc/iomem)
+RAM_MAP=$(awk '
+    $3 == "System" && $4 == "RAM" {
+        if (NF != 4) {
+            print "PH4NTXM: Unsupported System RAM type. Nuke arming stopped" > "/dev/stderr"
+            exit 1
+        }
+        if ($1 !~ /^[0-9a-fA-F]+-[0-9a-fA-F]+$/) next
+        split($1, range, "-")
+        if (range[1] ~ /^0+$/ && range[2] ~ /^0+$/) next
+        printf " ph4ntxm.memmap=%s", $1
+    }
+' /proc/iomem)
 if [ -z "$RAM_MAP" ] && [ -d /sys/firmware/memmap ]; then
     for entry in /sys/firmware/memmap/*; do
         [ -d "$entry" ] || continue
@@ -24,7 +35,7 @@ if [ -z "$RAM_MAP" ] && [ -d /sys/firmware/memmap ]; then
     done
 fi
 [ -n "$RAM_MAP" ] || exit 1
-APPEND_LINE="init=/init root=/dev/ram0 rw quiet loglevel=3 noswap iomem=relaxed nokaslr nosmap nosmep reset_devices maxcpus=1 irqpoll acpi=noirq init_on_free=1 page_alloc.shuffle=1$RAM_MAP"
+APPEND_LINE="init=/init root=/dev/ram0 rw quiet loglevel=3 iomem=relaxed nokaslr reset_devices maxcpus=1 irqpoll acpi=noirq init_on_free=1 page_alloc.shuffle=1$RAM_MAP"
 [ "${#APPEND_LINE}" -le 1800 ] || exit 1
 
 if ! /usr/sbin/kexec -p /boot/nuke/vmlinuz-nuke \
