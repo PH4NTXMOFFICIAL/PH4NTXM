@@ -9,7 +9,7 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("AyatanaAppIndicator3", "0.1")
-from gi.repository import Gtk, GLib, AyatanaAppIndicator3 as AppIndicator3
+from gi.repository import Gtk, GLib, Gio, AyatanaAppIndicator3 as AppIndicator3
 
 ICON_NAME = "ph4ntxm-identity"
 EXEC_VIEWER = "/usr/local/bin/ph4ntxm-identity"
@@ -54,6 +54,11 @@ class IdentityTray:
 
 
 def main():
+    application = Gio.Application(application_id="org.ph4ntxm.IdentityTray")
+    application.register(None)
+    if application.get_is_remote():
+        return
+
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     IdentityTray()
     Gtk.main()

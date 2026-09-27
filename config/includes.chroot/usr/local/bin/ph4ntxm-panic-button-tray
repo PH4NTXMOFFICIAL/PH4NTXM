@@ -6,7 +6,7 @@ import gi
 import subprocess
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GObject
+from gi.repository import Gtk, GObject, Gio
 
 APP_ICON = "ph4ntxm-panic-button"
 TOOLTIP_IDLE = "PH4NTXM Panic Button"
@@ -35,29 +35,8 @@ def quit_app(_):
     Gtk.main_quit()
 
 
-status_icon = Gtk.StatusIcon()
-status_icon.set_from_icon_name(APP_ICON)
-status_icon.set_tooltip_text(TOOLTIP_IDLE)
-status_icon.set_visible(True)
-
-menu = Gtk.Menu()
-
-item_trigger = Gtk.MenuItem(label="Nuke PH4NTXM")
-item_trigger.connect("activate", trigger_panic)
-menu.append(item_trigger)
-
-item_quit = Gtk.MenuItem(label="Quit")
-item_quit.connect("activate", quit_app)
-menu.append(item_quit)
-
-menu.show_all()
-
-
 def on_right_click(icon, button, time):
     menu.popup(None, None, None, None, button, time)
-
-
-status_icon.connect("popup-menu", on_right_click)
 
 
 def blink_icon():
@@ -69,6 +48,34 @@ def blink_icon():
     return True
 
 
-GObject.timeout_add(500, blink_icon)
+def main():
+    global status_icon, menu
 
-Gtk.main()
+    application = Gio.Application(application_id="org.ph4ntxm.PanicButtonTray")
+    application.register(None)
+    if application.get_is_remote():
+        return
+
+    status_icon = Gtk.StatusIcon()
+    status_icon.set_from_icon_name(APP_ICON)
+    status_icon.set_tooltip_text(TOOLTIP_IDLE)
+    status_icon.set_visible(True)
+
+    menu = Gtk.Menu()
+
+    item_trigger = Gtk.MenuItem(label="Nuke PH4NTXM")
+    item_trigger.connect("activate", trigger_panic)
+    menu.append(item_trigger)
+
+    item_quit = Gtk.MenuItem(label="Quit")
+    item_quit.connect("activate", quit_app)
+    menu.append(item_quit)
+
+    menu.show_all()
+    status_icon.connect("popup-menu", on_right_click)
+    GObject.timeout_add(500, blink_icon)
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()
