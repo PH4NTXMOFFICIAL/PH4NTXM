@@ -16,7 +16,7 @@ Activate hides the confirmation view and opens a nondeletable progress window. A
 
 If the command returns failure, the application closes the progress view, restores the confirmation window and shows an error. The root-only service owns the sequence independently of the desktop's lifetime.
 
-Panic first blocks radios and lowers every non-loopback interface on a best-effort basis. It then runs common [Nuke preparation](NUKE-KERNEL.md), which requests Lockdown, terminates the live user, stops RAM seeding and attempts swap/cache and memory cleanup.
+Panic runs common [Nuke preparation](NUKE-KERNEL.md), which first blocks radios and lowers non-loopback interfaces, then requests Lockdown, terminates the live user, stops RAM seeding and attempts swap/cache and memory cleanup. Preparation is limited to 30 seconds, with forced termination requested one second later if needed, so a stalled cleanup does not prevent the crash-transition attempt.
 
 If `/sys/kernel/kexec_crash_loaded` reports `1`, the script enables SysRq and requests a crash. A successful transition leaves the current kernel. If execution continues, it waits three seconds and proceeds to fallback poweroff.
 

@@ -86,7 +86,6 @@ static int scrub_available_memory(void)
         return 1;
 
     (void)setpriority(PRIO_PROCESS, 0, 19);
-    sync();
 
     while (allocated < target && count < capacity) {
         size_t length = target - allocated;
@@ -115,7 +114,6 @@ static int scrub_available_memory(void)
 
     explicit_bzero(blocks, capacity * sizeof(*blocks));
     free(blocks);
-    sync();
     return allocated < target ? 1 : 0;
 }
 
@@ -141,7 +139,6 @@ static int trigger_crashkernel(void)
         close(descriptor);
     }
 
-    sync();
     descriptor = open("/proc/sysrq-trigger", O_WRONLY | O_CLOEXEC);
     if (descriptor < 0)
         return 1;

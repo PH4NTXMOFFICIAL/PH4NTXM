@@ -14,11 +14,11 @@ It reserves 128 MiB for the surrounding system. If available memory does not exc
 
 The target is allocated in chunks of up to eight MiB. Each private anonymous mapping receives generated data followed by `explicit_bzero`, and is retained until the allocation pass ends. Keeping prior chunks mapped prevents repeatedly reusing only the same small allocation.
 
-The process requests lower scheduling priority, synchronizes before work and marks mappings `MADV_DONTDUMP` on a best-effort basis. Allocation stops when the target is reached or a mapping fails.
+The process requests lower scheduling priority and marks mappings `MADV_DONTDUMP` on a best-effort basis. Allocation stops when the target is reached or a mapping fails.
 
 Before release, every allocated chunk is explicitly zeroed again and unmapped. The bookkeeping array is also zeroed. The helper returns success only if allocated bytes reached the calculated target. A partial pass returns failure after cleanup.
 
-With `poweroff`, `reboot`, `halt` or `kexec` as its first argument, it first checks for a loaded crash kernel. It enables SysRq and requests the crash transition. If that path cannot be invoked, it attempts the allocatable-memory pass but still returns failure for the shutdown-trigger path.
+With `poweroff`, `reboot`, `halt` or `kexec` as its first argument, it first checks for a loaded crash kernel. It enables SysRq and requests the crash transition without waiting for filesystem writes. If that path cannot be invoked, it attempts the allocatable-memory pass but still returns failure for the shutdown-trigger path.
 
 The userspace pass operates on available allocations above the 128 MiB reserve. [Nuke Kernel](NUKE-KERNEL.md) describes the separate emergency boot stages that use the RAM map collected during arming.
 

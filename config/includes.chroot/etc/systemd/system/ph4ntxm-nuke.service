@@ -5,8 +5,9 @@ Before=shutdown.target reboot.target halt.target poweroff.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/ph4ntxm-nuke.sh
-TimeoutStartSec=infinity
+ExecStart=/usr/bin/timeout -k 1 30 /usr/local/sbin/ph4ntxm-nuke.sh
+TimeoutStartSec=35s
+TimeoutStopSec=1s
 OOMScoreAdjust=-1000
 
 [Install]

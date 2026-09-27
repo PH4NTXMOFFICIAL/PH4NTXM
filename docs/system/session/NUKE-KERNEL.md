@@ -12,9 +12,9 @@ The common `ph4ntxm-nuke.sh` helper prepares the current system for termination.
 
 ## [ RUNTIME ]
 
-Preparation requests Lockdown with a timeout, then tries the installed Lockdown rules directly if control fails. It blocks radios, lowers non-loopback interfaces and terminates the `ph4ntxm` user, falling back to killing that UID's processes.
+Preparation blocks radios and lowers non-loopback interfaces, then requests Lockdown with a timeout. It tries the installed Lockdown rules directly if control fails and terminates the `ph4ntxm` user, falling back to killing that UID's processes.
 
-It then stops RAM seeding, disables swap, synchronizes, requests cache dropping and runs the allocatable-memory scrub. Most cleanup operations are best effort so one failed step does not prevent later attempts. Returning from this helper does not prove every operation succeeded.
+It then stops RAM seeding, disables swap, synchronizes, requests cache dropping and runs the allocatable-memory scrub. Most cleanup operations are best effort so one failed step does not prevent later attempts. Returning from this helper does not prove every operation succeeded. Panic and normal shutdown allow 30 seconds for this preparation, with forced termination requested one second later if needed. This limit does not apply to the memtest and RAM scrub in the new kernel.
 
 After a crash transition, the first initramfs reconstructs an exact memory map from the ranges passed during arming. It attempts to load the next kernel using the file syscall, then the legacy loading path if necessary.
 

@@ -20,16 +20,7 @@ restore_usb_arm() {
 
 trap 'restore_usb_arm; exit 1' HUP INT TERM
 
-rfkill block all >/dev/null 2>&1 || true
-
-for path in /sys/class/net/*; do
-    [ -e "$path" ] || continue
-    iface=${path##*/}
-    [ "$iface" = lo ] && continue
-    ip link set dev "$iface" down >/dev/null 2>&1 || true
-done
-
-/usr/local/sbin/ph4ntxm-nuke.sh
+/usr/bin/timeout -k 1 30 /usr/local/sbin/ph4ntxm-nuke.sh || true
 
 if [ "$(cat /sys/kernel/kexec_crash_loaded 2>/dev/null || echo 0)" = 1 ]; then
     printf '1\n' >/proc/sys/kernel/sysrq 2>/dev/null || true
