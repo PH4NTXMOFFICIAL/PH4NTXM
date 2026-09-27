@@ -16,36 +16,86 @@ set -euo pipefail
 
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ph4ntxm"
 MSF_DIR="$CACHE_DIR/metasploit-framework"
-READY_FILE="$MSF_DIR/.ph4ntxm-ready"
+CLONE_DIR=""
 
 umask 077
 install -d -m 0700 "$CACHE_DIR"
 
-for required_command in git ruby bundle; do
+for required_command in git ruby bundle flock; do
     if ! command -v "$required_command" >/dev/null 2>&1; then
         printf 'Metasploit dependency is missing: %s\n' "$required_command" >&2
         exit 1
     fi
 done
 
-if [ -x "$MSF_DIR/msfconsole" ] && [ -f "$READY_FILE" ]; then
-    echo "[+] Using cached Metasploit"
-    cd "$MSF_DIR"
-    exec ./msfconsole "$@"
+checkout_complete() {
+    local checkout="$1"
+    local missing_files
+
+    [ -d "$checkout/.git" ] && [ -x "$checkout/msfconsole" ] || return 1
+    [ -s "$checkout/Gemfile" ] && [ -s "$checkout/Gemfile.lock" ] || return 1
+    [ -s "$checkout/metasploit-framework.gemspec" ] && [ -s "$checkout/config/boot.rb" ] || return 1
+    git -C "$checkout" rev-parse --verify HEAD >/dev/null 2>&1 || return 1
+    missing_files="$(git -C "$checkout" ls-files --deleted)" || return 1
+    [ -z "$missing_files" ]
+}
+
+cleanup() {
+    if [ -n "$CLONE_DIR" ]; then
+        rm -rf -- "$CLONE_DIR"
+    fi
+}
+
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+exec 9>"$CACHE_DIR/.metasploit-install.lock"
+if ! flock -n 9; then
+    echo "[+] Waiting for Metasploit setup..."
+    flock 9
 fi
 
-if [ ! -d "$MSF_DIR/.git" ]; then
-    echo "[+] Metasploit not found. Bootstrapping..."
-    echo "[+] Cloning Metasploit Framework..."
-    git clone --depth 1 https://github.com/rapid7/metasploit-framework.git "$MSF_DIR"
+if ! checkout_complete "$MSF_DIR"; then
+    echo "[+] Downloading the latest upstream Metasploit checkout..."
+    CLONE_DIR="$(mktemp -d "$CACHE_DIR/.metasploit-clone.XXXXXX")"
+    git clone --depth 1 https://github.com/rapid7/metasploit-framework.git "$CLONE_DIR"
+    if ! checkout_complete "$CLONE_DIR"; then
+        echo "Metasploit checkout is incomplete. Run the launcher again to retry." >&2
+        exit 1
+    fi
+    if [ -e "$MSF_DIR" ] || [ -L "$MSF_DIR" ]; then
+        BACKUP_DIR="$(mktemp -d "$CACHE_DIR/metasploit-recovery.XXXXXX")"
+        mv -T -- "$MSF_DIR" "$BACKUP_DIR/checkout"
+        printf '[+] Previous checkout preserved in %s\n' "$BACKUP_DIR/checkout"
+    fi
+    mv -T -- "$CLONE_DIR" "$MSF_DIR"
+    CLONE_DIR=""
 fi
 
 cd "$MSF_DIR"
-echo "[+] Installing gems (first run takes time)..."
+export BUNDLE_GEMFILE="$MSF_DIR/Gemfile"
+export BUNDLE_VERSION=system
 bundle config set --local path vendor/bundle
 bundle config set --local without 'development test'
-bundle install
-touch "$READY_FILE"
+bundle config set --local frozen true
+
+if ! bundle check; then
+    for required_command in make gcc g++; do
+        if ! command -v "$required_command" >/dev/null 2>&1; then
+            printf 'Metasploit build dependency is missing: %s\n' "$required_command" >&2
+            exit 1
+        fi
+    done
+    echo "[+] Installing gems (first run takes time)..."
+    bundle install
+    bundle check
+fi
+
+flock -u 9
+exec 9>&-
+trap - EXIT HUP INT TERM
 
 echo "[+] Launching Metasploit..."
 exec ./msfconsole "$@"

@@ -16,9 +16,9 @@ Burp requires Java and stores its versioned JAR under the user's PH4NTXM cache. 
 
 A missing or invalid JAR is downloaded over HTTPS into a temporary file, with bounded connection setup and retries. The digest is checked before rename into the cache. A mismatch aborts. Download failure can open the upstream manual-download page, but it does not execute an unchecked temporary JAR.
 
-Metasploit requires Git, Ruby and Bundler. On first use, it shallow-clones the upstream framework when no checkout exists, installs gems into the local `vendor/bundle` path and excludes development/test dependency groups.
+Metasploit requires Git, Ruby, Bundler and `flock`. Its first launch downloads the latest upstream checkout into a temporary directory, then moves it into the cache after checking that the checkout is complete. Setup is locked so simultaneous launches wait for each other. An incomplete existing checkout is preserved in a recovery directory before replacement.
 
-Its ready marker is created only after bundle installation succeeds. Later launches reuse an executable `msfconsole` with that marker. Unlike the Burp wrapper, this bootstrap is not pinned to a specific commit/digest and does not revalidate the cached checkout on each launch.
+Each launch checks for missing tracked files and runs `bundle check`, which also validates Ruby requirements. Missing gems trigger installation into `vendor/bundle`, excluding development/test groups. The wrapper uses the system Bundler and keeps the upstream dependency lockfile frozen. Failed downloads or gem installation can be retried by reopening the launcher. A complete cached checkout is reused without an automatic source update.
 
 Both caches follow `XDG_CACHE_HOME`, falling back to `~/.cache`, with private cache-directory creation. First use needs network access and storage for the payload/dependencies. Existing cache reuse does not imply a new download or automatic update.
 
