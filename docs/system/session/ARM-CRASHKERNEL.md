@@ -12,7 +12,9 @@ Arming loads an image for a later crash transition. It does not start memory scr
 
 ## [ RUNTIME ]
 
-The script requires a readable `/proc/iomem` and accepts only ranges labelled exactly `System RAM`. A suffixed type such as `System RAM (kmem)` stops arming, even when its addresses are hidden. This avoids remapping driver-managed memory as ordinary RAM or silently leaving part of the session memory outside the map. If ordinary RAM addresses are unavailable, `/sys/firmware/memmap` supplies the fallback ranges. An empty map fails instead of loading an image with unknown coverage.
+The script requires a readable `/proc/iomem` and collects ordinary `System RAM` ranges. When ordinary RAM addresses are hidden, `/sys/firmware/memmap` supplies the fallback ranges. An empty map fails instead of loading an image with unknown coverage.
+
+`System RAM (kmem)` is accepted when its full address range fits inside a committed CXL region whose mode is `ram`. The check reads the region mode, hardware commit state, physical start and size from sysfs. Accepted ranges remain in the Nuke map and follow the same scrub path as ordinary RAM. Persistent regions, unknown backing types, hidden driver-managed addresses and incomplete matches stop arming. The check does not reconfigure devices or erase persistent storage.
 
 Each range is passed as `ph4ntxm.memmap` on the emergency kernel command line. The complete append line is limited to 1800 characters. An oversized map stops the stage.
 
