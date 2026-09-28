@@ -527,6 +527,14 @@ def main():
     kind = options.kind or ('image' if invoked == 'ristretto' else 'video')
     unit = None
     directory = None
+    submitted = False
+    previous_handlers = {value: signal.getsignal(value) for value in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)}
+
+    def terminate(signum, _):
+        raise SystemExit(128 + signum)
+
+    for value in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(value, terminate)
     try:
         ready(kind)
         limit = memory_limit(kind)
@@ -551,10 +559,13 @@ def main():
                 '--unit=' + unit, '-p', 'Description=' + TITLES[kind],
                 '-p', 'MemoryMax=%d' % limit, '-p', 'MemorySwapMax=0',
                 '-p', 'TasksMax=128', '-p', 'CPUQuota=200%', '-p', 'OOMPolicy=kill', '-p', 'KillMode=control-group',
-                '-p', 'TimeoutStopSec=5', '-p', 'UMask=0077']
+                '-p', 'TimeoutStopSec=5', '-p', 'UMask=0077',
+                '-p', 'RuntimeDirectory=' + Path(directory).name,
+                '-p', 'RuntimeDirectoryMode=0700', '-p', 'RuntimeDirectoryPreserve=no']
         for key in ['DISPLAY', 'XAUTHORITY']:
             if os.environ.get(key):
                 args += ['--setenv=' + key + '=' + os.environ[key]]
+        submitted = True
         result = subprocess.run(args + ['/usr/bin/python3', str(LIB / 'media.py'), '--session', kind, directory])
         if result.returncode:
             notify_error('Playback could not start or exceeded its resource limit. Check the session journal for details.')
@@ -568,10 +579,29 @@ def main():
     except KeyboardInterrupt:
         return 130
     finally:
-        if unit:
-            subprocess.run(['/usr/bin/systemctl', '--user', 'stop', unit], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if directory:
-            shutil.rmtree(directory, ignore_errors=True)
+        for value in previous_handlers:
+            signal.signal(value, signal.SIG_IGN)
+        try:
+            stopped = not submitted
+            if unit:
+                try:
+                    result = subprocess.run(['/usr/bin/systemctl', '--user', 'stop', unit],
+                                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+                    stopped = stopped or result.returncode == 0
+                except (OSError, subprocess.TimeoutExpired):
+                    pass
+            if directory and Path(directory).exists():
+                if stopped:
+                    try:
+                        shutil.rmtree(directory)
+                    except OSError as exc:
+                        print('PH4NTXM Media: temporary storage cleanup failed: ' + str(exc), file=sys.stderr)
+                else:
+                    print('PH4NTXM Media: service stop was not confirmed. Temporary storage is retained until the service exits.',
+                          file=sys.stderr)
+        finally:
+            for value, handler in previous_handlers.items():
+                signal.signal(value, handler)
 
 
 if __name__ == '__main__':
