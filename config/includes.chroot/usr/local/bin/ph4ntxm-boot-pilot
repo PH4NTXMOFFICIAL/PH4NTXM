@@ -891,6 +891,11 @@ class BootPilot(Gtk.Window):
         self.set_resizable(True)
         self.settle_deadline = time.monotonic() + 30
         self.boot_settled = False
+        self.boot_refresh_active = False
+        self.boot_refresh_pending = False
+        self.boot_refresh_callback = None
+        self.closed = False
+        self.connect("destroy", self.on_destroy)
         self.wifi_request_active = False
         self.wifi_rescan_pending = False
         self.wifi_callbacks = []
@@ -903,8 +908,9 @@ class BootPilot(Gtk.Window):
             "networks": [],
         }
         self.header_dot = Gtk.Label(label="●")
-        self.header_title = Gtk.Label()
-        self.header_subtitle = Gtk.Label()
+        self.header_dot.get_style_context().add_class("dot-warn")
+        self.header_title = Gtk.Label(label="Verifying Boot")
+        self.header_subtitle = Gtk.Label(label="Checking protection status")
         self.mode_label = Gtk.Label()
         self.timestamp_label = Gtk.Label()
         self.sections = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
@@ -1197,9 +1203,7 @@ class BootPilot(Gtk.Window):
         self.request_wifi_state()
 
     def continue_session(self, _button=None):
-        self.refresh()
-        if self.boot_settled:
-            self.destroy()
+        self.refresh(callback=self.destroy)
 
     def open_report(self, _):
         try:
@@ -1217,9 +1221,9 @@ class BootPilot(Gtk.Window):
             pass
 
     def open_browser(self, _):
-        self.refresh()
-        if not self.boot_settled:
-            return
+        self.refresh(callback=self.launch_browser)
+
+    def launch_browser(self):
         mode = read(f"{STATE_DIR}/mode", "unknown")
         if mode == "lonewolf":
             command = ["/usr/local/bin/ph4ntxm-tor-browser"]
@@ -1233,12 +1237,50 @@ class BootPilot(Gtk.Window):
             return
         self.destroy()
 
+    def on_destroy(self, _window):
+        self.closed = True
+        self.boot_refresh_callback = None
+
     def boot_refresh(self):
         self.refresh()
-        return True
+        return not self.closed
 
-    def refresh(self):
-        groups = collect()
+    def refresh(self, callback=None):
+        if self.closed:
+            return
+        if callback is not None:
+            if self.boot_refresh_callback is not None:
+                return
+            self.boot_refresh_callback = callback
+            self.browser_button.set_sensitive(False)
+            self.continue_button.set_sensitive(False)
+            if self.boot_refresh_active:
+                self.boot_refresh_pending = True
+        if self.boot_refresh_active:
+            return
+        self.boot_refresh_active = True
+
+        def worker():
+            try:
+                groups = collect()
+            except Exception:
+                check = feature("Protection Status", False)
+                check["detail"] = "Unavailable"
+                groups = [{"name": "Boot Verification", "checks": [check]}]
+            GLib.idle_add(self.apply_boot_state, groups)
+
+        threading.Thread(
+            target=worker, name="ph4ntxm-boot-state", daemon=True
+        ).start()
+
+    def apply_boot_state(self, groups):
+        self.boot_refresh_active = False
+        if self.closed:
+            return False
+        if self.boot_refresh_pending:
+            self.boot_refresh_pending = False
+            self.refresh()
+            return False
         state, title, subtitle = overall(groups)
         self.boot_settled = state == "ready"
         waiting = not self.boot_settled and time.monotonic() < self.settle_deadline
@@ -1305,7 +1347,11 @@ class BootPilot(Gtk.Window):
                 panel.pack_start(IndicatorRow(check), False, False, 0)
             self.sections.pack_start(panel, False, False, 0)
         self.sections.show_all()
-        return not self.boot_settled
+        callback = self.boot_refresh_callback
+        self.boot_refresh_callback = None
+        if self.boot_settled and callback is not None:
+            callback()
+        return False
 
 
 def main():
