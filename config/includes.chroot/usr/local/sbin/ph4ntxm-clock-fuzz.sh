@@ -110,14 +110,18 @@ fi
 
 if ((RESUME == 0)); then
     OFFSET=$((OFFSET_MIN + $(seeded_random $((OFFSET_MAX - OFFSET_MIN + 1)) initial-offset)))
-    NOW=$(date +%s)
-    date -s "@$((NOW + OFFSET))" >/dev/null
     COUNTER=$((COUNTER + 1))
     INITIAL_TICK=$((MIN_TICK + $(seeded_random $((MAX_TICK - MIN_TICK + 1)) initial-tick)))
     CURRENT_TICK=$INITIAL_TICK
 fi
 
 adjtimex -t "$CURRENT_TICK" >/dev/null
+
+if ((RESUME == 0)); then
+    NOW=$(date +%s)
+    date -s "@$((NOW + OFFSET))" >/dev/null
+fi
+
 write_profile
 
 if [[ -n "${NOTIFY_SOCKET:-}" ]]; then
@@ -143,7 +147,7 @@ while true; do
         MICRO_US=$((10000 + $(seeded_random 31001 micro-size)))
         COUNTER=$((COUNTER + 1))
         (($(seeded_random 2 micro-sign) == 0)) && MICRO_US=$((-MICRO_US))
-        adjtimex -o "$MICRO_US" >/dev/null
+        adjtimex --singleshot "$MICRO_US" >/dev/null
     fi
 
     write_profile

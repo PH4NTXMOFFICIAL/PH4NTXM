@@ -22,9 +22,9 @@ The mode controls the permitted initial offset, tick range and interval between 
 
 The script requests NTP disablement but tolerates failure of that request. It checks any saved profile for matching mode, valid numeric bounds and `SKEW_APPLIED=1`. Valid saved state resumes the recorded tick without applying the initial clock offset again.
 
-Without valid saved state, it selects an offset, changes system time and chooses the initial tick. `adjtimex` applies the tick, then the profile is written through a temporary file with `0644` permissions. Only after those steps does the service notify readiness.
+Without valid saved state, it selects an offset and an initial tick. `adjtimex` applies the tick before system time is changed, so a failed tick adjustment does not repeatedly add the boot offset on restart. The profile is then written through a temporary file with `0644` permissions. Only after those steps does the service notify readiness.
 
-Each loop sleeps, moves the tick by −1, 0 or +1 within the mode's bounds, and occasionally applies a signed 10–41 millisecond offset. The draw selects that adjustment with a 1-in-40, 1-in-25 or 1-in-18 chance for Linux, Windows or Lone Wolf respectively.
+Each loop sleeps, moves the tick by −1, 0 or +1 within the mode's bounds, and occasionally requests a signed 10–41 millisecond adjustment through `adjtimex --singleshot`, independently of the kernel PLL state. The draw selects that adjustment with a 1-in-40, 1-in-25 or 1-in-18 chance for Linux, Windows or Lone Wolf respectively.
 
 The record stores mode, original offset, initial/current tick, bounds and the applied marker. Failed required clock operations stop the process. Systemd is configured to restart it.
 
