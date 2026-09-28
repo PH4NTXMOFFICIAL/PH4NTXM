@@ -54,8 +54,8 @@ server:
     rrset-cache-size: 128m
     num-threads: 2
 
-    cache-min-ttl: 600
-    cache-max-ttl: 14400
+    cache-min-ttl: 0
+    cache-max-ttl: 86400
 
     hide-identity: yes
     hide-version: yes

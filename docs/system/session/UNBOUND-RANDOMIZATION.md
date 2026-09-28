@@ -16,7 +16,7 @@ Linux uses the configured Quad9 and Mullvad endpoints. Windows uses Cloudflare a
 
 Unbound listens on loopback, uses IPv4 upstream transport and the system CA bundle, and forwards the root zone over TLS. `forward-first: no` prevents fallback to ordinary recursive resolution when forwarding fails.
 
-The profile hides resolver identity/version, enables QNAME minimization, DNSSEC-stripping and glue hardening, and sets an EDNS buffer of 1232 bytes. It uses two threads, 64 MiB message cache and 128 MiB RRset cache, with configured cache TTL bounds of 600–14400 seconds and prefetching.
+The profile hides resolver identity/version, enables QNAME minimization, DNSSEC-stripping and glue hardening, and sets an EDNS buffer of 1232 bytes. It uses two threads, 64 MiB message cache and 128 MiB RRset cache, with configured cache TTL bounds of 0–86400 seconds and prefetching.
 
 After installing the configuration, the process sends systemd its readiness notification. That notification means configuration publication completed. It is not a successful upstream TLS or external DNS test.
 
