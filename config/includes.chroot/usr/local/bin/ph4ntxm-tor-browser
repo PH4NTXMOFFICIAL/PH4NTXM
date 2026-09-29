@@ -117,6 +117,30 @@ browser_running() {
     ' <<<"$processes"
 }
 
+browser_parent_running() {
+    local processes process group state argument
+    local -a arguments
+    processes=$(ps -eo pid=,pgid=,stat=) || return 0
+    while read -r process group state; do
+        [[ "$group" == "$BROWSER_PID" && "$state" != [ZX]* ]] || continue
+        arguments=()
+        if ! mapfile -d '' -t arguments 2>/dev/null <"/proc/$process/cmdline"; then
+            [[ ! -d "/proc/$process" ]] || return 0
+            continue
+        fi
+        ((${#arguments[@]} > 0)) || continue
+        case "${arguments[0]##*/}" in
+            firefox | firefox.real) ;;
+            *) continue ;;
+        esac
+        for argument in "${arguments[@]:1}"; do
+            [[ "$argument" != -contentproc ]] || continue 2
+        done
+        return 0
+    done <<<"$processes"
+    return 1
+}
+
 cleanup() {
     local signal attempt attempts
     trap - EXIT
@@ -192,4 +216,15 @@ set +e
 wait "$BROWSER_PID"
 STATUS=$?
 set -e
+
+BROWSER_IDLE_POLLS=0
+while ((BROWSER_IDLE_POLLS < 5)); do
+    if browser_parent_running; then
+        BROWSER_IDLE_POLLS=0
+    else
+        BROWSER_IDLE_POLLS=$((BROWSER_IDLE_POLLS + 1))
+    fi
+    sleep 0.2
+done
+
 exit "$STATUS"
