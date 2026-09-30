@@ -10,8 +10,7 @@ import fcntl
 import gi
 
 gi.require_version("Gtk", "3.0")
-gi.require_version("AyatanaAppIndicator3", "0.1")
-from gi.repository import Gtk, GLib, Gio, AyatanaAppIndicator3 as AppIndicator3
+from gi.repository import Gtk, GLib, Gio
 
 STATUS_FILE = "/run/ph4ntxm-lockdown-status.json"
 LOCKDOWN_SCRIPT = "/usr/local/bin/ph4ntxm-lockdown"
@@ -23,12 +22,11 @@ ICON_DISABLED = "lockdown-disabled"
 
 class LockdownTray:
     def __init__(self):
-        self.ind = AppIndicator3.Indicator.new(
-            "ph4ntxm-lockdown-tray",
-            ICON_DISABLED,
-            AppIndicator3.IndicatorCategory.APPLICATION_STATUS,
-        )
-        self.ind.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+        self.icon = Gtk.StatusIcon()
+        self.icon.set_name("ph4ntxm-lockdown-tray")
+        self.icon.set_from_icon_name(ICON_DISABLED)
+        self.icon.set_title("PH4NTXM Lockdown")
+        self.icon.set_tooltip_text("PH4NTXM Lockdown")
 
         self.menu = Gtk.Menu()
         self.mi_enable = Gtk.MenuItem(label="Enable Lockdown")
@@ -44,10 +42,18 @@ class LockdownTray:
         self.menu.append(self.mi_quit)
 
         self.menu.show_all()
-        self.ind.set_menu(self.menu)
+        self.icon.connect("activate", self.on_activate)
+        self.icon.connect("popup-menu", self.on_popup_menu)
+        self.icon.set_visible(True)
 
         self._last_state = None
         GLib.timeout_add_seconds(POLL_INTERVAL, self._poll_status)
+
+    def on_activate(self, icon):
+        self.on_popup_menu(icon, 1, Gtk.get_current_event_time())
+
+    def on_popup_menu(self, icon, button, timestamp):
+        self.menu.popup(None, None, Gtk.StatusIcon.position_menu, icon, button, timestamp)
 
     def _read_status(self):
         try:
@@ -60,8 +66,10 @@ class LockdownTray:
             return False
 
     def _apply_state(self, enabled):
-        self.ind.set_icon(ICON_ENABLED if enabled else ICON_DISABLED)
-        self.ind.set_title(f"PH4NTXM Lockdown: {'Enabled' if enabled else 'Disabled'}")
+        self.icon.set_from_icon_name(ICON_ENABLED if enabled else ICON_DISABLED)
+        title = f"PH4NTXM Lockdown: {'Enabled' if enabled else 'Disabled'}"
+        self.icon.set_title(title)
+        self.icon.set_tooltip_text(title)
         self.mi_enable.set_sensitive(not enabled)
         self.mi_disable.set_sensitive(enabled)
 

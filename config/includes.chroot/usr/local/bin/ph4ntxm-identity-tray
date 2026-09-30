@@ -9,8 +9,7 @@ import fcntl
 import gi
 
 gi.require_version("Gtk", "3.0")
-gi.require_version("AyatanaAppIndicator3", "0.1")
-from gi.repository import Gtk, GLib, Gio, AyatanaAppIndicator3 as AppIndicator3
+from gi.repository import Gtk, GLib, Gio
 
 ICON_NAME = "ph4ntxm-identity"
 EXEC_VIEWER = "/usr/local/bin/ph4ntxm-identity"
@@ -19,17 +18,11 @@ TOOLTIP = "PH4NTXM Identity"
 
 class IdentityTray:
     def __init__(self):
-        self.ind = AppIndicator3.Indicator.new(
-            "ph4ntxm-identity-tray",
-            ICON_NAME,
-            AppIndicator3.IndicatorCategory.APPLICATION_STATUS,
-        )
-        self.ind.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
-
-        try:
-            self.ind.set_title(TOOLTIP)
-        except Exception:
-            pass
+        self.icon = Gtk.StatusIcon()
+        self.icon.set_name("ph4ntxm-identity-tray")
+        self.icon.set_from_icon_name(ICON_NAME)
+        self.icon.set_title(TOOLTIP)
+        self.icon.set_tooltip_text(TOOLTIP)
 
         self.menu = Gtk.Menu()
 
@@ -42,7 +35,15 @@ class IdentityTray:
         self.menu.append(mi_quit)
 
         self.menu.show_all()
-        self.ind.set_menu(self.menu)
+        self.icon.connect("activate", self.on_activate)
+        self.icon.connect("popup-menu", self.on_popup_menu)
+        self.icon.set_visible(True)
+
+    def on_activate(self, icon):
+        self.on_popup_menu(icon, 1, Gtk.get_current_event_time())
+
+    def on_popup_menu(self, icon, button, timestamp):
+        self.menu.popup(None, None, Gtk.StatusIcon.position_menu, icon, button, timestamp)
 
     def on_show(self, _):
         try:
