@@ -464,11 +464,52 @@ def network_features(mode):
             and listener("udp", 53)
             and listener("udp", 5353)
         )
+        tor_check = feature("Tor Routing", tor_ok)
+        dns_check = feature("DNS Protection", dns_ok)
+        if not tor_ok and firewall_ok:
+            code, status = run(
+                [
+                    SYSTEMCTL, "show", "ph4ntxm-lonewolf-dns.service",
+                    "--property=ActiveState", "--property=SubState",
+                ]
+            )
+            bridge = dict(
+                line.split("=", 1) for line in status.splitlines() if "=" in line
+            )
+            firewall = state_values(
+                f"{STATE_DIR}/firewall-ready",
+                ("PROFILE", "SOURCE_SHA256", "RULESET_SHA256", "UPTIME_SECONDS"),
+            )
+            if (
+                code == 0
+                and bridge.get("ActiveState") == "activating"
+                and bridge.get("SubState") == "start"
+                and firewall
+                and firewall["PROFILE"] == "lonewolf"
+                and active("tor@default.service")
+                and local_dns
+                and listener("tcp", 9040)
+                and listener("tcp", 9050)
+                and listener("tcp", 53)
+                and listener("udp", 53)
+                and listener("udp", 5353)
+            ):
+                code, routes = run([IP, "-4", "route", "show", "default"])
+                connected = code == 0 and any(
+                    line.startswith("default ") and "linkdown" not in line.split()
+                    for line in routes.splitlines()
+                )
+                tor_check["state"] = "pending"
+                tor_check["detail"] = (
+                    "Connecting to Tor…" if connected else "Waiting for Network"
+                )
+                dns_check["state"] = "pending"
+                dns_check["detail"] = "Waiting for Tor"
         checks.extend(
             [
                 feature("Firewall Protection", firewall_ok),
-                feature("Tor Routing", tor_ok),
-                feature("DNS Protection", dns_ok),
+                tor_check,
+                dns_check,
             ]
         )
     else:
@@ -533,6 +574,13 @@ def overall(groups):
             "unsafe",
             "Not Ready",
             f"{len(inactive)} protection feature{'s' if len(inactive) != 1 else ''} inactive",
+        )
+    pending = sum(check["state"] == "pending" for check in checks)
+    if pending:
+        return (
+            "warn",
+            "Verifying Boot",
+            f"Waiting for {pending} protection gate{'s' if pending != 1 else ''} to settle",
         )
     return "ready", "Ready", "All protection features active"
 
@@ -928,6 +976,7 @@ class BootPilot(Gtk.Window):
             .title { font-size: 24px; font-weight: 700; }
             .subtitle { color: #90a4b8; font-size: 13px; }
             .overall-dot { font-size: 38px; }
+            .connection-spinner { color: #00abff; }
             .section { background: #121a24; border: 1px solid #263241; border-radius: 8px; padding: 14px; }
             .section-title { color: #7dcfff; font-size: 13px; font-weight: 700; }
             .check-row { padding: 5px 2px; }
@@ -980,6 +1029,23 @@ class BootPilot(Gtk.Window):
         meta.pack_start(self.timestamp_label, False, False, 0)
         top.pack_end(meta, False, False, 0)
         root.pack_start(top, False, False, 0)
+        self.connection_status = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.connection_status.set_halign(Gtk.Align.CENTER)
+        self.connection_status.set_margin_top(10)
+        self.connection_status.set_margin_bottom(10)
+        self.connection_spinner = Gtk.Spinner()
+        self.connection_spinner.set_size_request(14, 14)
+        self.connection_spinner.set_valign(Gtk.Align.CENTER)
+        self.connection_spinner.get_style_context().add_class("connection-spinner")
+        self.connection_spinner.get_accessible().set_name("Connecting to Tor")
+        self.connection_label = Gtk.Label()
+        self.connection_label.get_style_context().add_class("subtitle")
+        self.connection_status.pack_start(self.connection_spinner, False, False, 0)
+        self.connection_status.pack_start(self.connection_label, False, False, 0)
+        self.connection_status.show_all()
+        self.connection_status.set_no_show_all(True)
+        self.connection_status.hide()
+        root.pack_start(self.connection_status, False, False, 0)
         scroll = Gtk.ScrolledWindow()
         scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         viewport = Gtk.Viewport()
@@ -1108,8 +1174,6 @@ class BootPilot(Gtk.Window):
             context.add_class("dot-pass")
             self.wifi_title.set_text(f"Connected to {connected.get('ssid', 'Wi-Fi')}")
             detail = f"{connected.get('security', 'Wireless')}  •  {connected.get('strength', 0)}% signal"
-            if read(f"{STATE_DIR}/mode", "unknown") == "lonewolf" and not tor_ready():
-                detail += "  •  Tor bootstrapping"
             self.wifi_subtitle.set_text(detail)
             self.wifi_button.set_label("Change Network")
             self.wifi_button.set_sensitive(True)
@@ -1282,8 +1346,16 @@ class BootPilot(Gtk.Window):
             self.refresh()
             return False
         state, title, subtitle = overall(groups)
+        connection_detail = next(
+            (
+                check["detail"]
+                for group in groups for check in group["checks"]
+                if check["label"] == "Tor Routing" and check["state"] == "pending"
+            ),
+            "",
+        )
         self.boot_settled = state == "ready"
-        waiting = not self.boot_settled and time.monotonic() < self.settle_deadline
+        waiting = state == "unsafe" and time.monotonic() < self.settle_deadline
         if waiting:
             failed = sum(
                 check["state"] == "fail" and check["critical"]
@@ -1297,9 +1369,17 @@ class BootPilot(Gtk.Window):
                 for check in group["checks"]:
                     if check["state"] == "fail":
                         check["state"] = "pending"
-                        check["detail"] = "Inactive"
+                        check["detail"] = "Checking…"
         elif self.boot_settled:
             title = "Boot Ready"
+        connecting = connection_detail == "Connecting to Tor…"
+        self.connection_label.set_text(connection_detail)
+        self.connection_status.set_visible(bool(connection_detail))
+        self.connection_spinner.set_visible(connecting)
+        if connecting:
+            self.connection_spinner.start()
+        else:
+            self.connection_spinner.stop()
         self.browser_button.set_sensitive(self.boot_settled)
         self.continue_button.set_sensitive(self.boot_settled)
         context = self.header_dot.get_style_context()
