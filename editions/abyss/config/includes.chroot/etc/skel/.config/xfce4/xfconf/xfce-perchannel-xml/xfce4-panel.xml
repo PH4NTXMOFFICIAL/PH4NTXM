@@ -220,10 +220,10 @@
       </property>
       <property name="known-legacy-items" type="array">
         <value type="string" value="ph4ntxm identity"/>
+        <value type="string" value="ph4ntxm lockdown"/>
+        <value type="string" value="ph4ntxm panic button"/>
         <value type="string" value="xfce4-power-manager"/>
-        <value type="string" value="ph4ntxm-lockdown-tray"/>
         <value type="string" value="network"/>
-        <value type="string" value="ph4ntxm-panic-button-tray"/>
       </property>
       <property name="single-row" type="bool" value="false"/>
       <property name="hide-new-items" type="bool" value="false"/>

@@ -64,6 +64,7 @@ def main():
             return
 
         status_icon = Gtk.StatusIcon()
+        status_icon.set_title(TOOLTIP_IDLE)
         status_icon.set_from_icon_name(APP_ICON)
         status_icon.set_tooltip_text(TOOLTIP_IDLE)
         status_icon.set_visible(True)

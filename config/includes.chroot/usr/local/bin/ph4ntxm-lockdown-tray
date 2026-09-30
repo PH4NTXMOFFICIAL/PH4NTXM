@@ -68,7 +68,6 @@ class LockdownTray:
     def _apply_state(self, enabled):
         self.icon.set_from_icon_name(ICON_ENABLED if enabled else ICON_DISABLED)
         title = f"PH4NTXM Lockdown: {'Enabled' if enabled else 'Disabled'}"
-        self.icon.set_title(title)
         self.icon.set_tooltip_text(title)
         self.mi_enable.set_sensitive(not enabled)
         self.mi_disable.set_sensitive(enabled)
