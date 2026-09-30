@@ -18,7 +18,7 @@ TOOLTIP = "PH4NTXM Identity"
 
 class IdentityTray:
     def __init__(self):
-        self.icon = Gtk.StatusIcon()
+        self.icon = Gtk.StatusIcon(visible=False)
         self.icon.set_name("ph4ntxm-identity-tray")
         self.icon.set_from_icon_name(ICON_NAME)
         self.icon.set_title(TOOLTIP)

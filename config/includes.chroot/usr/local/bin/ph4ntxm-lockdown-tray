@@ -22,7 +22,7 @@ ICON_DISABLED = "lockdown-disabled"
 
 class LockdownTray:
     def __init__(self):
-        self.icon = Gtk.StatusIcon()
+        self.icon = Gtk.StatusIcon(visible=False)
         self.icon.set_name("ph4ntxm-lockdown-tray")
         self.icon.set_from_icon_name(ICON_DISABLED)
         self.icon.set_title("PH4NTXM Lockdown")
