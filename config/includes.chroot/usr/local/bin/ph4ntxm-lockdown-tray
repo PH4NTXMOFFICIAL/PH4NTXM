@@ -6,6 +6,7 @@ import os
 import json
 import subprocess
 import signal
+import fcntl
 import gi
 
 gi.require_version("Gtk", "3.0")
@@ -84,14 +85,20 @@ class LockdownTray:
 
 
 def main():
-    application = Gio.Application(application_id="org.ph4ntxm.LockdownTray")
-    application.register(None)
-    if application.get_is_remote():
-        return
+    with open("/run/ph4ntxm/tray/lockdown.lock", "rb") as instance_lock:
+        try:
+            fcntl.flock(instance_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return
 
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-    LockdownTray()
-    Gtk.main()
+        application = Gio.Application(application_id="org.ph4ntxm.LockdownTray")
+        application.register(None)
+        if application.get_is_remote():
+            return
+
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        LockdownTray()
+        Gtk.main()
 
 
 if __name__ == "__main__":

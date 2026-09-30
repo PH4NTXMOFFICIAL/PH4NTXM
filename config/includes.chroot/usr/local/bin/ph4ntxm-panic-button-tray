@@ -2,6 +2,7 @@
 # Copyright (C) PH4NTXM
 # Licensed under the GNU General Public License v3.0.
 
+import fcntl
 import gi
 import subprocess
 
@@ -51,30 +52,36 @@ def blink_icon():
 def main():
     global status_icon, menu
 
-    application = Gio.Application(application_id="org.ph4ntxm.PanicButtonTray")
-    application.register(None)
-    if application.get_is_remote():
-        return
+    with open("/run/ph4ntxm/tray/panic-button.lock", "rb") as instance_lock:
+        try:
+            fcntl.flock(instance_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return
 
-    status_icon = Gtk.StatusIcon()
-    status_icon.set_from_icon_name(APP_ICON)
-    status_icon.set_tooltip_text(TOOLTIP_IDLE)
-    status_icon.set_visible(True)
+        application = Gio.Application(application_id="org.ph4ntxm.PanicButtonTray")
+        application.register(None)
+        if application.get_is_remote():
+            return
 
-    menu = Gtk.Menu()
+        status_icon = Gtk.StatusIcon()
+        status_icon.set_from_icon_name(APP_ICON)
+        status_icon.set_tooltip_text(TOOLTIP_IDLE)
+        status_icon.set_visible(True)
 
-    item_trigger = Gtk.MenuItem(label="Nuke PH4NTXM")
-    item_trigger.connect("activate", trigger_panic)
-    menu.append(item_trigger)
+        menu = Gtk.Menu()
 
-    item_quit = Gtk.MenuItem(label="Quit")
-    item_quit.connect("activate", quit_app)
-    menu.append(item_quit)
+        item_trigger = Gtk.MenuItem(label="Nuke PH4NTXM")
+        item_trigger.connect("activate", trigger_panic)
+        menu.append(item_trigger)
 
-    menu.show_all()
-    status_icon.connect("popup-menu", on_right_click)
-    GObject.timeout_add(500, blink_icon)
-    Gtk.main()
+        item_quit = Gtk.MenuItem(label="Quit")
+        item_quit.connect("activate", quit_app)
+        menu.append(item_quit)
+
+        menu.show_all()
+        status_icon.connect("popup-menu", on_right_click)
+        GObject.timeout_add(500, blink_icon)
+        Gtk.main()
 
 
 if __name__ == "__main__":
