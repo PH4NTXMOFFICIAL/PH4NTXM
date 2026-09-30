@@ -1,0 +1,179 @@
+#!/usr/bin/python3
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+import os
+import pwd
+import re
+import socket
+import socketserver
+import struct
+import threading
+
+import stem
+from stem.control import Controller, EventType
+
+SOCKET_PATH = "/run/ph4ntxm-onionshare/control"
+TOR_SOCKET = "/run/tor/control"
+EVENTS = {"HS_DESC", "SIGNAL", "CONF_CHANGED", "STATUS_SERVER"}
+INFO = {"version", "status/bootstrap-phase", "onions/current"}
+CONF = {"HiddenServiceSingleHopMode", "HiddenServiceNonAnonymousMode"}
+SLOTS = threading.BoundedSemaphore(16)
+
+
+def valid_onion(arguments):
+    if not arguments or not re.fullmatch(
+        r"NEW:ED25519-V3|ED25519-V3:[A-Za-z0-9+/]{86}==", arguments[0]
+    ):
+        return False
+    values = {}
+    for argument in arguments[1:]:
+        key, separator, value = argument.partition("=")
+        if not separator or key in values:
+            return False
+        values[key] = value
+    if values.keys() - {"Port", "Flags", "ClientAuthV3"}:
+        return False
+    port = re.fullmatch(r"(1|80),(?:127\.0\.0\.1:)?([0-9]{1,5})", values.get("Port", ""))
+    if not port:
+        return False
+    virtual, target = map(int, port.groups())
+    if not ((virtual == 1 and target == 1) or (virtual == 80 and 1024 <= target <= 65535)):
+        return False
+    flags = values.get("Flags", "").split(",") if values.get("Flags") else []
+    if set(flags) - {"V3Auth", "DiscardPK"} or len(flags) != len(set(flags)):
+        return False
+    auth = values.get("ClientAuthV3")
+    if ("V3Auth" in flags) != (auth is not None):
+        return False
+    return auth is None or re.fullmatch(r"[A-Z2-7]{52}", auth) is not None
+
+
+class ControlHandler(socketserver.StreamRequestHandler):
+    def send(self, data):
+        with self.write_lock:
+            self.wfile.write(data.encode("utf-8"))
+            self.wfile.flush()
+
+    def event(self, event):
+        with self.write_lock:
+            if "HS_DESC" not in self.events:
+                return
+            if event.address in self.onions:
+                if event.action == "UPLOAD":
+                    self.uploads.add(event.directory_fingerprint)
+            elif not (
+                event.address in (None, "UNKNOWN")
+                and event.action in ("UPLOADED", "FAILED")
+                and event.directory_fingerprint in self.uploads
+            ):
+                return
+            try:
+                self.send(event.raw_content())
+            except OSError:
+                self.request.shutdown(socket.SHUT_RDWR)
+
+    def handle(self):
+        self.write_lock = threading.RLock()
+        self.onions = set()
+        self.uploads = set()
+        self.events = set()
+        self.authenticated = False
+        credentials = self.request.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12)
+        _, uid, _ = struct.unpack("3i", credentials)
+        try:
+            if uid != pwd.getpwnam("ph4ntxm").pw_uid:
+                return
+        except KeyError:
+            return
+        if not SLOTS.acquire(blocking=False):
+            return
+        try:
+            with Controller.from_socket_file(TOR_SOCKET) as controller:
+                controller.authenticate()
+                controller.add_event_listener(self.event, EventType.HS_DESC)
+                self.request.settimeout(30)
+                while True:
+                    raw = self.rfile.readline(4097)
+                    if not raw:
+                        break
+                    if len(raw) > 4096 or not raw.endswith(b"\r\n"):
+                        break
+                    line = raw[:-2].decode("ascii")
+                    if not line or any(ord(char) < 32 or ord(char) > 126 for char in line):
+                        break
+                    with self.write_lock:
+                        if not self.command(controller, line):
+                            break
+        except (OSError, UnicodeError, stem.ControllerError):
+            pass
+        finally:
+            SLOTS.release()
+
+    def command(self, controller, line):
+        parts = line.split()
+        command, arguments = parts[0].upper(), parts[1:]
+        if command == "QUIT" and not arguments:
+            self.send("250 closing connection\r\n")
+            return False
+        if command == "PROTOCOLINFO" and arguments in ([], ["1"]):
+            version = str(controller.get_version())
+            self.send(
+                '250-PROTOCOLINFO 1\r\n250-AUTH METHODS=NULL\r\n'
+                f'250-VERSION Tor="{version}"\r\n250 OK\r\n'
+            )
+        elif command == "AUTHENTICATE" and arguments in ([], ['""']):
+            self.authenticated = True
+            self.request.settimeout(None)
+            self.send("250 OK\r\n")
+        elif not self.authenticated:
+            self.send("514 Authentication required\r\n")
+            return False
+        elif command == "GETINFO" and arguments == ["events/names"]:
+            self.send("250-events/names=" + " ".join(sorted(EVENTS)) + "\r\n250 OK\r\n")
+        elif command == "GETINFO" and arguments and set(arguments) <= INFO:
+            self.send(controller.msg(line).raw_content())
+        elif command == "GETCONF" and arguments == ["__OwningControllerProcess"]:
+            self.send("250 __OwningControllerProcess\r\n")
+        elif command == "GETCONF" and arguments and set(arguments) <= CONF:
+            self.send(controller.msg(line).raw_content())
+        elif command == "SETEVENTS" and set(arguments) <= EVENTS:
+            self.events = set(arguments)
+            self.send("250 OK\r\n")
+        elif command == "ADD_ONION" and len(self.onions) < 16 and valid_onion(arguments):
+            response = controller.msg(line)
+            if response.is_ok():
+                match = re.search(r"^250-ServiceID=([a-z2-7]{56})\r?$", response.raw_content(), re.M)
+                if not match:
+                    return False
+                self.onions.add(match.group(1))
+            self.send(response.raw_content())
+        elif command == "DEL_ONION" and len(arguments) == 1 and arguments[0] in self.onions:
+            response = controller.msg(line)
+            if response.is_ok():
+                self.onions.discard(arguments[0])
+            self.send(response.raw_content())
+        else:
+            self.send("552 Command not permitted\r\n")
+        return True
+
+
+class ControlServer(socketserver.ThreadingUnixStreamServer):
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        pass
+
+
+def main():
+    if open("/run/ph4ntxm/mode", encoding="ascii").read().strip() != "lonewolf":
+        raise SystemExit(1)
+    if os.path.lexists(SOCKET_PATH):
+        os.unlink(SOCKET_PATH)
+    with ControlServer(SOCKET_PATH, ControlHandler) as server:
+        os.chmod(SOCKET_PATH, 0o666)
+        server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

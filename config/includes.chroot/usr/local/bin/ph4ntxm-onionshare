@@ -1,0 +1,78 @@
+#!/usr/bin/python3
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+import os
+from pathlib import Path
+import stat
+import sys
+
+
+def main():
+    name = Path(sys.argv[0]).name
+    if name not in ("onionshare", "onionshare-cli"):
+        raise SystemExit("Launch onionshare or onionshare-cli.")
+    mode_file = Path("/run/ph4ntxm/mode")
+    metadata = mode_file.lstat()
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != 0 or metadata.st_mode & 0o022:
+        raise SystemExit("OnionShare: trusted session mode is unavailable.")
+    mode = mode_file.read_text(encoding="ascii").strip()
+    if mode in ("linux", "windows"):
+        os.execv("/usr/bin/" + name + "-real", [name, *sys.argv[1:]])
+    if mode != "lonewolf":
+        raise SystemExit("OnionShare: invalid session mode.")
+    if os.geteuid() == 0:
+        raise SystemExit("OnionShare: refusing to run as root.")
+
+    from onionshare_cli.settings import Settings
+
+    managed = {
+        "connection_type": "socket_file",
+        "socket_file_path": "/run/ph4ntxm-onionshare/control",
+        "auth_type": "no_auth",
+        "auth_password": "",
+        "socks_address": "127.0.0.1",
+        "socks_port": 9050,
+        "bridges_enabled": False,
+    }
+    original_get = Settings.get
+    original_set = Settings.set
+
+    def get(settings, key):
+        if key in managed:
+            return managed[key]
+        return original_get(settings, key)
+
+    def set_value(settings, key, value):
+        return original_set(settings, key, managed.get(key, value))
+
+    Settings.get = get
+    Settings.set = set_value
+    if name == "onionshare-cli":
+        from onionshare_cli import main as launch
+    else:
+        from onionshare import main as launch
+        from onionshare.tor_settings_tab import TorSettingsTab
+
+        original_init = TorSettingsTab.__init__
+
+        def initialize(tab, *args, **kwargs):
+            original_init(tab, *args, **kwargs)
+            tab.connection_type_socket_file_radio.setText("Use PH4NTXM's Tor connection")
+            for widget in (
+                tab.connection_type_bundled_radio,
+                tab.connection_type_automatic_radio,
+                tab.connection_type_control_port_radio,
+                tab.connection_type_socket_file_radio,
+                tab.tor_settings_group,
+                tab.connection_type_bridges_radio_group,
+            ):
+                widget.setEnabled(False)
+                widget.setToolTip("Lone Wolf uses the Tor connection managed by PH4NTXM.")
+
+        TorSettingsTab.__init__ = initialize
+    return launch()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

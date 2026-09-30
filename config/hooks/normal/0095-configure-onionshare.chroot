@@ -1,0 +1,16 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+for name in onionshare onionshare-cli; do
+    target="/usr/bin/$name"
+    if [ ! -f "$target-real" ]; then
+        dpkg-divert --add --rename --divert "$target-real" "$target"
+    fi
+    ln -sf /usr/local/bin/ph4ntxm-onionshare "$target"
+done
+
+chmod 0755 /usr/local/bin/ph4ntxm-onionshare /usr/local/libexec/ph4ntxm-onionshare-control
+systemctl enable ph4ntxm-onionshare-control.service

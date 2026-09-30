@@ -1,0 +1,38 @@
+[Unit]
+Description=PH4NTXM OnionShare Tor Controller
+After=ph4ntxm-mode.service tor@default.service ph4ntxm-lonewolf.service
+Requires=tor@default.service ph4ntxm-lonewolf.service
+BindsTo=tor@default.service
+PartOf=tor@default.service
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Service]
+Type=simple
+User=debian-tor
+Group=debian-tor
+ExecStart=/usr/local/libexec/ph4ntxm-onionshare-control
+Restart=on-failure
+RestartSec=2
+RuntimeDirectory=ph4ntxm-onionshare
+RuntimeDirectoryMode=0755
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+TasksMax=96
+MemoryMax=128M
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=ph4ntxm-lonewolf-multi-user.target tor@default.service

@@ -50,6 +50,7 @@ dnsmasq-base
 proxychains4
 wireguard-tools
 onionshare
+python3-stem
 macchanger
 unbound
 exiftool
