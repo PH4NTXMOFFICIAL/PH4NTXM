@@ -90,6 +90,7 @@ aircrack-ng
 
 tcpdump
 wireshark
+libcap2-bin
 netcat-openbsd
 arp-scan
 

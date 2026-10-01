@@ -1,0 +1,19 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+export DEBIAN_FRONTEND=noninteractive
+
+printf '%s\n' 'wireshark-common wireshark-common/install-setuid boolean true' | debconf-set-selections
+dpkg-reconfigure -f noninteractive wireshark-common
+
+dumpcap=$(dpkg-divert --truename /usr/bin/dumpcap)
+chown root:wireshark "$dumpcap"
+chmod 0750 "$dumpcap"
+setcap cap_net_admin,cap_net_raw=ep "$dumpcap"
+
+if [ "$(getcap "$dumpcap")" != "$dumpcap cap_net_admin,cap_net_raw=ep" ]; then
+    printf 'Wireshark capture capabilities were not applied correctly\n' >&2
+    exit 1
+fi

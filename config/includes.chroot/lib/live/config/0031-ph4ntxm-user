@@ -14,7 +14,7 @@ if id "$USER" >/dev/null 2>&1; then
 
     usermod --password '!' "$USER"
 
-    usermod -aG adm,kvm "$USER"
+    usermod -aG adm,kvm,wireshark "$USER"
     gpasswd -d "$USER" sudo >/dev/null 2>&1 || true
 
 fi
