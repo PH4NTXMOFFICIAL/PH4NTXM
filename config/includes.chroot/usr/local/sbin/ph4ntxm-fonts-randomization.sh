@@ -11,36 +11,79 @@ ACTIVE_DIR="$STATE_DIR/fonts-active"
 FC_CONF="$ACTIVE_DIR/fonts.conf"
 MODE_FILE="$STATE_DIR/mode"
 
-mkdir -p "$ACTIVE_DIR"
-rm -f "$ACTIVE_DIR"/*
-
 MODE="linux"
 if [[ -r "$MODE_FILE" ]]; then
     MODE="$(tr -d '\n' <"$MODE_FILE")"
 fi
 
+FONTS=()
 case "$MODE" in
     linux)
         COUNT=$((1 + RANDOM % 10))
-        FONTS=$(find "$EXTRA_DIR" -type f | shuf -n "$COUNT")
         ;;
     windows)
         COUNT=$((1 + RANDOM % 5))
-        MS_FONTS=$(find "$WINDOWS_DIR" -type f)
-        EXTRA_SAFE=$(find "$EXTRA_DIR" -type f | grep -iE 'arimo|tinos|cousine|noto|opensans' | shuf -n "$COUNT")
-        FONTS="$MS_FONTS"$'\n'"$EXTRA_SAFE"
+        [[ -d "$WINDOWS_DIR" ]] || exit 1
+        mapfile -d '' -t FONTS < <(find "$WINDOWS_DIR" -type f -iname '*.ttf' -print0)
+        ((${#FONTS[@]} > 0)) || exit 1
         ;;
     lonewolf)
         COUNT=$((1 + RANDOM % 3))
-        FONTS=$(find "$EXTRA_DIR" -type f | shuf -n "$COUNT")
         ;;
     *)
         exit 0
         ;;
 esac
 
-for f in $FONTS; do
-    ln -s "$f" "$ACTIVE_DIR"/ 2>/dev/null || true
+[[ -d "$EXTRA_DIR" ]] || exit 1
+mapfile -d '' -t EXTRA_FONTS < <(find "$EXTRA_DIR" -type f \
+    \( -iname '*.ttf' -o -iname '*.otf' \) -print0)
+((${#EXTRA_FONTS[@]} > 0)) || exit 1
+FONT_CATALOG=$(fc-scan --format '%{family[0]}\t%{file}\n' "${EXTRA_FONTS[@]}")
+declare -A FONT_FAMILIES=()
+declare -A AVAILABLE_FAMILIES=()
+declare -A SELECTED_FAMILIES=()
+
+while IFS=$'\t' read -r family font; do
+    [[ -n "$family" && -n "$font" ]] || continue
+    if [[ "$family" == "Open Sans Condensed" ]]; then
+        family="Open Sans"
+    fi
+    if [[ "$MODE" == windows ]]; then
+        case "$family" in
+            "Cascadia Code" | "Cascadia Mono")
+                SELECTED_FAMILIES["$family"]=1
+                ;;
+            Arimo | Tinos | Cousine | "Open Sans" | Noto\ *)
+                AVAILABLE_FAMILIES["$family"]=1
+                ;;
+            *) continue ;;
+        esac
+    else
+        AVAILABLE_FAMILIES["$family"]=1
+    fi
+    FONT_FAMILIES["$font"]="$family"
+done <<<"$FONT_CATALOG"
+
+((${#FONT_FAMILIES[@]} > 0)) || exit 1
+if ((${#AVAILABLE_FAMILIES[@]} > 0)); then
+    CHOSEN_FAMILIES=$(printf '%s\n' "${!AVAILABLE_FAMILIES[@]}" | LC_ALL=C sort | shuf -n "$COUNT")
+    while IFS= read -r family; do
+        SELECTED_FAMILIES["$family"]=1
+    done <<<"$CHOSEN_FAMILIES"
+fi
+
+for font in "${!FONT_FAMILIES[@]}"; do
+    family=${FONT_FAMILIES[$font]}
+    if [[ -n "${SELECTED_FAMILIES[$family]:-}" ]]; then
+        FONTS+=("$font")
+    fi
+done
+
+mkdir -p "$ACTIVE_DIR"
+rm -f "$ACTIVE_DIR"/*
+for font in "${FONTS[@]}"; do
+    ln -s -- "$font" "$ACTIVE_DIR/"
 done
 
 cat <<EOF >"$FC_CONF"
