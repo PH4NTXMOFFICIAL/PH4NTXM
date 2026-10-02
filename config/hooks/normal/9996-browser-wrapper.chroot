@@ -54,8 +54,7 @@ mkdir -p "\$PROFILE_DIR"
 chmod 0700 "\$PROFILE_DIR"
 exec 9>"\$RUNTIME_BASE/ph4ntxm-firefox.lock"
 if ! flock -n 9; then
-    printf 'firefox-esr: PH4NTXM browser session is already active\\n' >&2
-    exit 1
+    exec /usr/bin/python3 -I /usr/lib/ph4ntxm/browser-mode/remote.py "\$@"
 fi
 
 [[ -x "\$REAL_BROWSER" ]] || {
@@ -119,7 +118,7 @@ trap - EXIT
 export FONTCONFIG_PATH="\$FONT_DIR"
 export FONTCONFIG_FILE="\$FONT_CONF"
 
-"\$REAL_BROWSER" -profile "\$PROFILE_DIR" --no-remote "\$@"
+"\$REAL_BROWSER" -profile "\$PROFILE_DIR" "\$@"
 EOF
 
 chmod +x "$REAL_PATH"
