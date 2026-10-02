@@ -19,7 +19,6 @@ fi
 SESSION_FILE=/run/ph4ntxm/session_dhcp
 NM_CONF_DIR=/run/NetworkManager/conf.d
 NM_CONF_FILE=$NM_CONF_DIR/90-ph4ntxm-session.conf
-DHCLIENT_CONF=/etc/dhcp/dhclient.conf
 
 HOSTNAME="$(cat /etc/hostname 2>/dev/null || echo unknown)"
 
@@ -28,23 +27,20 @@ case "$MODE" in
         VENDOR="dhclient"
         TIMEOUT=60
         DUID="ll"
-        REQUESTS="subnet-mask, broadcast-address, routers, domain-name, domain-name-servers, host-name"
         ;;
     windows)
         VENDOR="MSFT 5.0"
         TIMEOUT=45
         DUID="stable-uuid"
-        REQUESTS="subnet-mask, routers, domain-name-servers, host-name, domain-name, broadcast-address"
         ;;
     *)
         exit 1
         ;;
 esac
 
-install -d -o root -g root -m 0755 "$NM_CONF_DIR" /etc/dhcp
+install -d -o root -g root -m 0755 "$NM_CONF_DIR"
 session_tmp=$(mktemp /run/ph4ntxm/.session-dhcp.XXXXXX)
 nm_tmp=$(mktemp "$NM_CONF_DIR/.ph4ntxm-session.XXXXXX")
-dhclient_tmp=$(mktemp /etc/dhcp/.ph4ntxm-dhclient.XXXXXX)
 
 printf 'MODE=%q\nVENDOR=%q\nHOSTNAME=%q\nTIMEOUT=%q\nDUID=%q\n' \
     "$MODE" "$VENDOR" "$HOSTNAME" "$TIMEOUT" "$DUID" >"$session_tmp"
@@ -62,16 +58,9 @@ wifi.cloned-mac-address=preserve
 ipv6.ip6-privacy=2
 EOF
 
-cat >"$dhclient_tmp" <<EOF
-send host-name "$HOSTNAME";
-send vendor-class-identifier "$VENDOR";
-request $REQUESTS;
-timeout $TIMEOUT;
-EOF
 chmod 0600 "$session_tmp"
-chmod 0644 "$nm_tmp" "$dhclient_tmp"
+chmod 0644 "$nm_tmp"
 mv -f "$session_tmp" "$SESSION_FILE"
 mv -f "$nm_tmp" "$NM_CONF_FILE"
-mv -f "$dhclient_tmp" "$DHCLIENT_CONF"
 
 exit 0
