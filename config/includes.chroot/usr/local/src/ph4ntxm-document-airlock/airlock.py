@@ -93,6 +93,10 @@ def memory_mib(suffix):
 
 
 def available_memory_mib():
+    if any(key.startswith("PH4_INVENTORY_") for key in os.environ):
+        raise AirlockError(
+            "Open Document Airlock from the desktop to check actual available RAM."
+        )
     for line in Path("/proc/meminfo").read_text(encoding="ascii").splitlines():
         if line.startswith("MemAvailable:"):
             return int(line.split()[1]) // 1024
@@ -453,7 +457,7 @@ class AirlockSession:
         done = threading.Event()
         timed_out = threading.Event()
         process = subprocess.Popen(
-            vm_command(suffix) if command is None else command,
+            vm_command(suffix, check_memory(suffix)) if command is None else command,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,

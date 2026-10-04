@@ -365,8 +365,17 @@ else
     MEM_COLOR=$GREEN
 fi
 
-print_line "Physical Memory:" \
-    "${MEM_USED} MB / ${MEM_TOTAL} MB (${MEM_PERCENT}%)" \
+MEM_LABEL="Physical Memory:"
+VIEW_MEM_TOTAL=$MEM_TOTAL
+VIEW_MEM_USED=$MEM_USED
+if [[ "${PH4_USABLE_RAM_BYTES:-}" =~ ^[1-9][0-9]*$ ]]; then
+    MEM_LABEL="Persona Memory:"
+    VIEW_MEM_TOTAL=$((PH4_USABLE_RAM_BYTES / 1024 / 1024))
+    VIEW_MEM_USED=$((MEM_USED * VIEW_MEM_TOTAL / MEM_TOTAL))
+fi
+
+print_line "$MEM_LABEL" \
+    "${VIEW_MEM_USED} MiB / ${VIEW_MEM_TOTAL} MiB (${MEM_PERCENT}%)" \
     "$MEM_COLOR"
 
 SWAP_TOTAL=$(awk '/SwapTotal/ {print int($2/1024)}' /proc/meminfo)

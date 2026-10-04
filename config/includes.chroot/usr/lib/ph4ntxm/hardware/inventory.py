@@ -25,8 +25,22 @@ def integer(env, key, minimum, maximum):
 
 def usable_memory(env):
     if 'PH4_USABLE_RAM_BYTES' in env:
-        return integer(env, 'PH4_USABLE_RAM_BYTES', 1024**2, 4096 * 1024**3)
-    return integer(env, 'PH4_REPORTED_RAM', 1, 4096) * 1024**3
+        ram = integer(env, 'PH4_USABLE_RAM_BYTES', 1024**2, 4096 * 1024**3)
+    else:
+        ram = integer(env, 'PH4_REPORTED_RAM', 1, 4096) * 1024**3
+    if 'PH4_PROFILE_ID' in env:
+        from persona import memory_layout, profile
+
+        expected = sum(
+            device['size_mib'] for device in memory_layout(profile(env['PH4_PROFILE_ID']))
+        ) * 1024**2
+        if (
+            ram != expected
+            or integer(env, 'PH4_INSTALLED_RAM_BYTES', 1024**2, 4096 * 1024**3) != ram
+            or integer(env, 'PH4_REPORTED_RAM', 1, 4096) * 1024**3 != ram
+        ):
+            raise ValueError('Memory capacity does not match the session profile')
+    return ram
 
 
 def cpuinfo(env):
@@ -148,9 +162,9 @@ def prepare(
 
     def memory_line(match):
         key, amount, suffix = match.groups()
-        if key in ('SwapTotal', 'SwapFree', 'SwapCached', 'Hugepagesize'):
+        if key in ('SwapTotal', 'SwapFree', 'SwapCached', 'Hugepagesize', 'VmallocTotal'):
             return match[0]
-        scaled = round(int(amount) * (ram // 1024) / real_kib)
+        scaled = int(amount) * (ram // 1024) // real_kib
         return f'{key}: {scaled:8d}{suffix}'
 
     memory_text = re.sub(

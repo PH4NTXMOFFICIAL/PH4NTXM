@@ -551,7 +551,7 @@ static int memory_contents(int fd)
             total = value;
         if (sscanf(line, "%79[^:]: %llu %7s", key, &value, unit) == 3 &&
             !strcmp(unit, "kB") && total && strncmp(key, "Swap", 4) &&
-            strcmp(key, "Hugepagesize")) {
+            strcmp(key, "Hugepagesize") && strcmp(key, "VmallocTotal")) {
             value = (unsigned long long)((long double)value * (ram / 1024) / total);
             fprintf(output, "%s: %8llu kB\n", key, value);
         } else {

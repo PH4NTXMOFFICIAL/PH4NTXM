@@ -88,6 +88,8 @@ def runtime_directory():
 
 
 def memory_limit(kind):
+    if any(key.startswith('PH4_INVENTORY_') for key in os.environ):
+        raise MediaError('Open the media viewer from the desktop to check actual available RAM.')
     memory = dict(re.findall(r'^(\w+):\s+(\d+) kB$', Path('/proc/meminfo').read_text(), re.M))
     available = int(memory['MemAvailable']) * 1024
     limit = min(512 if kind == 'image' else 768, (available - RESERVE) // (1024 * 1024))

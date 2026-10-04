@@ -2,6 +2,7 @@
 // Licensed under the GNU General Public License v3.0.
 
 #define _GNU_SOURCE
+#include <ctype.h>
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -122,6 +123,11 @@ static int memory_fd(int kind)
     const char *ram = getenv("PH4_INVENTORY_RAM_BYTES");
     if (!ram)
         return -1;
+    char name[64];
+    if (kind > 2) {
+        snprintf(name, sizeof(name), "ph4ntxm-process-%d", kind - 2);
+        return memfd_create(name, MFD_CLOEXEC);
+    }
     return memfd_create(kind == 2 ? "ph4ntxm-stat" : "ph4ntxm-meminfo", MFD_CLOEXEC);
 }
 
@@ -136,6 +142,13 @@ static int is_memory_fd(int fd)
     target[size] = 0;
     if (!strcmp(target, "/memfd:ph4ntxm-stat (deleted)"))
         return 2;
+    const char *prefix = "/memfd:ph4ntxm-process-";
+    if (!strncmp(target, prefix, strlen(prefix))) {
+        char *end;
+        unsigned long pid = strtoul(target + strlen(prefix), &end, 10);
+        if (pid && pid <= INT_MAX - 2 && !strcmp(end, " (deleted)"))
+            return (int)pid + 2;
+    }
     return !strcmp(target, "/memfd:ph4ntxm-meminfo (deleted)");
 }
 
@@ -160,7 +173,8 @@ static void refresh_memory(int fd)
         unsigned long long amount;
         int size;
         if (sscanf(line, "%79[^:]: %llu %7s", key, &amount, unit) == 3 && !strcmp(unit, "kB") &&
-            strncmp(key, "Swap", 4) && strcmp(key, "Hugepagesize")) {
+            strncmp(key, "Swap", 4) && strcmp(key, "Hugepagesize") &&
+            strcmp(key, "VmallocTotal")) {
             amount = (unsigned long long)((long double)amount * ram / total);
             size = snprintf(output + used, sizeof(output) - used, "%s: %8llu kB\n", key, amount);
         } else {
@@ -240,58 +254,199 @@ static void refresh_stat(int fd)
     free(result);
 }
 
-static void refresh_snapshot(int fd)
+static int refresh_process(int fd, int pid)
 {
-    if (is_memory_fd(fd) == 2)
+    FILE *(*real_fopen)(const char *, const char *) = dlsym(RTLD_NEXT, "fopen");
+    char path[64], input[4096], output[4096], memory[128];
+    snprintf(path, sizeof(path), "/proc/%d/stat", pid);
+    FILE *source = real_fopen(path, "r");
+    if (!source)
+        goto failure;
+    size_t length = fread(input, 1, sizeof(input) - 1, source);
+    int failed = ferror(source);
+    fclose(source);
+    if (failed || length == sizeof(input) - 1) {
+        errno = failed ? EIO : EOVERFLOW;
+        goto failure;
+    }
+    input[length] = 0;
+    source = real_fopen("/proc/meminfo", "r");
+    if (!source)
+        goto failure;
+    unsigned long long total = 0;
+    if (fgets(memory, sizeof(memory), source))
+        (void)sscanf(memory, "MemTotal: %llu", &total);
+    fclose(source);
+    const char *ram_text = getenv("PH4_INVENTORY_RAM_BYTES");
+    unsigned long long ram = ram_text ? strtoull(ram_text, NULL, 10) : 0;
+    if (!total || total > ULLONG_MAX / 1024 || !ram) {
+        errno = EINVAL;
+        goto failure;
+    }
+    char *cursor = strrchr(input, ')');
+    char *starts[2] = {NULL, NULL}, *ends[2] = {NULL, NULL};
+    if (!cursor) {
+        errno = EINVAL;
+        goto failure;
+    }
+    cursor++;
+    for (int field = 3; field <= 24; field++) {
+        while (isspace((unsigned char)*cursor))
+            cursor++;
+        if (!*cursor) {
+            errno = EINVAL;
+            goto failure;
+        }
+        if (field >= 23)
+            starts[field - 23] = cursor;
+        while (*cursor && !isspace((unsigned char)*cursor))
+            cursor++;
+        if (field >= 23)
+            ends[field - 23] = cursor;
+    }
+    unsigned long long amounts[2];
+    for (int i = 0; i < 2; i++) {
+        char *end;
+        errno = 0;
+        if (!isdigit((unsigned char)*starts[i])) {
+            errno = EINVAL;
+            goto failure;
+        }
+        unsigned long long amount = strtoull(starts[i], &end, 10);
+        if (errno || end != ends[i]) {
+            errno = EINVAL;
+            goto failure;
+        }
+        unsigned __int128 scaled = (unsigned __int128)amount * ram / (total * 1024);
+        if (scaled > ULLONG_MAX) {
+            errno = EOVERFLOW;
+            goto failure;
+        }
+        amounts[i] = (unsigned long long)scaled;
+    }
+    long (*real_sysconf)(int) = dlsym(RTLD_NEXT, "sysconf");
+    long page_size = real_sysconf(_SC_PAGESIZE);
+    if (page_size <= 0) {
+        errno = EINVAL;
+        goto failure;
+    }
+    amounts[0] = amounts[0] / (unsigned long)page_size * (unsigned long)page_size;
+    int size = snprintf(output, sizeof(output), "%.*s%llu%.*s%llu%s",
+                        (int)(starts[0] - input), input, amounts[0],
+                        (int)(starts[1] - ends[0]), ends[0], amounts[1], ends[1]);
+    if (size < 0 || size >= (int)sizeof(output)) {
+        errno = EOVERFLOW;
+        goto failure;
+    }
+    ssize_t written = pwrite(fd, output, (size_t)size, 0);
+    if (written != size) {
+        if (written >= 0)
+            errno = EIO;
+        goto failure;
+    }
+    if (ftruncate(fd, size) < 0)
+        goto failure;
+    return 0;
+failure:
+    {
+        int saved = errno;
+        (void)ftruncate(fd, 0);
+        errno = saved;
+    }
+    return -1;
+}
+
+static int refresh_snapshot(int fd)
+{
+    int kind = is_memory_fd(fd);
+    if (kind > 2)
+        return refresh_process(fd, kind - 2);
+    if (kind == 2)
         refresh_stat(fd);
     else
         refresh_memory(fd);
+    return 0;
 }
 
-static int memory_path(const char *path)
+static int memory_path(int directory, const char *path)
 {
     if (getenv("PH4_INVENTORY_SYSCALLS"))
         return 0;
     const char *root = getenv("PH4_INVENTORY_ROOT");
-    if (!path || (!root && !getenv("PH4_INVENTORY_MONITOR")))
+    int monitor = getenv("PH4_INVENTORY_MONITOR") != NULL;
+    if (!path || (!root && !monitor))
         return 0;
-    if (root && !strncmp(path, root, strlen(root)))
+    char absolute[PATH_MAX];
+    if (path[0] != '/') {
+        char base[PATH_MAX];
+        if (directory == AT_FDCWD) {
+            if (!getcwd(base, sizeof(base)))
+                return 0;
+        } else {
+            char link[64];
+            ssize_t (*original)(const char *, char *, size_t) = dlsym(RTLD_NEXT, "readlink");
+            snprintf(link, sizeof(link), "/proc/self/fd/%d", directory);
+            ssize_t size = original(link, base, sizeof(base) - 1);
+            if (size < 0 || size >= (ssize_t)sizeof(base) - 1)
+                return 0;
+            base[size] = 0;
+        }
+        if (snprintf(absolute, sizeof(absolute), "%s/%s", base, path) >= (int)sizeof(absolute))
+            return 0;
+        path = absolute;
+    }
+    if (root && !strncmp(path, root, strlen(root)) && path[strlen(root)] == '/')
         path += strlen(root);
     if (!strcmp(path, "/proc/meminfo"))
         return 1;
-    return !strcmp(path, "/proc/stat") ? 2 : 0;
+    if (!strcmp(path, "/proc/stat"))
+        return 2;
+    if (monitor && !strncmp(path, "/proc/", 6) && isdigit((unsigned char)path[6])) {
+        char *end;
+        unsigned long pid = strtoul(path + 6, &end, 10);
+        if (pid && pid <= INT_MAX - 2 && !strcmp(end, "/stat"))
+            return (int)pid + 2;
+    }
+    return 0;
 }
 
 static int open_memory(int kind)
 {
     int fd = memory_fd(kind);
-    if (fd >= 0)
-        refresh_snapshot(fd);
+    if (fd >= 0 && refresh_snapshot(fd) < 0) {
+        int saved = errno;
+        close(fd);
+        errno = saved;
+        return -1;
+    }
     return fd;
 }
 
 off_t lseek(int fd, off_t offset, int whence)
 {
     off_t (*original)(int, off_t, int) = dlsym(RTLD_NEXT, "lseek");
-    if (!offset && whence == SEEK_SET && is_memory_fd(fd))
-        refresh_snapshot(fd);
+    if (!offset && whence == SEEK_SET && is_memory_fd(fd) && refresh_snapshot(fd) < 0)
+        return -1;
     return original(fd, offset, whence);
 }
 
 off64_t lseek64(int fd, off64_t offset, int whence)
 {
     off64_t (*original)(int, off64_t, int) = dlsym(RTLD_NEXT, "lseek64");
-    if (!offset && whence == SEEK_SET && is_memory_fd(fd))
-        refresh_snapshot(fd);
+    if (!offset && whence == SEEK_SET && is_memory_fd(fd) && refresh_snapshot(fd) < 0)
+        return -1;
     return original(fd, offset, whence);
 }
 
 void rewind(FILE *stream)
 {
     void (*original)(FILE *) = dlsym(RTLD_NEXT, "rewind");
-    if (is_memory_fd(fileno(stream)))
-        refresh_snapshot(fileno(stream));
+    int snapshot = is_memory_fd(fileno(stream));
+    if (snapshot)
+        (void)fflush(stream);
     original(stream);
+    if (snapshot)
+        (void)refresh_snapshot(fileno(stream));
 }
 
 #define OPEN_FUNCTION(name) \
@@ -306,8 +461,8 @@ void rewind(FILE *stream)
         } \
         int (*original)(const char *, int, ...) = dlsym(RTLD_NEXT, #name); \
         const char *target = translate(AT_FDCWD, path); \
-        if ((flags & O_ACCMODE) == O_RDONLY && memory_path(target)) \
-            return open_memory(memory_path(target)); \
+        if ((flags & O_ACCMODE) == O_RDONLY && memory_path(AT_FDCWD, target)) \
+            return open_memory(memory_path(AT_FDCWD, target)); \
         return original(target, flags, mode); \
     }
 OPEN_FUNCTION(open)
@@ -325,8 +480,8 @@ OPEN_FUNCTION(open64)
         } \
         int (*original)(int, const char *, int, ...) = dlsym(RTLD_NEXT, #name); \
         const char *target = translate(fd, path); \
-        if ((flags & O_ACCMODE) == O_RDONLY && memory_path(target)) \
-            return open_memory(memory_path(target)); \
+        if ((flags & O_ACCMODE) == O_RDONLY && memory_path(fd, target)) \
+            return open_memory(memory_path(fd, target)); \
         return original(fd, target, flags, mode); \
     }
 OPENAT_FUNCTION(openat)
@@ -336,8 +491,8 @@ OPENAT_FUNCTION(openat64)
     int name(const char *path, int flags) \
     { \
         int (*original)(const char *, int) = dlsym(RTLD_NEXT, #name); \
-        if ((flags & O_ACCMODE) == O_RDONLY && memory_path(translate(AT_FDCWD, path))) \
-            return open_memory(memory_path(translate(AT_FDCWD, path))); \
+        if ((flags & O_ACCMODE) == O_RDONLY && memory_path(AT_FDCWD, translate(AT_FDCWD, path))) \
+            return open_memory(memory_path(AT_FDCWD, translate(AT_FDCWD, path))); \
         return original(translate(AT_FDCWD, path), flags); \
     }
 OPEN_CHECKED(__open_2)
@@ -347,8 +502,8 @@ OPEN_CHECKED(__open64_2)
     int name(int fd, const char *path, int flags) \
     { \
         int (*original)(int, const char *, int) = dlsym(RTLD_NEXT, #name); \
-        if ((flags & O_ACCMODE) == O_RDONLY && memory_path(translate(fd, path))) \
-            return open_memory(memory_path(translate(fd, path))); \
+        if ((flags & O_ACCMODE) == O_RDONLY && memory_path(fd, translate(fd, path))) \
+            return open_memory(memory_path(fd, translate(fd, path))); \
         return original(fd, translate(fd, path), flags); \
     }
 OPENAT_CHECKED(__openat_2)
@@ -372,8 +527,8 @@ int fstatat64(int fd, const char *path, struct stat64 *buf, int flags)
     { \
         FILE *(*original)(const char *, const char *) = dlsym(RTLD_NEXT, #name); \
         const char *target = translate(AT_FDCWD, path); \
-        if (mode[0] == 'r' && !strchr(mode, '+') && memory_path(target)) { \
-            int fd = open_memory(memory_path(target)); \
+        if (mode[0] == 'r' && !strchr(mode, '+') && memory_path(AT_FDCWD, target)) { \
+            int fd = open_memory(memory_path(AT_FDCWD, target)); \
             if (fd < 0) \
                 return NULL; \
             FILE *stream = fdopen(fd, mode); \

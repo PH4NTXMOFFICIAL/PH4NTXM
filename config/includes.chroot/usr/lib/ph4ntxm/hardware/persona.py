@@ -22,7 +22,7 @@ def profile(identifier):
     return matches[0]
 
 
-def choose(mode, seed, architecture=None, memory_kib=None):
+def choose(mode, seed, architecture=None):
     if mode not in ('linux', 'windows', 'lonewolf') or not re.fullmatch(
         r'[0-9a-f]{64}', seed
     ):
@@ -36,26 +36,6 @@ def choose(mode, seed, architecture=None, memory_kib=None):
     ]
     if not candidates:
         raise ValueError('No hardware profiles for this architecture')
-    if memory_kib is None:
-        match = re.search(
-            r'^MemTotal:\s+([0-9]+)\s+kB$',
-            Path('/proc/meminfo').read_text(), re.M
-        )
-        if not match:
-            raise ValueError('Host memory information is unavailable')
-        memory_kib = int(match[1])
-    if memory_kib < 128 * 1024:
-        raise ValueError('Insufficient host memory for a hardware view')
-    capacities = {
-        p['id']: sum(d['size_mib'] for d in memory_layout(p)) * 1024**2
-        for p in candidates
-    }
-    gib = 1024**3
-    limit = max(
-        ((memory_kib * 1024 + gib - 1) // gib) * gib,
-        min(capacities.values()),
-    )
-    candidates = [p for p in candidates if capacities[p['id']] <= limit]
     vendors = sorted({p['vendor'] for p in candidates})
     digest = hashlib.sha256((mode + seed).encode()).digest()
     vendor = vendors[int.from_bytes(digest[:8]) % len(vendors)]
@@ -195,24 +175,19 @@ def memory_layout(p):
     return devices
 
 
-def resources(p, processors, memory_kib):
-    if processors < 1 or memory_kib < 1:
+def resources(p, processors):
+    if processors < 1:
         raise ValueError('Invalid host resource limits')
     spec = specification(p['cpu'])
     values = topology(spec['name'], processors)
     gib = 1024**3
-    host_bytes = memory_kib * 1024
-    installed = sum(d['size_mib'] for d in memory_layout(p)) // 1024
-    block_size = 128 * 1024**2
-    usable = min(installed * gib, host_bytes // block_size * block_size)
-    if usable < 128 * 1024**2:
-        raise ValueError('Insufficient host memory for a hardware view')
+    ram = sum(d['size_mib'] for d in memory_layout(p)) * 1024**2
     values.update(
         PH4_PROFILE_ID=p['id'],
         PH4_REPORTED_CORES=values['PH4_CPU_ACTIVE_THREADS'],
-        PH4_REPORTED_RAM=max(1, usable // gib),
-        PH4_USABLE_RAM_BYTES=usable,
-        PH4_INSTALLED_RAM_BYTES=installed * gib,
+        PH4_REPORTED_RAM=ram // gib,
+        PH4_USABLE_RAM_BYTES=ram,
+        PH4_INSTALLED_RAM_BYTES=ram,
         PH4_MEMORY_MAX_BYTES=p['memory_max_gib'] * gib,
         PH4_MEMORY_SLOTS=p['memory_slots'],
         PH4_MEMORY_MODULE_MAX_BYTES=p.get('memory_module_max_gib', p['memory_max_gib'])
@@ -265,10 +240,8 @@ if __name__ == '__main__':
             result = identity(choose(*arguments))
         elif operation == 'show' and len(arguments) == 1:
             result = identity(profile(arguments[0]))
-        elif operation == 'resources' and len(arguments) == 3:
-            result = resources(
-                profile(arguments[0]), int(arguments[1]), int(arguments[2])
-            )
+        elif operation == 'resources' and len(arguments) == 2:
+            result = resources(profile(arguments[0]), int(arguments[1]))
         else:
             raise ValueError('Invalid persona command')
         sys.stdout.write(shell(result))

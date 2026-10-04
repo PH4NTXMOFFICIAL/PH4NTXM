@@ -26,10 +26,9 @@ if [[ -x /usr/bin/nproc-real ]]; then
 else
     REAL_CORES=$(/usr/bin/nproc --all)
 fi
-REAL_RAM_KB=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
 
 tmp=$(mktemp "$STATE_DIR/.cores-env.XXXXXX")
-if ! /usr/bin/python3 /usr/lib/ph4ntxm/hardware/persona.py resources "$PROFILE_ID" "$REAL_CORES" "$REAL_RAM_KB" >"$tmp"; then
+if ! /usr/bin/python3 /usr/lib/ph4ntxm/hardware/persona.py resources "$PROFILE_ID" "$REAL_CORES" >"$tmp"; then
     rm -f "$tmp"
     exit 1
 fi
