@@ -22,7 +22,7 @@ def profile(identifier):
     return matches[0]
 
 
-def choose(mode, seed, architecture=None):
+def choose(mode, seed, architecture=None, memory_kib=None):
     if mode not in ('linux', 'windows', 'lonewolf') or not re.fullmatch(
         r'[0-9a-f]{64}', seed
     ):
@@ -36,6 +36,26 @@ def choose(mode, seed, architecture=None):
     ]
     if not candidates:
         raise ValueError('No hardware profiles for this architecture')
+    if memory_kib is None:
+        match = re.search(
+            r'^MemTotal:\s+([0-9]+)\s+kB$',
+            Path('/proc/meminfo').read_text(), re.M
+        )
+        if not match:
+            raise ValueError('Host memory information is unavailable')
+        memory_kib = int(match[1])
+    if memory_kib < 128 * 1024:
+        raise ValueError('Insufficient host memory for a hardware view')
+    capacities = {
+        p['id']: sum(d['size_mib'] for d in memory_layout(p)) * 1024**2
+        for p in candidates
+    }
+    gib = 1024**3
+    limit = max(
+        ((memory_kib * 1024 + gib - 1) // gib) * gib,
+        min(capacities.values()),
+    )
+    candidates = [p for p in candidates if capacities[p['id']] <= limit]
     vendors = sorted({p['vendor'] for p in candidates})
     digest = hashlib.sha256((mode + seed).encode()).digest()
     vendor = vendors[int.from_bytes(digest[:8]) % len(vendors)]
@@ -183,7 +203,8 @@ def resources(p, processors, memory_kib):
     gib = 1024**3
     host_bytes = memory_kib * 1024
     installed = sum(d['size_mib'] for d in memory_layout(p)) // 1024
-    usable = min(installed * gib, 1 << (host_bytes.bit_length() - 1))
+    block_size = 128 * 1024**2
+    usable = min(installed * gib, host_bytes // block_size * block_size)
     if usable < 128 * 1024**2:
         raise ValueError('Insufficient host memory for a hardware view')
     values.update(

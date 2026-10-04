@@ -327,8 +327,12 @@ if [[ -r "$STATE_DIR/cores_env" ]]; then
     PERSONA_ARCH=${PH4_CPU_ARCHITECTURE:-UNKNOWN}
     PERSONA_CPU=${PH4_CPU_MODEL_NAME:-UNKNOWN}
     PERSONA_RAM=${PH4_REPORTED_RAM:-UNKNOWN}
+    if [[ "${PH4_USABLE_RAM_BYTES:-}" =~ ^[1-9][0-9]*$ ]]; then
+        PERSONA_RAM=$(numfmt --to=iec-i --suffix=B "$PH4_USABLE_RAM_BYTES")
+    elif [[ "$PERSONA_RAM" != "UNKNOWN" ]]; then
+        PERSONA_RAM="$PERSONA_RAM GiB"
+    fi
 fi
-[[ "$PERSONA_RAM" == "UNKNOWN" ]] || PERSONA_RAM="$PERSONA_RAM GB"
 
 if awk "BEGIN {exit !($LOAD >= ($CPU_COUNT * 2))}"; then
     error
