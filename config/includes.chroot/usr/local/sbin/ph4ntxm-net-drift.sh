@@ -29,12 +29,23 @@ JITTER_FILE=/run/ph4ntxm/boot_jitter
 
 [[ -s "$SEED_FILE" && -s "$JITTER_FILE" ]] || exit 1
 
+NETEM_HANDLE=4e44:
+
 declare -A MANAGED_IFACES=()
+declare -A ELIGIBLE_IFACES=()
+
+remove_netem() {
+    local IFACE=$1
+    if [[ ! -e "/sys/class/net/$IFACE" ]] ||
+        $TC qdisc del dev "$IFACE" root handle "$NETEM_HANDLE" netem >/dev/null 2>&1; then
+        unset 'MANAGED_IFACES[$IFACE]'
+    fi
+}
 
 cleanup() {
     local IFACE
     for IFACE in "${!MANAGED_IFACES[@]}"; do
-        $TC qdisc del dev "$IFACE" root >/dev/null 2>&1 || true
+        remove_netem "$IFACE"
     done
 }
 
@@ -86,6 +97,7 @@ while true; do
     JIT=$(clamp "$JIT" 1 50)
     LOSS=$(clamp "$LOSS" 0 5)
 
+    ELIGIBLE_IFACES=()
     for IFACE_PATH in /sys/class/net/*; do
         IFACE="$($BASENAME "$IFACE_PATH")"
 
@@ -94,8 +106,13 @@ while true; do
             "$IFACE" == virbr* || "$IFACE" == tun* || "$IFACE" == tap* ||
             "$IFACE" == wg* || "$IFACE" == dummy* || "$IFACE" == vbr* ]] && continue
 
-        $IP addr show dev "$IFACE" | $GREP -q "inet " || continue
-        $IP route show default dev "$IFACE" | $GREP -q '^default ' || continue
+        ELIGIBLE_IFACES["$IFACE"]=1
+        ADDRESSES=$($IP -4 addr show dev "$IFACE" 2>/dev/null) || continue
+        ROUTES=$($IP -4 route show default dev "$IFACE" 2>/dev/null) || continue
+        if ! $GREP -q "inet " <<<"$ADDRESSES" || ! $GREP -q '^default ' <<<"$ROUTES"; then
+            unset 'ELIGIBLE_IFACES[$IFACE]'
+            continue
+        fi
 
         if [[ -d "/sys/class/net/$IFACE/wireless" ]]; then
             LOSS_IF=$(clamp "$LOSS" 0 1)
@@ -105,7 +122,7 @@ while true; do
             JIT_IF=$(clamp "$JIT" 1 50)
         fi
 
-        if $TC qdisc replace dev "$IFACE" root netem \
+        if $TC qdisc replace dev "$IFACE" root handle "$NETEM_HANDLE" netem \
             delay ${DELAY}ms ${JIT_IF}ms distribution normal \
             loss ${LOSS_IF}% \
             duplicate 0.02% \
@@ -114,5 +131,11 @@ while true; do
             MANAGED_IFACES["$IFACE"]=1
         fi
 
+    done
+
+    for IFACE in "${!MANAGED_IFACES[@]}"; do
+        if [[ "${ELIGIBLE_IFACES[$IFACE]:-0}" != 1 ]]; then
+            remove_netem "$IFACE"
+        fi
     done
 done
