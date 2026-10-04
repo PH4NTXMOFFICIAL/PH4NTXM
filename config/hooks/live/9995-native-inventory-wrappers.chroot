@@ -9,7 +9,7 @@ chmod 0755 /usr/lib/ph4ntxm/hardware/wrapper \
 install -d -m 0755 /usr/local/bin
 ln -sf /usr/lib/ph4ntxm/hardware/wrapper /usr/local/bin/ph4ntxm-hardware-run
 
-for tool in lshw hwinfo inxi fastfetch screenfetch neofetch free lscpu nproc dmidecode getconf vmstat lsmem lstopo lstopo-no-graphics hwloc-info hwloc-calc hwloc-distrib; do
+for tool in lshw hwinfo inxi fastfetch screenfetch neofetch free lscpu nproc dmidecode getconf vmstat xfce4-taskmanager lsmem lstopo lstopo-no-graphics hwloc-info hwloc-calc hwloc-distrib; do
     for directory in /usr/bin /usr/sbin; do
         path="$directory/$tool"
         [ -x "$path" ] || [ -x "$path-real" ] || continue

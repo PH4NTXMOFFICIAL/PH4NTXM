@@ -182,6 +182,7 @@ static void refresh_stat(int fd)
     if (!source)
         return;
     unsigned long count = strtoul(getenv("PH4_REPORTED_CORES"), NULL, 10);
+    int monitor = getenv("PH4_INVENTORY_MONITOR") != NULL;
     unsigned long long rows[256][10] = {{0}}, totals[10] = {0};
     char *line = NULL, *tail = NULL, *result = NULL;
     size_t length = 0, tail_size = 0, result_size = 0, real_count = 0;
@@ -204,6 +205,10 @@ static void refresh_stat(int fd)
             }
         } else if (strncmp(line, "cpu ", 4)) {
             fputs(line, other);
+        } else if (monitor) {
+            (void)sscanf(line, "%*s %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
+                         &totals[0], &totals[1], &totals[2], &totals[3], &totals[4],
+                         &totals[5], &totals[6], &totals[7], &totals[8], &totals[9]);
         }
     }
     free(line);
@@ -211,9 +216,10 @@ static void refresh_stat(int fd)
     fclose(other);
     FILE *output = open_memstream(&result, &result_size);
     if (output && real_count) {
-        for (unsigned long i = 0; i < count; i++)
-            for (int j = 0; j < 10; j++)
-                totals[j] += rows[i % real_count][j];
+        if (!monitor)
+            for (unsigned long i = 0; i < count; i++)
+                for (int j = 0; j < 10; j++)
+                    totals[j] += rows[i % real_count][j];
         fputs("cpu", output);
         for (int j = 0; j < 10; j++)
             fprintf(output, " %llu", totals[j]);
@@ -247,9 +253,9 @@ static int memory_path(const char *path)
     if (getenv("PH4_INVENTORY_SYSCALLS"))
         return 0;
     const char *root = getenv("PH4_INVENTORY_ROOT");
-    if (!root || !path)
+    if (!path || (!root && !getenv("PH4_INVENTORY_MONITOR")))
         return 0;
-    if (!strncmp(path, root, strlen(root)))
+    if (root && !strncmp(path, root, strlen(root)))
         path += strlen(root);
     if (!strcmp(path, "/proc/meminfo"))
         return 1;

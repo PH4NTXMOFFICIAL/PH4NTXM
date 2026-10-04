@@ -784,6 +784,7 @@ def main():
         'nproc',
         'getconf',
         'vmstat',
+        'xfce4-taskmanager',
         'lsmem',
         'hwloc-ls',
         'lstopo',
@@ -796,6 +797,18 @@ def main():
     library = Path('/usr/lib/ph4ntxm/hardware/query.so')
     if not library.is_file():
         raise ValueError('Inventory library is missing')
+    if tool == 'xfce4-taskmanager':
+        validate(os.environ)
+        environment = {
+            key: value for key, value in os.environ.items()
+            if not key.startswith('PH4_INVENTORY_')
+        }
+        environment['PH4_INVENTORY_MONITOR'] = '1'
+        environment['PH4_INVENTORY_RAM_BYTES'] = str(usable_memory(environment))
+        environment['LD_PRELOAD'] = str(library) + (
+            ':' + environment['LD_PRELOAD'] if environment.get('LD_PRELOAD') else ''
+        )
+        os.execve(real, [tool, *arguments], environment)
     supervisor = Path('/usr/lib/ph4ntxm/hardware/supervisor')
     if not supervisor.is_file():
         raise ValueError('Hardware supervisor is missing')
