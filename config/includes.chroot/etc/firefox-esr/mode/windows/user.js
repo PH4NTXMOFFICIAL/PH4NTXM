@@ -16,6 +16,7 @@ user_pref("dom.maxHardwareConcurrency", {{CORES}});
 
 user_pref("general.oscpu.override", "Windows NT 10.0; Win64; x64");
 user_pref("general.platform.override", "Win32");
+user_pref("general.appversion.override", "5.0 (Windows)");
 
 user_pref("browser.search.region", "US");
 user_pref("browser.search.isUS", true);
