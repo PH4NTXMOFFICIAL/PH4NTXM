@@ -196,10 +196,10 @@ static void refresh_stat(int fd)
     if (!source)
         return;
     unsigned long count = strtoul(getenv("PH4_REPORTED_CORES"), NULL, 10);
-    int monitor = getenv("PH4_INVENTORY_MONITOR") != NULL;
-    unsigned long long rows[256][10] = {{0}}, totals[10] = {0};
+    unsigned long long totals[10] = {0};
     char *line = NULL, *tail = NULL, *result = NULL;
-    size_t length = 0, tail_size = 0, result_size = 0, real_count = 0;
+    size_t length = 0, tail_size = 0, result_size = 0;
+    int aggregate = 0;
     FILE *other = open_memstream(&tail, &tail_size);
     if (!other || count < 1 || count > 256) {
         if (other)
@@ -209,31 +209,20 @@ static void refresh_stat(int fd)
         return;
     }
     while (getline(&line, &length, source) >= 0) {
-        unsigned int index;
-        if (line[3] >= '0' && line[3] <= '9' && sscanf(line, "cpu%u ", &index) == 1) {
-            if (real_count < 256) {
-                unsigned long long *row = rows[real_count++];
-                (void)sscanf(line, "%*s %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu", &row[0],
-                             &row[1], &row[2], &row[3], &row[4], &row[5], &row[6], &row[7], &row[8],
-                             &row[9]);
-            }
-        } else if (strncmp(line, "cpu ", 4)) {
+        if (!strncmp(line, "cpu ", 4)) {
+            aggregate = sscanf(line, "%*s %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
+                               &totals[0], &totals[1], &totals[2], &totals[3], &totals[4],
+                               &totals[5], &totals[6], &totals[7], &totals[8], &totals[9]) >= 4;
+        } else if (strncmp(line, "cpu", 3) || line[3] < '0' || line[3] > '9') {
             fputs(line, other);
-        } else if (monitor) {
-            (void)sscanf(line, "%*s %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
-                         &totals[0], &totals[1], &totals[2], &totals[3], &totals[4],
-                         &totals[5], &totals[6], &totals[7], &totals[8], &totals[9]);
         }
     }
+    aggregate = aggregate && !ferror(source);
     free(line);
     fclose(source);
     fclose(other);
     FILE *output = open_memstream(&result, &result_size);
-    if (output && real_count) {
-        if (!monitor)
-            for (unsigned long i = 0; i < count; i++)
-                for (int j = 0; j < 10; j++)
-                    totals[j] += rows[i % real_count][j];
+    if (output && aggregate) {
         fputs("cpu", output);
         for (int j = 0; j < 10; j++)
             fprintf(output, " %llu", totals[j]);
@@ -241,7 +230,7 @@ static void refresh_stat(int fd)
         for (unsigned long i = 0; i < count; i++) {
             fprintf(output, "cpu%lu", i);
             for (int j = 0; j < 10; j++)
-                fprintf(output, " %llu", rows[i % real_count][j]);
+                fprintf(output, " %llu", totals[j] / count + (i < totals[j] % count));
             fputc('\n', output);
         }
         fwrite(tail, 1, tail_size, output);
@@ -763,5 +752,7 @@ int sched_getcpu(void)
         return (int)cpu;
     }
     int (*original)(void) = dlsym(RTLD_NEXT, "sched_getcpu");
-    return original();
+    int cpu = original();
+    unsigned long count = value("PH4_REPORTED_CORES");
+    return cpu >= 0 && count ? (int)((unsigned long)cpu % count) : cpu;
 }

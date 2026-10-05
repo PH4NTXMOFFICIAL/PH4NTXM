@@ -111,30 +111,9 @@ def specification(model):
     return data
 
 
-def topology(model, requested):
-    total_cores, total_threads = capacity(model)
-    if not isinstance(requested, int) or requested < 1:
-        raise ValueError('Invalid active CPU count')
-    active_threads = min(requested, total_threads)
-    smt = total_threads // total_cores
-    if smt > 1 and active_threads >= 4:
-        active_threads -= active_threads % smt
-        threads = smt
-    else:
-        threads = 1
-        active_threads = min(active_threads, total_cores)
-    return dict(
-        zip(
-            FIELDS,
-            (
-                total_cores,
-                total_threads,
-                active_threads // threads,
-                active_threads,
-                threads,
-            ),
-        )
-    )
+def topology(model):
+    cores, threads = capacity(model)
+    return dict(zip(FIELDS, (cores, threads, cores, threads, threads // cores)))
 
 
 def validate(env):
@@ -151,10 +130,10 @@ def validate(env):
     if (
         values['PH4_CPU_TOTAL_CORES'] != cores
         or values['PH4_CPU_TOTAL_THREADS'] != threads
-        or active > cores
-        or logical > threads
+        or active != cores
+        or logical != threads
         or logical != active * smt
-        or smt not in (1, threads // cores)
+        or smt != threads // cores
         or str(logical) != env.get('PH4_REPORTED_CORES')
     ):
         raise ValueError('Inconsistent CPU topology')
@@ -163,7 +142,9 @@ def validate(env):
 
 if __name__ == '__main__':
     try:
-        result = topology(sys.argv[1], int(sys.argv[2]))
+        if len(sys.argv) != 2:
+            raise ValueError('Invalid CPU profile command')
+        result = topology(sys.argv[1])
         print(' '.join(str(result[field]) for field in FIELDS))
     except (ValueError, IndexError) as error:
         print(str(error), file=sys.stderr)

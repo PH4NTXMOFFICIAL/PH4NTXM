@@ -21,14 +21,8 @@ fi
 source "$STATE_DIR/hardware_profile"
 [[ -n "${PROFILE_ID:-}" ]] || exit 1
 
-if [[ -x /usr/bin/nproc-real ]]; then
-    REAL_CORES=$(/usr/bin/nproc-real --all)
-else
-    REAL_CORES=$(/usr/bin/nproc --all)
-fi
-
 tmp=$(mktemp "$STATE_DIR/.cores-env.XXXXXX")
-if ! /usr/bin/python3 /usr/lib/ph4ntxm/hardware/persona.py resources "$PROFILE_ID" "$REAL_CORES" >"$tmp"; then
+if ! /usr/bin/python3 /usr/lib/ph4ntxm/hardware/persona.py resources "$PROFILE_ID" >"$tmp"; then
     rm -f "$tmp"
     exit 1
 fi

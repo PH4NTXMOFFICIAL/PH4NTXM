@@ -23,7 +23,6 @@ esac
 [[ -s "$STATE_DIR/persona_seed" ]] || exit 1
 source "$STATE_DIR/cores_env"
 [[ "${PH4_REPORTED_CORES:-}" =~ ^[1-9][0-9]*$ ]] || exit 1
-RANDOM=$((16#$(printf '%s%s' "$(cat "$STATE_DIR/persona_seed")" cpuinfo | sha256sum | cut -c1-4) & 32767))
 
 FAKE_CPUINFO="$STATE_DIR/fake_cpuinfo"
 /usr/bin/python3 /usr/lib/ph4ntxm/hardware/inventory.py --cpuinfo >"$FAKE_CPUINFO"

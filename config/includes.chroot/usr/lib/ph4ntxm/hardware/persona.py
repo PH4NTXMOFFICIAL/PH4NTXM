@@ -175,11 +175,9 @@ def memory_layout(p):
     return devices
 
 
-def resources(p, processors):
-    if processors < 1:
-        raise ValueError('Invalid host resource limits')
+def resources(p):
     spec = specification(p['cpu'])
-    values = topology(spec['name'], processors)
+    values = topology(spec['name'])
     gib = 1024**3
     ram = sum(d['size_mib'] for d in memory_layout(p)) * 1024**2
     values.update(
@@ -240,8 +238,8 @@ if __name__ == '__main__':
             result = identity(choose(*arguments))
         elif operation == 'show' and len(arguments) == 1:
             result = identity(profile(arguments[0]))
-        elif operation == 'resources' and len(arguments) == 2:
-            result = resources(profile(arguments[0]), int(arguments[1]))
+        elif operation == 'resources' and len(arguments) == 1:
+            result = resources(profile(arguments[0]))
         else:
             raise ValueError('Invalid persona command')
         sys.stdout.write(shell(result))

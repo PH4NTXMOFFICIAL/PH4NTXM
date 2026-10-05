@@ -264,16 +264,19 @@ def prepare(
         node_memory(ram),
     )
     stat = Path('/proc/stat').read_text().splitlines()
-    cpus = [line.split()[1:] for line in stat if re.match(r'^cpu\d+ ', line)]
-    if cpus:
-        stat = [line for line in stat if not re.match(r'^cpu\d+ ', line)]
-        rows = [f'cpu{i} ' + ' '.join(cpus[i % len(cpus)]) for i in range(count)]
-        totals = [
-            str(sum(int(row.split()[j + 1]) for row in rows))
-            for j in range(len(cpus[0]))
-        ]
-        stat[0] = 'cpu ' + ' '.join(totals)
-        stat[1:1] = rows
+    if not stat or not stat[0].startswith('cpu '):
+        raise ValueError('Invalid native CPU counters')
+    totals = [int(value) for value in stat[0].split()[1:]]
+    if len(totals) < 4 or any(value < 0 for value in totals):
+        raise ValueError('Invalid native CPU counters')
+    totals += [0] * (10 - len(totals))
+    stat = [line for line in stat if not re.match(r'^cpu\d+ ', line)]
+    rows = [
+        f'cpu{i} ' + ' '.join(str(value // count + (i < value % count)) for value in totals)
+        for i in range(count)
+    ]
+    stat[0] = 'cpu ' + ' '.join(str(value) for value in totals)
+    stat[1:1] = rows
     write('/proc/stat', '\n'.join(stat) + '\n')
     dmi = {}
     for name in (

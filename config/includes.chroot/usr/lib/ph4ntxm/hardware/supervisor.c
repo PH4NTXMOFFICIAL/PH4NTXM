@@ -171,44 +171,12 @@ static void user_namespace(void)
 
 static void complete_cpu_map(unsigned int found)
 {
-    if (found == cpu_count)
-        return;
-    FILE *input = fopen("/sys/devices/system/cpu/online", "re");
-    if (!input)
-        fail("read online CPUs");
-    char *line = NULL;
-    size_t capacity = 0;
-    ssize_t size = getline(&line, &capacity, input);
-    fclose(input);
-    if (size < 0)
-        fail("read online CPUs");
-    char *cursor = line;
-    while (*cursor && found < cpu_count) {
-        char *end;
-        unsigned long first = strtoul(cursor, &end, 10), last = first;
-        if (end == cursor)
-            break;
-        if (*end == '-') {
-            cursor = end + 1;
-            last = strtoul(cursor, &end, 10);
-            if (end == cursor)
-                break;
-        }
-        if (last < first || last >= CPU_LIMIT)
-            break;
-        for (unsigned long cpu = first; cpu <= last && found < cpu_count; cpu++) {
-            unsigned int i;
-            for (i = 0; i < found && physical[i] != (int)cpu; i++) {}
-            if (i == found)
-                physical[found++] = (int)cpu;
-        }
-        cursor = *end == ',' ? end + 1 : end;
-    }
-    free(line);
-    if (found != cpu_count) {
+    if (!found) {
         errno = EINVAL;
-        fail("session CPU count exceeds online CPUs");
+        fail("no available CPUs");
     }
+    for (unsigned int i = found; i < cpu_count; i++)
+        physical[i] = physical[i % found];
 }
 
 static void bind_view(const char *source, const char *target)
@@ -408,6 +376,13 @@ static void affinity(struct seccomp_notif *request, int setting)
         for (unsigned int i = 0; i < cpu_count; i++)
             if (visible[i / CHAR_BIT] & (1U << (i % CHAR_BIT)))
                 actual[physical[i] / CHAR_BIT] |= 1U << (physical[i] % CHAR_BIT);
+        for (unsigned int i = 0; i < cpu_count; i++) {
+            if ((actual[physical[i] / CHAR_BIT] & (1U << (physical[i] % CHAR_BIT))) &&
+                !(visible[i / CHAR_BIT] & (1U << (i % CHAR_BIT)))) {
+                respond(request, 0, EOPNOTSUPP, 0);
+                return;
+            }
+        }
         long status = syscall(SYS_sched_setaffinity, target, sizeof(actual), actual);
         respond(request, status < 0 ? 0 : status, status < 0 ? errno : 0, 0);
     }
@@ -575,8 +550,8 @@ static int stat_contents(int fd)
     FILE *input = fopen("/proc/stat", "re");
     if (!input)
         return -1;
-    unsigned long long rows[VIEW_LIMIT][10] = {{0}}, totals[10] = {0};
-    unsigned int count = 0;
+    unsigned long long totals[10] = {0};
+    int count = 0;
     char *line = NULL, *tail = NULL, *result = NULL;
     size_t capacity = 0, tail_size = 0, size = 0;
     FILE *other = open_memstream(&tail, &tail_size);
@@ -585,18 +560,11 @@ static int stat_contents(int fd)
         return -1;
     }
     while (getline(&line, &capacity, input) >= 0) {
-        unsigned int index;
-        if (line[3] >= '0' && line[3] <= '9' && sscanf(line, "cpu%u ", &index) == 1) {
-            for (unsigned int i = 0; i < cpu_count; i++) {
-                if ((unsigned int)physical[i] != index)
-                    continue;
-                unsigned long long *row = rows[i];
-                sscanf(line, "%*s %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
-                       &row[0], &row[1], &row[2], &row[3], &row[4], &row[5], &row[6],
-                       &row[7], &row[8], &row[9]);
-                count++;
-            }
-        } else if (strncmp(line, "cpu ", 4)) {
+        if (!strncmp(line, "cpu ", 4)) {
+            count = sscanf(line, "%*s %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
+                           &totals[0], &totals[1], &totals[2], &totals[3], &totals[4],
+                           &totals[5], &totals[6], &totals[7], &totals[8], &totals[9]);
+        } else if (strncmp(line, "cpu", 3) || line[3] < '0' || line[3] > '9') {
             fputs(line, other);
         }
     }
@@ -606,12 +574,9 @@ static int stat_contents(int fd)
     if (fclose(other) != 0)
         status = -1;
     FILE *output = open_memstream(&result, &size);
-    if (!output || !count)
+    if (!output || count < 4)
         status = -1;
-    if (output && count) {
-        for (unsigned int i = 0; i < cpu_count; i++)
-            for (int j = 0; j < 10; j++)
-                totals[j] += rows[i][j];
+    if (output && count >= 4) {
         fputs("cpu", output);
         for (int j = 0; j < 10; j++)
             fprintf(output, " %llu", totals[j]);
@@ -619,7 +584,7 @@ static int stat_contents(int fd)
         for (unsigned int i = 0; i < cpu_count; i++) {
             fprintf(output, "cpu%u", i);
             for (int j = 0; j < 10; j++)
-                fprintf(output, " %llu", rows[i][j]);
+                fprintf(output, " %llu", totals[j] / cpu_count + (i < totals[j] % cpu_count));
             fputc('\n', output);
         }
         fputs(tail, output);
