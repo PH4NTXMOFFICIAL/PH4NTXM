@@ -8,7 +8,7 @@ Displays the current session identity in a desktop window or terminal report. Th
 
 When the window opens, it reads the selected mode, `/etc/hostname`, `/etc/machine-id` and interface addresses exposed through sysfs. Each window holds its own snapshot of those values.
 
-The desktop tray creates an Ayatana indicator with the PH4NTXM Identity icon and Show Identity and Quit actions. Its active state means the shortcut is present. It does not indicate that identity preparation passed its checks.
+The desktop tray shows the PH4NTXM Identity icon with Show Identity and Quit actions. Its visible state means the shortcut is present. It does not indicate that identity preparation passed its checks.
 
 ## [ RUNTIME ]
 
@@ -22,13 +22,13 @@ Detailed Report opens [Health](HEALTH.md) in a separate held terminal for broade
 
 Each Show Identity selection can launch another viewer. The tray has no duplicate-window guard, does not poll `identity-ready` and does not change its icon when a MAC or service state changes. Existing viewer windows keep their earlier snapshots.
 
-Launch exceptions are caught without a tray error dialog. Quit ends only the indicator's GTK loop, leaving separately launched viewers and system services running. The normal application launcher remains available.
+Launch exceptions are caught without a tray error dialog. Quit ends only the tray's GTK loop, leaving separately launched viewers and system services running. The normal application launcher remains available.
 
 ## [ CHECKS ]
 
 Compare displayed values with `identity-ready` and the generator journal when checking startup. Use [Boot Pilot](BOOT-PILOT.md) and Health to inspect the wider chain, including physical MAC application and service readiness.
 
-If a virtual interface appears, compare it with [Ghost Stack](NET-GHOST-STACK.md). If the tray shortcut opens no window, run the viewer in a terminal to expose its startup error and check the GTK/indicator environment.
+If a virtual interface appears, compare it with [Ghost Stack](NET-GHOST-STACK.md). If the tray shortcut opens no window, run the viewer in a terminal to expose its startup error and check the GTK/tray environment.
 
 ## [ SOURCE ]
 

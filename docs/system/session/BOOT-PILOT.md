@@ -18,6 +18,8 @@ Checks refresh every two seconds. Identity checks combine service results with g
 
 Network checks include derived physical MACs, DHCP mode, local resolver and current protection state. Normal modes inspect packet-engine/firewall state plus Drift and Ghost Stack. Lone Wolf checks its guardian, fresh Tor readiness and the local DNS/proxy listeners.
 
+While the protected local path is available and Tor is bootstrapping, Tor and DNS remain pending beyond the 30-second grace period. The connection line shows Waiting for Network without an active IPv4 default route, or Connecting to Tor with a spinner when that route is present.
+
 System checks cover RAM seeding with no swap, the thermal guard, ConnWatch and the loaded/locked Nuke path. All displayed feature checks must pass before Continue and the browser button are enabled. Their handlers refresh once more before acting.
 
 Continue closes the window. The browser action launches Firefox ESR for Linux/Windows or the dedicated Tor Browser wrapper for Lone Wolf. Detailed Report opens Health in a separate held terminal.

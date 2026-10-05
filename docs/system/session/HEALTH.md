@@ -14,6 +14,8 @@ The report starts from the current mode and local system state. It does not reru
 
 Sections inspect the system foundation, identity records and hardware views, CPU/GPU/display data, memory and resource state, networking and termination prerequisites. Missing data is reported separately from a valid value.
 
+CPU and RAM labels use the session persona. Memory usage is scaled from actual host usage, while memory-pressure warnings still use the actual usage percentage.
+
 Protection checks combine service state with protected runtime records. Readiness helpers reject duplicate fields, unsafe ownership/permissions, future timestamps and stale records where a freshness limit applies. Normal packet-engine checks and Lone Wolf Tor/DNS checks follow different paths.
 
 The termination section checks target wiring, masked alternate power/swap paths, SysRq and Ctrl+Alt+Del settings, the final shutdown hook, Nuke artifacts, crash reservation, loaded crash image and locked kexec loader. Those are inspections of prerequisites, not an executed wipe test.

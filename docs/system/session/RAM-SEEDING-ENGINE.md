@@ -6,7 +6,7 @@ Maintains a small anonymous memory region filled with changing synthetic noise.
 
 ## [ STARTUP ]
 
-The compiled engine runs as a background service and allocates a private anonymous mapping sized to one percent of RAM reported by `sysinfo`. It requires a valid page size and at least one page of target space.
+The compiled engine runs as a background service and allocates a private anonymous mapping sized to one percent of physical RAM reported by native `sysinfo`. It requires a valid page size and at least one page of target space.
 
 Initial noise state comes from nonblocking `getrandom`, with time/PID fallback if a full seed is unavailable. Allocation failure exits rather than starting an empty loop.
 

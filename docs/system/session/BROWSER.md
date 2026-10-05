@@ -12,13 +12,13 @@ The wrapper validates the root-owned mode file. Linux and Windows continue throu
 
 ## [ RUNTIME ]
 
-Normal modes use `/run/user/UID/ph4ntxm-firefox-profile`, with `0700` directory permissions and a nonblocking account-level lock. A second concurrent wrapper session is rejected. This profile is reused within the runtime session rather than recreated on every normal browser launch.
+Normal modes use `/run/user/UID/ph4ntxm-firefox-profile`, with `0700` directory permissions and a nonblocking account-level lock. When the lock is held, supported launch arguments are forwarded over the session D-Bus to the same user's Firefox process using this profile. The profile is reused within the runtime session rather than recreated on every normal browser launch.
 
 The wrapper obtains the installed Firefox major version and reads protected `browser_env`, `cores_env` and `gpu_env` files. These must be readable regular files, owned by root and not writable by group or others. Required DPR, core count and architecture values are validated.
 
 It copies the mode's `user.js` template to a temporary file, substitutes DPR, cores, architecture and Firefox version, and rejects unresolved placeholders. The completed file is installed as `0600` through rename, avoiding a partially written final preferences file.
 
-The active Fontconfig directory and configuration are exported before launching the real browser with the explicit profile and `--no-remote`. Policy generation, selected fonts and runtime identity data therefore have to agree before this wrapper can start normally.
+The active Fontconfig directory and configuration are exported before launching the real browser with the explicit profile. Policy generation, selected fonts and runtime identity data therefore have to agree before this wrapper can start normally.
 
 Lone Wolf follows a different lifecycle: a verified Tor Browser bundle, current firewall/Tor readiness and a fresh temporary home. Its launcher deliberately starts from a restricted environment instead of importing the normal Firefox persona variables.
 
@@ -33,4 +33,5 @@ Check the wrapper result together with the selected mode and generated preferenc
 [ph4ntxm-browser-mode.sh](../../../config/includes.chroot/usr/local/sbin/ph4ntxm-browser-mode.sh)  
 [ph4ntxm-browser-policy.sh](../../../config/includes.chroot/usr/local/sbin/ph4ntxm-browser-policy.sh)  
 [9996-browser-wrapper.chroot](../../../config/hooks/normal/9996-browser-wrapper.chroot)  
+[remote.py](../../../config/includes.chroot/usr/lib/ph4ntxm/browser-mode/remote.py)  
 [ph4ntxm-tor-browser](../../../config/includes.chroot/usr/local/bin/ph4ntxm-tor-browser)

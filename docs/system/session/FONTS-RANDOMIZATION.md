@@ -8,23 +8,23 @@ Builds a mode-specific Fontconfig profile under `/run/ph4ntxm/fonts-active`.
 
 The one-shot service runs after mode selection and is ordered after the hardware generators, before the display manager. It rebuilds `/run/ph4ntxm/fonts-active` from font files already installed in the image.
 
-The script creates the active directory and removes its previous entries before selecting the new set. A missing mode file defaults to Linux. An unsupported token exits after that cleanup.
+A missing mode file defaults to Linux. Unsupported modes leave the active profile unchanged. Supported modes select source fonts before clearing previous entries.
 
 ## [ RUNTIME ]
 
 Selection uses shell randomness and `shuf` on each run, rather than a saved identity-seed draw:
 
-- Linux selects up to 1–10 extra font files.
-- Windows includes the installed Microsoft fonts and up to 1–5 extras matching Arimo, Tinos, Cousine, Noto or OpenSans names.
-- Lone Wolf selects up to 1–3 extra font files.
+- Linux requests 1–10 extra font families.
+- Windows includes installed Microsoft TrueType fonts and available Cascadia Code/Mono fonts, plus 1–5 families from Arimo, Tinos, Cousine, Noto or Open Sans.
+- Lone Wolf requests 1–3 extra font families.
 
-The requested count can exceed the number of available candidates. Selected files are linked into the active directory. Individual link failures are tolerated. Source fonts are not rewritten or installed by this script.
+The requested count can exceed the number of available families. Selection includes every installed file in each chosen family, grouping Open Sans Condensed with Open Sans. Selected files are linked into the active directory. Link failures stop the script. Source fonts are not rewritten or installed by this script.
 
 The generated `fonts.conf` always searches the active directory. Linux and Lone Wolf also include the system TrueType and OpenType directories while rejecting Microsoft fonts and the listed local/user font paths. Their small extra selection therefore does not describe the complete available font set.
 
 Windows uses the active directory and rejects the listed non-profile system groups and user paths. The script then runs `fc-cache -f` with `FONTCONFIG_PATH` and `FONTCONFIG_FILE` pointing at this configuration.
 
-The directory is rebuilt in place, not exchanged as a completed directory transaction. A selection, write or cache failure can leave an incomplete profile. Participating launchers must receive the Fontconfig environment for these settings to affect their font lookup.
+The directory is rebuilt in place, not exchanged as a completed directory transaction. A link, write or cache failure can leave an incomplete profile. Participating launchers must receive the Fontconfig environment for these settings to affect their font lookup.
 
 ## [ CHECKS ]
 

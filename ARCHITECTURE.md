@@ -12,7 +12,7 @@ The shared state is the connection between these layers. A generated file, a com
 
 `editions/abyss` and `editions/ghost` supply appearance overlays. `build.sh` validates the selection, prepares an independent tree under `build/<edition>`, runs live-build and publishes the ISO/checksum under `output/`. A per-edition lock prevents two builds from modifying the same working tree.
 
-Both editions share the protection chain and boot modes. XFCE uses Picom's XRender backend, with XFWM compositing disabled. The shared configuration supplies rounded corners and 95 percent opacity for ordinary non-terminal windows. Terminals keep their separate opacity setting. Vsync, shadows and blur are disabled in the shared Picom configuration.
+Both editions share the protection chain and boot modes. XFCE uses Picom's XRender backend, with XFWM compositing disabled. The shared configuration supplies rounded corners and 95 percent opacity for eligible normal windows. Fullscreen windows, Firefox/Tor Browser, image/media viewers and Document Airlock are excluded from this opacity rule. XFCE Terminal keeps its separate background opacity. Vsync, shadows and blur are disabled in the shared Picom configuration.
 
 See [Build Editions](docs/build/BUILD-EDITIONS.md) for the build overlay details.
 
@@ -70,23 +70,23 @@ A one-shot can finish successfully without leaving a process running. A guardian
 
 Linux and Windows identity initialization validates the existing boot machine ID and derives a new seed when one is absent. The catalog selector chooses a compatible system entry. Hostname and physical-interface MAC values follow that seed. Lone Wolf uses an independent seed and per-interface locally administered MAC records.
 
-The catalog ties DMI, CPU, RAM and graphics specifications together. Hardware generation supplies session UUIDs and serials, while resource generation retains the chosen model's installed/total specifications and bounds active CPUs and usable RAM to the host. Installed capacity and usable memory are deliberately separate fields.
+The catalog ties DMI, CPU, RAM and graphics specifications together. Hardware generation supplies session UUIDs and serials. Resource generation reports the chosen model's full CPU topology and installed RAM capacity: active/total CPU counts and usable/installed RAM capacities agree with that entry, even when they exceed the host.
 
 The dependency chain carries the selected profile through GPU and resource generation into CPU and screen consumers. Missing or inconsistent catalog data fails the relevant stage instead of selecting an unrelated replacement specification.
 
-Inventory wrappers run native tools with generated reporting files, private mounts, a query library and a seccomp supervisor. This keeps native output formatting while extending supported hardware-query handling to descendants. `ph4ntxm-hardware-run` applies that view to an explicitly launched application.
+Command-line inventory wrappers run native tools with generated reporting files, private mounts, a query library and a seccomp supervisor. This keeps native output formatting while extending supported hardware-query handling to descendants. XFCE Task Manager uses the query library for persona totals and scaled memory figures while retaining native process controls. `ph4ntxm-hardware-run` applies the supervised view to an explicitly launched application.
 
-[Hardware Views](docs/system/session/HARDWARE-VIEWS.md) and [Cores Randomization](docs/system/session/CORES-RANDOMIZATION.md) describe the reporting boundary and installed-versus-usable fields.
+[Hardware Views](docs/system/session/HARDWARE-VIEWS.md) and [Cores Randomization](docs/system/session/CORES-RANDOMIZATION.md) describe the reporting boundary, persona resource fields and CPU affinity mapping.
 
 ## [ GRAPHICS, SCREEN, FONTS AND BROWSER ]
 
 GPU generation exports the selected vendor/renderer profile for participating environment settings and the GL identity shim. Screen stages produce nominal display metadata, refresh rate, pixel ratio and viewport data. The generated values feed the desktop and browser reporting paths.
 
-Font setup builds the active Fontconfig profile. Its random selection is performed on each run independently of the hardware seed. The generated font set and the browser environment must be present before the normal browser wrapper launches.
+Font setup builds the active Fontconfig profile by selecting complete families on each run, independently of the hardware seed. Windows includes the installed Microsoft fonts and available Cascadia Code/Mono families. The generated font set and the browser environment must be present before the normal browser wrapper launches.
 
-Linux and Windows use Firefox ESR through a diverted command wrapper. It validates protected runtime files, obtains the installed Firefox version and substitutes the mode template into a private runtime profile. Unresolved identity placeholders stop launch. A nonblocking lock prevents concurrent wrapper sessions, and normal launches reuse that boot session's profile.
+Linux and Windows use Firefox ESR through a diverted command wrapper. It validates protected runtime files, obtains the installed Firefox version and substitutes the mode template into a private runtime profile. Unresolved identity placeholders stop launch. A nonblocking lock keeps one browser session, while subsequent launches forward supported arguments to that session. Normal launches reuse the boot session's profile.
 
-Lone Wolf's browser gate verifies the Tor Browser installation and restricts the ordinary Firefox path. Its launcher checks browser integrity state, current firewall/Tor readiness and loopback listeners, then creates a fresh temporary home. It starts with an explicitly built environment and system Tor at `127.0.0.1:9050`, without the normal Firefox persona overrides.
+Lone Wolf's browser gate verifies the Tor Browser installation and restricts the ordinary Firefox path. Its launcher checks browser integrity state, current firewall/Tor readiness and loopback listeners, then creates a fresh temporary home. It starts with an explicitly built environment and system Tor at `127.0.0.1:9050`, without the normal Firefox persona overrides. Safest is the default security level, and browser restarts retain the temporary session until the browser closes.
 
 See [Browser](docs/system/session/BROWSER.md), [Browser Mode](docs/system/session/BROWSER-MODE.md) and [Tor Browser](docs/system/session/TOR-BROWSER.md).
 
@@ -94,7 +94,7 @@ See [Browser](docs/system/session/BROWSER.md), [Browser Mode](docs/system/sessio
 
 Linux and Windows first apply bounded kernel TCP/IP settings. Ordinary TTL/hop-limit values are 64 and 128 respectively. Ports, retry timing, timestamps and other settings follow the selected profile. Required writes are read back. Runtime entropy means another normal network-generation run can choose new values within those bounds.
 
-DHCP generation writes the mode's client parameters and NetworkManager configuration. Linux and Windows use different vendor and session settings while preserving the already prepared MAC. The dispatcher and physical hotplug helper keep later connection/device handling aligned with that state.
+DHCP generation writes the mode's client parameters and connection defaults for NetworkManager's internal DHCP client. Linux and Windows use different vendor and session settings while preserving the already prepared MAC. The dispatcher and physical hotplug helper keep later connection/device handling aligned with that state.
 
 The packet path has three cooperating parts:
 
@@ -116,7 +116,7 @@ See [Packet Transformation Engine](docs/system/session/PACKET-TRANSFORMATION-ENG
 
 Lone Wolf disables IPv6 and uses its own sysctl, DHCP, firewall and DNS stages. DHCP omits hostname/vendor-class advertisement while preserving the prepared MAC. It does not use the normal packet worker, Network Drift or Ghost Stack.
 
-The dedicated NAT policy redirects application DNS to local port 53 and ordinary application TCP to Tor's transparent port 9040. Tor's account has its own controlled external TCP path. DHCP has explicit connection-setup exceptions. Arbitrary application UDP is blocked.
+The dedicated NAT policy redirects application DNS to local port 53 and ordinary application TCP to Tor's transparent port 9040. Tor's account has its own controlled external TCP path. DHCP has explicit connection-setup exceptions. Arbitrary application UDP is blocked. OnionShare uses system Tor through a restricted Unix control broker instead of starting bundled Tor.
 
 The DNS bridge exposes local TCP/UDP 53 and forwards to Tor DNSPort 5353 without dnsmasq caching. Readiness also requires transparent/SOCKS listeners and an authenticated control-socket reply reporting bootstrap 100 with `TAG=done`. The bridge refreshes `tor-ready` while those checks pass and removes it on failure.
 
@@ -142,7 +142,7 @@ Clock Fuzz applies a mode-bounded initial offset, then maintains tick variation 
 
 CPU Lockdown records initial governor/boost settings, requests powersave and disabled boost at 85°C, and attempts restoration at 70°C or below. The service attempts writes to available controls and tolerates unsupported or rejected driver settings.
 
-RAM Seeding allocates one percent of reported RAM, fills its private mapping with noise and sparse synthetic fragments, and periodically mutates it. It tries whole-region locking, then smaller chunks. The allocation stays active during operation and is released when Nuke preparation stops the seeding service before scrubbing.
+RAM Seeding allocates one percent of physical RAM reported by native `sysinfo`, fills its private mapping with noise and sparse synthetic fragments, and periodically mutates it. It tries whole-region locking, then smaller chunks. The allocation stays active during operation and is released when Nuke preparation stops the seeding service before scrubbing.
 
 Kernel settings and systemd restrictions follow each component's needs. SSH and OpenSSL configuration prefer supported hybrid post-quantum key exchanges with classical fallback. The application and peer negotiate the supported exchange.
 
@@ -152,7 +152,7 @@ Document Airlock validates local input and trusted guest artifacts before starti
 
 The UI previews those pages and exports only to a new filename. The exported PDF contains the rendered page images without the original active document structure or metadata. Cancellation, timeout or invalid output ends conversion. KVM, private tmpfs storage, sufficient memory and disabled swap are prerequisites.
 
-Media Viewers use a different boundary: offline namespaces, read-only selected files, a private bus/home and nested Xephyr display. A separate audio process receives fixed-format PCM. A transient user service applies memory, swap, task and CPU limits, and cleanup stops the session's processes. The selected source files remain read-only throughout playback.
+Media Viewers use a different boundary: offline namespaces, read-only selected files, a private bus/home and nested Xephyr display. A separate audio process receives fixed-format PCM. A transient user service applies memory, swap, task and CPU limits, and cleanup stops the session's processes. The selected source files remain read-only throughout playback. Airlock and Media Viewers read actual available RAM for their launch budgets and refuse a managed inventory environment; persona capacity does not increase their allocation limits.
 
 See [Document Airlock](docs/system/session/DOCUMENT-AIRLOCK.md) and [Media Viewers](docs/system/session/MEDIA-VIEWERS.md) for limits and checks.
 

@@ -8,7 +8,7 @@ Converts supported PDF, Office documents and single-frame images into an image-o
 
 Airlock accepts a local PDF, supported Office document or single-frame image and converts it inside a disposable KVM guest. Run it from the desktop account. Root is rejected.
 
-Startup checks KVM access, private namespaces, trusted image hashes, available RAM and a private tmpfs runtime directory. Active swap prevents conversion. There is no fallback to opening the original document in a host office application.
+Startup checks KVM access, private namespaces, trusted image hashes, actual available RAM and a private tmpfs runtime directory. Memory checks read native `MemAvailable` and run again immediately before guest launch. A managed hardware-view environment is rejected. Active swap prevents conversion. There is no fallback to opening the original document in a host office application.
 
 ## [ RUNTIME ]
 

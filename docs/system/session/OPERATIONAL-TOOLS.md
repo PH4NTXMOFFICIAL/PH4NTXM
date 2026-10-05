@@ -22,6 +22,10 @@ Each launch checks for missing tracked files and runs `bundle check`, which also
 
 Both caches follow `XDG_CACHE_HOME`, falling back to `~/.cache`, with private cache-directory creation. First use needs network access and storage for the payload/dependencies. Existing cache reuse does not imply a new download or automatic update.
 
+In Lone Wolf, OnionShare and its CLI use PH4NTXM's system Tor SOCKS endpoint and a restricted Unix control broker instead of starting bundled Tor. Connection and bridge settings are managed by PH4NTXM. Linux and Windows retain the upstream launch behavior.
+
+Wireshark captures as the desktop user through a group-restricted `dumpcap` helper with `CAP_NET_ADMIN` and `CAP_NET_RAW`. The graphical application does not need to run as root.
+
 ## [ CHECKS ]
 
 For failures, distinguish a missing runtime dependency, unavailable download, integrity rejection and incomplete dependency installation. Run the wrapper in a terminal when the graphical launcher hides output.
@@ -32,4 +36,8 @@ Read the selected mode's network restrictions before expecting every tool transp
 
 [ph4ntxm-tools.list.chroot](../../../config/package-lists/ph4ntxm-tools.list.chroot)  
 [0090-install-burpsuite-wrapper.chroot](../../../config/hooks/normal/0090-install-burpsuite-wrapper.chroot)  
-[0092-install-metasploit-wrapper.chroot](../../../config/hooks/normal/0092-install-metasploit-wrapper.chroot)
+[0092-install-metasploit-wrapper.chroot](../../../config/hooks/normal/0092-install-metasploit-wrapper.chroot)  
+[ph4ntxm-onionshare](../../../config/includes.chroot/usr/local/bin/ph4ntxm-onionshare)  
+[ph4ntxm-onionshare-control](../../../config/includes.chroot/usr/local/libexec/ph4ntxm-onionshare-control)  
+[ph4ntxm-onionshare-control.service](../../../config/includes.chroot/etc/systemd/system/ph4ntxm-onionshare-control.service)  
+[0096-configure-wireshark.chroot](../../../config/hooks/normal/0096-configure-wireshark.chroot)
