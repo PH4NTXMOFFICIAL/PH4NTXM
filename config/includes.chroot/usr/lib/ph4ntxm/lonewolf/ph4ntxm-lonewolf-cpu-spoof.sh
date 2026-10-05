@@ -24,7 +24,6 @@ source "$STATE_DIR/cores_env"
 [[ "${PH4_REPORTED_CORES:-}" =~ ^[1-9][0-9]*$ ]] || exit 1
 LONEWOLF_SEED=$(tr -d '\n' <"$STATE_DIR/lonewolf_seed")
 [[ "$LONEWOLF_SEED" =~ ^[0-9a-f]{64}$ ]] || exit 1
-RANDOM=$((16#$(printf '%s%s' "$LONEWOLF_SEED" cpuinfo | sha256sum | cut -c1-8) & 0x7fff))
 
 FAKE_CPUINFO="$STATE_DIR/fake_cpuinfo"
 /usr/bin/python3 /usr/lib/ph4ntxm/hardware/inventory.py --cpuinfo >"$FAKE_CPUINFO"
