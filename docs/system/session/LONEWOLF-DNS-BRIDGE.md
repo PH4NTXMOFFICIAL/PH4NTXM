@@ -30,4 +30,4 @@ A loaded firewall, an active Tor process and a successful bootstrap reply are di
 
 ## [ SOURCE ]
 
-[ph4ntxm-lonewolf-dns-bridge.sh](../../../config/includes.chroot/usr/local/sbin/ph4ntxm-lonewolf-dns-bridge.sh)
+[ph4ntxm-lonewolf-dns-bridge.sh](../../../config/includes.chroot/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-dns-bridge.sh)

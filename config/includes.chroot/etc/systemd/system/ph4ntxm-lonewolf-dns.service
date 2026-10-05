@@ -11,7 +11,7 @@ ConditionPathExists=/run/ph4ntxm/mode-lonewolf
 Type=notify
 NotifyAccess=all
 ExecStartPre=/usr/sbin/dnsmasq --test --conf-file=/usr/lib/ph4ntxm/lonewolf/dnsmasq.conf
-ExecStart=/usr/local/sbin/ph4ntxm-lonewolf-dns-bridge.sh
+ExecStart=/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-dns-bridge.sh
 Restart=always
 RestartSec=2
 TimeoutStartSec=370

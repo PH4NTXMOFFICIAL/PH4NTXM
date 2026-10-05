@@ -31,5 +31,5 @@ Use Boot Pilot and Health to identify the failed gate, then inspect the correspo
 ## [ SOURCE ]
 
 [lonewolf](../../../config/includes.chroot/usr/lib/ph4ntxm/lonewolf/)  
-[ph4ntxm-lonewolf-dns-bridge.sh](../../../config/includes.chroot/usr/local/sbin/ph4ntxm-lonewolf-dns-bridge.sh)  
+[ph4ntxm-lonewolf-dns-bridge.sh](../../../config/includes.chroot/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-dns-bridge.sh)  
 [ph4ntxm-tor-bootstrap-ready.py](../../../config/includes.chroot/usr/local/sbin/ph4ntxm-tor-bootstrap-ready.py)
