@@ -85,6 +85,7 @@ Run session checks in the live environment. For one-shot services, inspect the c
 [HEALTH](system/session/HEALTH.md)  
 [IDENTITY](system/session/IDENTITY.md)  
 [DOCUMENT AIRLOCK](system/session/DOCUMENT-AIRLOCK.md)  
+[ARCHIVE AIRLOCK](system/session/ARCHIVE-AIRLOCK.md)\
 [MEDIA VIEWERS](system/session/MEDIA-VIEWERS.md)  
 [WIFI CONTROL](system/session/WIFI-CONTROL.md)  
 [OPERATIONAL TOOLS](system/session/OPERATIONAL-TOOLS.md)  

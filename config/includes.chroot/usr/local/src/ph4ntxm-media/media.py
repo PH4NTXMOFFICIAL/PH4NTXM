@@ -31,6 +31,12 @@ TITLES = {'image': 'PH4NTXM Image Viewer', 'video': 'PH4NTXM Media Player'}
 MAX_FILES = 32
 MAX_IMAGE_BYTES = 128 * 1024 * 1024
 RESERVE = 192 * 1024 * 1024
+AIRLOCK_SUFFIXES = {
+    'image': {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tif', '.tiff', '.webp', '.svg',
+              '.svgz', '.ico', '.icns', '.tga', '.xbm', '.xpm', '.pbm', '.pgm', '.ppm', '.pnm'},
+    'video': {'.mp4', '.mkv', '.webm', '.mov', '.avi', '.mpeg', '.mpg', '.ts', '.ogv', '.flv',
+              '.wmv', '.mp3', '.m4a', '.flac', '.ogg', '.wav'},
+}
 
 
 class MediaError(Exception):
@@ -55,14 +61,57 @@ def local_file(value):
     return path
 
 
-def open_files(values, kind):
+def airlock_file(value, kind):
+    runtime = runtime_directory()
+    match = re.fullmatch(
+        re.escape(str(runtime)) + r'/(ph4ntxm-archive-[A-Za-z0-9_-]{1,64})/(view-[A-Za-z0-9_-]{1,64})/(selected\.[a-z0-9]+)',
+        value,
+    )
+    if match is None or Path(match.group(3)).suffix not in AIRLOCK_SUFFIXES[kind]:
+        raise MediaError('The Archive Airlock handoff is invalid.')
+    descriptors = []
+    try:
+        descriptor = os.open(runtime, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        descriptors.append(descriptor)
+        metadata = os.fstat(descriptor)
+        if metadata.st_uid != os.getuid() or stat.S_IMODE(metadata.st_mode) != 0o700:
+            raise MediaError('The Archive Airlock runtime directory is not private.')
+        for name in match.groups()[:2]:
+            descriptor = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+                                 dir_fd=descriptor)
+            descriptors.append(descriptor)
+            metadata = os.fstat(descriptor)
+            if metadata.st_uid != os.getuid() or stat.S_IMODE(metadata.st_mode) != 0o700:
+                raise MediaError('The Archive Airlock handoff directory is not private.')
+        result = os.open(match.group(3), os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK,
+                         dir_fd=descriptor)
+        try:
+            metadata = os.fstat(result)
+            if (not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid()
+                    or stat.S_IMODE(metadata.st_mode) != 0o600 or metadata.st_nlink != 1):
+                raise MediaError('The Archive Airlock handoff file is not private.')
+        except BaseException:
+            os.close(result)
+            raise
+        return Path(value), result
+    finally:
+        for descriptor in descriptors:
+            os.close(descriptor)
+
+
+def open_files(values, kind, allow_airlock=False):
+    if allow_airlock and len(values) != 1:
+        raise MediaError('Open one Archive Airlock file at a time.')
     if not 1 <= len(values) <= MAX_FILES:
         raise MediaError('Choose between one and 32 files.')
     opened = []
     try:
         for value in values:
-            path = local_file(value)
-            fd = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK)
+            if allow_airlock:
+                path, fd = airlock_file(value, kind)
+            else:
+                path = local_file(value)
+                fd = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK)
             opened.append((path, fd))
             info = os.fstat(fd)
             if not stat.S_ISREG(info.st_mode) or info.st_size == 0:
@@ -284,7 +333,28 @@ def inside(kind, files):
                 p.terminate()
 
 
-def session(kind, directory, values=None):
+def read_request(directory):
+    request = directory / 'request.json'
+    with request.open('rb') as stream:
+        data = stream.read(1024 * 1024 + 1)
+    if len(data) > 1024 * 1024:
+        raise MediaError('The media request is too large.')
+    values = json.loads(data)
+    request.unlink()
+    allow_airlock = False
+    if isinstance(values, dict):
+        if set(values) != {'files', 'airlock_input'} or values['airlock_input'] is not True:
+            raise MediaError('The media request is invalid.')
+        allow_airlock = True
+        values = values['files']
+    if not isinstance(values, list) or not all(isinstance(x, str) for x in values):
+        raise MediaError('The media request is invalid.')
+    if allow_airlock and len(values) != 1:
+        raise MediaError('Open one Archive Airlock file at a time.')
+    return values, allow_airlock
+
+
+def session(kind, directory, values=None, allow_airlock=False):
     import gi
     gi.require_version('Gtk', '3.0')
     gi.require_version('GdkX11', '3.0')
@@ -298,15 +368,7 @@ def session(kind, directory, values=None):
     resource.setrlimit(resource.RLIMIT_FSIZE, (8 * 1024 * 1024, 8 * 1024 * 1024))
     directory = Path(directory)
     if values is None:
-        request = directory / 'request.json'
-        with request.open('rb') as stream:
-            data = stream.read(1024 * 1024 + 1)
-        if len(data) > 1024 * 1024:
-            raise MediaError('The media request is too large.')
-        values = json.loads(data)
-        request.unlink()
-        if not isinstance(values, list) or not all(isinstance(x, str) for x in values):
-            raise MediaError('The media request is invalid.')
+        values, allow_airlock = read_request(directory)
     config = directory / 'config'
     display = re.fullmatch(r':(\d+)(?:\.\d+)?', os.environ.get('DISPLAY', ''))
     if not display:
@@ -328,7 +390,7 @@ def session(kind, directory, values=None):
     sockets.mkdir(mode=0o700)
     audio = directory / 'audio'
     audio.mkdir(mode=0o700)
-    opened = open_files(values, kind)
+    opened = open_files(values, kind, allow_airlock)
     fd = filter_fd()
     log = (directory / 'session.log').open('wb')
     children = []
@@ -523,10 +585,13 @@ def main():
     parser = argparse.ArgumentParser(description='Open local media in a disposable offline sandbox')
     parser.add_argument('--kind', choices=KINDS)
     parser.add_argument('--check', action='store_true')
+    parser.add_argument('--airlock-input', action='store_true', help='Open one private Archive Airlock handoff')
     parser.add_argument('files', nargs='*')
     options = parser.parse_args()
     invoked = Path(sys.argv[0]).name
     kind = options.kind or ('image' if invoked == 'ristretto' else 'video')
+    if options.airlock_input and (options.check or len(options.files) != 1):
+        parser.error('--airlock-input requires one file and cannot be used with --check')
     unit = None
     directory = None
     submitted = False
@@ -550,12 +615,13 @@ def main():
         values = options.files or choose(kind)
         if not values:
             return 0
-        opened = open_files(values, kind)
+        opened = open_files(values, kind, options.airlock_input)
         values = [str(x[0]) for x in opened]
         for _, descriptor in opened:
             os.close(descriptor)
         directory = tempfile.mkdtemp(prefix='ph4ntxm-media-', dir=runtime_directory())
-        (Path(directory) / 'request.json').write_text(json.dumps(values))
+        request = {'files': values, 'airlock_input': True} if options.airlock_input else values
+        (Path(directory) / 'request.json').write_text(json.dumps(request))
         unit = 'ph4ntxm-media-' + uuid.uuid4().hex
         args = ['/usr/bin/systemd-run', '--user', '--quiet', '--wait', '--collect', '--service-type=exec',
                 '--unit=' + unit, '-p', 'Description=' + TITLES[kind],

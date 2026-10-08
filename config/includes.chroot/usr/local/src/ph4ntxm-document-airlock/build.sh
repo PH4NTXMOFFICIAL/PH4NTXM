@@ -52,15 +52,22 @@ install -m 0644 /etc/ssl/certs/ca-certificates.crt "$GUEST/etc/ssl/certs/ca-cert
 chroot "$GUEST" apt-get update
 chroot "$GUEST" /usr/bin/env DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends \
-    ca-certificates busybox-static python3 python3-pil poppler-utils \
+    ca-certificates busybox-static python3 python3-pil python3-libarchive-c poppler-utils \
     libreoffice-writer libreoffice-calc libreoffice-impress libreoffice-draw \
     fonts-dejavu-core fonts-liberation fonts-noto-core
 
 install -d -m 0755 "$GUEST/usr/local/lib/ph4ntxm-document-airlock" \
     "$GUEST/usr/local/sbin" "$GUEST/run" "$GUEST/tmp"
 install -m 0644 "$SOURCE/airlock.py" "$SOURCE/guest.py" \
+    "$SOURCE/archive_guest.py" "$SOURCE/archive_protocol.py" \
     "$GUEST/usr/local/lib/ph4ntxm-document-airlock/"
 install -m 0755 "$SOURCE/guest-init" "$GUEST/usr/local/sbin/ph4ntxm-airlock-init"
+install -d -m 0755 "$GUEST/usr/local/lib/ph4ntxm-document-airlock/tests"
+install -m 0644 "$SOURCE/tests/test-archive-guest.py" \
+    "$GUEST/usr/local/lib/ph4ntxm-document-airlock/tests/test-archive-guest.py"
+chroot "$GUEST" /usr/bin/env PYTHONDONTWRITEBYTECODE=1 \
+    /usr/bin/python3 /usr/local/lib/ph4ntxm-document-airlock/tests/test-archive-guest.py
+rm -rf "$GUEST/usr/local/lib/ph4ntxm-document-airlock/tests"
 chroot "$GUEST" dpkg-query -W -f='${Package}\t${Version}\n' >"$OUTPUT/guest-packages.txt"
 chroot "$GUEST" apt-get clean
 umount "$GUEST/dev/pts"

@@ -79,6 +79,7 @@ Hardware, CPU, GPU, and display personas cover selected reporting surfaces, not 
 Browser wrappers configure participating launches. Accounts, extensions, and direct executable access remain operator-controlled.  
 Packet transformation covers supported packet layouts, while TLS, HTTP, traffic correlation, and application identifiers require separate assessment.  
 Document Airlock isolates its selected document parsing in an offline KVM guest and exports validated pixels through a bounded broker. Visible sensitive content, direct host opening, hypervisor escapes and a compromised host remain outside its guarantees.  
+Archive Airlock isolates archive parsing in the offline KVM guest, validates bounded listings and file streams, and hands selected files to their isolated viewers. Unpacking does not sanitize the extracted file. Encrypted and multipart archives, automatic execution and unrestricted extraction are not supported. Hypervisor escapes and a compromised host remain outside this boundary.\
 Media viewers isolate selected local files with offline namespaces, a private display and bounded resources. This limits the viewer's access. It still depends on the host kernel and does not sanitize the original media file. Exporting or opening a file outside its wrapper crosses a separate boundary.  
 RAM seeding supplies synthetic noise, not encryption or concealment of genuine secrets. Memory scrub and file overwrite remain best effort.
 

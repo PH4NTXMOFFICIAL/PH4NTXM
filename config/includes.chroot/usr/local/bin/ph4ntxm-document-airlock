@@ -4,6 +4,7 @@
 
 import argparse
 import os
+import signal
 import subprocess
 import sys
 import threading
@@ -249,6 +250,13 @@ def desktop(document=None):
 
     window = AirlockWindow()
     window.show_all()
+
+    def terminate():
+        if not window.on_close():
+            window.destroy()
+        return False
+
+    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, terminate)
     if document is not None:
         filename = os.path.abspath(document)
         window.chooser.set_filename(filename)

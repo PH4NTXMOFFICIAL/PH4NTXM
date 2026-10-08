@@ -52,7 +52,7 @@ Boot Pilot shows protection status, helps you connect to Wi-Fi and opens the bro
 
 Open documents and media separately from your desktop files:
 
-Document Airlock converts supported documents in a temporary environment without network access. Preview the pages, then export a new PDF made from those page images. Image and media viewers also use isolated offline environments to open the files you select.
+Document Airlock converts supported documents in a temporary environment without network access. Preview the pages, then export a new PDF made from those page images. Archive Airlock inspects local ZIP, RAR, 7z and TAR archives offline and passes selected files to isolated viewers. Image and media viewers also use isolated offline environments to open the files you select.
 
 Block networking or start an emergency shutdown:
 
@@ -88,7 +88,7 @@ Your completed ISO and checksum appear under `output/`. Follow [INSTALLATION.md]
 
 On your first boot, start with Boot Pilot and follow the protection checks before opening the browser.
 
-PH4NTXM is intended to boot directly on a physical computer. Virtual machines are useful for development and functional checks. Document Airlock additionally needs hardware virtualization enabled and access to KVM, Linux's virtualization support.
+PH4NTXM is intended to boot directly on a physical computer. Virtual machines are useful for development and functional checks. Document and Archive Airlock additionally need hardware virtualization enabled and access to KVM, Linux's virtualization support.
 
 ## [ DOCUMENTATION ]
 

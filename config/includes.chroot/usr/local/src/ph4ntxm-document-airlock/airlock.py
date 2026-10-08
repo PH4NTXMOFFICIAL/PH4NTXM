@@ -449,7 +449,7 @@ class AirlockSession:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError:
                 raise AirlockError(
-                    "Another Document Airlock conversion is already running."
+                    "Another Airlock operation is already running."
                 ) from None
             self._convert(suffix, data, command)
 

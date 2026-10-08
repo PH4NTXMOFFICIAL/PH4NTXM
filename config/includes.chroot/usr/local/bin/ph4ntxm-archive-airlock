@@ -1,0 +1,474 @@
+#!/usr/bin/env python3
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+import argparse
+import os
+import signal
+import sys
+import threading
+import unicodedata
+from pathlib import Path
+
+sys.path.insert(0, "/usr/local/lib/ph4ntxm-document-airlock")
+from archives import ArchiveError, ArchiveSession, check_ready, viewer_kind
+
+CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
+ICON_FILE = "/usr/share/icons/Lyra-blue-dark/apps/scalable/ph4ntxm-archive-airlock.svg"
+VIEWER_LABELS = {
+    "document": "Document",
+    "image": "Image",
+    "media": "Media",
+    "text": "Text",
+}
+VIEWER_LIMITS = {
+    "document": 64 * 1024 * 1024,
+    "image": 128 * 1024 * 1024,
+    "media": 128 * 1024 * 1024,
+    "text": 1024 * 1024,
+}
+
+
+def display_text(value):
+    return "".join(
+        char if unicodedata.category(char) not in {"Cc", "Cf", "Cs"} else "�"
+        for char in str(value)
+    )
+
+
+def format_size(size):
+    if size is None:
+        return "Unknown"
+    if size < 1024:
+        return "%d B" % size
+    for unit, divisor in (("GiB", 1024 ** 3), ("MiB", 1024 ** 2), ("KiB", 1024)):
+        if size >= divisor:
+            return "%.1f %s" % (size / divisor, unit)
+    return "%d B" % size
+
+
+def entry_state(entry):
+    kind = entry.get("kind")
+    if kind == "directory":
+        return "Folder", "Folder", False, None
+    if kind != "file":
+        return "Blocked", display_text(entry.get("reason") or "Blocked"), False, None
+    viewer = viewer_kind(entry["name"])
+    if not viewer:
+        return "File", "No isolated viewer", False, None
+    size = entry.get("size")
+    if size == 0:
+        return VIEWER_LABELS[viewer], "Empty file", False, viewer
+    if size is not None and size > VIEWER_LIMITS[viewer]:
+        return VIEWER_LABELS[viewer], "Above viewing limit", False, viewer
+    return VIEWER_LABELS[viewer], "Ready to view", True, viewer
+
+
+def desktop(archive=None):
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk, Pango
+
+    def add_class(widget, name):
+        widget.get_style_context().add_class(name)
+        return widget
+
+    def wrapped_label(text, style=None):
+        widget = Gtk.Label(label=text, xalign=0)
+        widget.set_line_wrap(True)
+        widget.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        widget.set_max_width_chars(80)
+        if style:
+            add_class(widget, style)
+        return widget
+
+    class ArchiveWindow(Gtk.Window):
+        def __init__(self):
+            Gtk.Window.__init__(self, title="PH4NTXM Archive Airlock")
+            width, height = 900, 640
+            display = Gdk.Display.get_default()
+            if display:
+                monitor = display.get_primary_monitor() or display.get_monitor(0)
+                if monitor:
+                    area = monitor.get_workarea()
+                    width = min(width, max(480, area.width - 40))
+                    height = min(height, max(360, area.height - 40))
+            self.set_default_size(width, height)
+            self.set_size_request(min(640, width), -1)
+            self.set_position(Gtk.WindowPosition.CENTER)
+            if os.path.exists(ICON_FILE):
+                self.set_icon_from_file(ICON_FILE)
+            else:
+                self.set_icon_name("package-x-generic")
+            if os.path.exists(CSS_FILE):
+                provider = Gtk.CssProvider()
+                provider.load_from_path(CSS_FILE)
+                Gtk.StyleContext.add_provider_for_screen(
+                    Gdk.Screen.get_default(),
+                    provider,
+                    Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+                )
+            settings = Gtk.Settings.get_default()
+            if settings:
+                settings.set_property("gtk-recent-files-enabled", False)
+            add_class(self, "ph4ntxm-window")
+            self.session = None
+            self.busy = False
+            self.closing = False
+            self.cancelled = threading.Event()
+            self.entries = {}
+            root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+            self.add(root)
+            header = add_class(
+                Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6), "top-panel"
+            )
+            header.pack_start(
+                wrapped_label("PH4NTXM Archive Airlock", "title"), False, False, 0
+            )
+            header.pack_start(
+                wrapped_label("Offline archive viewing · Disposable session", "subtitle"),
+                False,
+                False,
+                0,
+            )
+            root.pack_start(header, False, False, 0)
+            content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+            content.set_border_width(18)
+            root.pack_start(content, True, True, 0)
+            self.archive_label = Gtk.Label(label="No archive selected", xalign=0)
+            self.archive_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+            self.archive_label.set_max_width_chars(80)
+            content.pack_start(self.archive_label, False, False, 0)
+            self.stack = Gtk.Stack()
+            self.stack.set_transition_type(Gtk.StackTransitionType.NONE)
+            self.stack.set_hhomogeneous(False)
+            self.stack.set_vhomogeneous(False)
+            content.pack_start(self.stack, True, True, 0)
+            listing = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+            self.search = Gtk.SearchEntry()
+            self.search.set_placeholder_text("Search archive contents")
+            self.search.connect("search-changed", lambda _: self.filtered.refilter())
+            listing.pack_start(self.search, False, False, 0)
+            self.store = Gtk.ListStore(int, str, str, str, str, bool, str, str, str)
+            self.filtered = self.store.filter_new()
+            self.filtered.set_visible_func(self.entry_visible)
+            self.tree = Gtk.TreeView(model=self.filtered)
+            self.tree.set_headers_visible(True)
+            self.tree.set_enable_search(False)
+            self.tree.set_tooltip_column(8)
+            columns = (
+                ("Filename", 1, True, 220),
+                ("Size", 2, False, 85),
+                ("Type", 3, False, 80),
+                ("State", 4, False, 150),
+            )
+            for title, position, expand, minimum in columns:
+                renderer = Gtk.CellRendererText()
+                renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
+                column = Gtk.TreeViewColumn(title, renderer, text=position)
+                column.set_resizable(True)
+                column.set_expand(expand)
+                column.set_min_width(minimum)
+                if position == 1:
+                    column.set_sort_column_id(position)
+                self.tree.append_column(column)
+            self.tree.get_selection().connect("changed", lambda _: self.update_controls())
+            self.tree.connect("row-activated", lambda *_: self.on_open())
+            list_scroll = Gtk.ScrolledWindow()
+            list_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+            list_scroll.set_min_content_height(0)
+            list_scroll.add(self.tree)
+            listing.pack_start(list_scroll, True, True, 0)
+            self.stack.add_named(listing, "contents")
+            preview = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+            preview_heading = Gtk.Box(spacing=12)
+            self.back_button = Gtk.Button(label="Back to Contents")
+            self.back_button.connect("clicked", self.on_back)
+            self.text_name = Gtk.Label(xalign=0)
+            self.text_name.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+            preview_heading.pack_start(self.back_button, False, False, 0)
+            preview_heading.pack_start(self.text_name, True, True, 0)
+            preview.pack_start(preview_heading, False, False, 0)
+            self.text_view = Gtk.TextView()
+            self.text_view.set_editable(False)
+            self.text_view.set_cursor_visible(False)
+            self.text_view.set_monospace(True)
+            self.text_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+            self.text_view.set_left_margin(12)
+            self.text_view.set_right_margin(12)
+            text_scroll = Gtk.ScrolledWindow()
+            text_scroll.set_min_content_height(0)
+            text_scroll.add(self.text_view)
+            preview.pack_start(text_scroll, True, True, 0)
+            self.stack.add_named(preview, "text")
+            self.stack.set_visible_child_name("contents")
+            self.notice = wrapped_label(
+                "Select a file to view through its isolated viewer. "
+                "Encrypted and multipart archives are not supported.",
+                "subtitle",
+            )
+            content.pack_start(self.notice, False, False, 0)
+            progress = Gtk.Box(spacing=10)
+            self.spinner = Gtk.Spinner()
+            self.status = wrapped_label("Choose a ZIP, RAR, 7z or TAR archive.", "subtitle")
+            progress.pack_start(self.spinner, False, False, 0)
+            progress.pack_start(self.status, True, True, 0)
+            content.pack_start(progress, False, False, 0)
+            controls = Gtk.Box(spacing=10)
+            self.choose_button = Gtk.Button(label="Choose Archive")
+            self.choose_button.connect("clicked", self.on_choose)
+            self.open_button = add_class(Gtk.Button(label="Open Selected"), "safe")
+            self.open_button.connect("clicked", lambda _: self.on_open())
+            self.cancel_button = Gtk.Button(label="Cancel")
+            self.cancel_button.connect("clicked", self.on_cancel)
+            self.close_button = Gtk.Button(label="Close")
+            self.close_button.connect("clicked", lambda _: self.close())
+            for widget in (self.choose_button, self.open_button, self.cancel_button):
+                controls.pack_start(widget, False, False, 0)
+            controls.pack_end(self.close_button, False, False, 0)
+            content.pack_start(controls, False, False, 0)
+            self.connect("delete-event", self.on_close)
+            self.connect("destroy", Gtk.main_quit)
+            self.update_controls()
+
+        def entry_visible(self, model, iterator, _):
+            query = self.search.get_text().casefold().strip()
+            return not query or query in model[iterator][6]
+
+        def selected_entry(self):
+            model, iterator = self.tree.get_selection().get_selected()
+            if iterator is None:
+                return None
+            return self.entries.get(model[iterator][0])
+
+        def update_controls(self):
+            entry = self.selected_entry()
+            openable = bool(entry and entry_state(entry)[2])
+            self.choose_button.set_sensitive(not self.busy and not self.closing)
+            self.open_button.set_sensitive(
+                not self.busy
+                and not self.closing
+                and self.stack.get_visible_child_name() == "contents"
+                and openable
+            )
+            self.cancel_button.set_sensitive(self.busy and not self.closing)
+            self.search.set_sensitive(not self.busy and not self.closing)
+            self.tree.set_sensitive(not self.busy and not self.closing)
+            self.back_button.set_sensitive(not self.busy and not self.closing)
+
+        def on_choose(self, _):
+            if self.busy or self.closing:
+                return
+            dialog = Gtk.FileChooserDialog(
+                title="Choose an archive",
+                transient_for=self,
+                action=Gtk.FileChooserAction.OPEN,
+            )
+            dialog.add_buttons(
+                "Cancel", Gtk.ResponseType.CANCEL, "Open", Gtk.ResponseType.ACCEPT
+            )
+            dialog.set_local_only(True)
+            dialog.set_preview_widget_active(False)
+            dialog.set_use_preview_label(False)
+            archive_filter = Gtk.FileFilter()
+            archive_filter.set_name("Supported archives")
+            for suffix in ("zip", "rar", "7z", "tar", "tar.gz", "tgz", "tar.bz2", "tbz", "tbz2", "tar.xz", "txz", "tar.zst", "tzst"):
+                archive_filter.add_pattern("*." + suffix)
+                archive_filter.add_pattern("*." + suffix.upper())
+            dialog.add_filter(archive_filter)
+            all_filter = Gtk.FileFilter()
+            all_filter.set_name("All files")
+            all_filter.add_pattern("*")
+            dialog.add_filter(all_filter)
+            filename = dialog.get_filename() if dialog.run() == Gtk.ResponseType.ACCEPT else None
+            dialog.destroy()
+            if filename:
+                self.inspect(filename)
+
+        def begin_operation(self, status):
+            self.busy = True
+            self.cancelled = threading.Event()
+            if self.session:
+                self.session.cancelled = self.cancelled
+            self.spinner.start()
+            self.status.set_text(status)
+            self.update_controls()
+
+        def inspect(self, filename):
+            if self.busy or self.closing:
+                return False
+            previous = self.session
+            self.session = None
+            self.entries = {}
+            self.store.clear()
+            self.search.set_text("")
+            self.text_view.get_buffer().set_text("")
+            self.stack.set_visible_child_name("contents")
+            self.archive_label.set_text(display_text(Path(filename).name))
+            self.begin_operation("Inspecting archive offline…")
+            cancelled = self.cancelled
+
+            def worker():
+                session = None
+                report = None
+                error = None
+                try:
+                    if previous:
+                        previous.close()
+                    session = ArchiveSession(check_ready())
+                    session.cancelled = cancelled
+                    if cancelled.is_set():
+                        raise ArchiveError("Archive inspection cancelled.")
+                    report = session.inspect(filename)
+                except Exception as exc:
+                    error = str(exc) if isinstance(exc, (ArchiveError, OSError, ValueError)) else "Archive inspection failed."
+                    if session:
+                        try:
+                            session.close()
+                        except OSError:
+                            pass
+                    session = None
+                GLib.idle_add(self.inspection_finished, session, report, error)
+
+            threading.Thread(target=worker, daemon=False).start()
+            return False
+
+        def inspection_finished(self, session, report, error):
+            self.busy = False
+            self.spinner.stop()
+            self.session = session
+            if self.finish_closing():
+                return False
+            if error:
+                self.status.set_text(display_text(error))
+            else:
+                for entry in report["entries"]:
+                    index = entry["index"]
+                    self.entries[index] = entry
+                    kind, state, openable, viewer = entry_state(entry)
+                    name = display_text(entry["name"])
+                    self.store.append((index, name, format_size(entry.get("size")), kind, state, openable, name.casefold(), viewer or "", GLib.markup_escape_text(name)))
+                count = len(self.entries)
+                self.status.set_text(
+                    "%s · %d %s · Select a file to view."
+                    % (display_text(report["format"]), count, "entry" if count == 1 else "entries")
+                    if count
+                    else "The archive contains no entries."
+                )
+            self.update_controls()
+            return False
+
+        def on_open(self):
+            if self.busy or self.closing or not self.session:
+                return
+            entry = self.selected_entry()
+            if not entry or not entry_state(entry)[2]:
+                return
+            session = self.session
+            viewer = viewer_kind(entry["name"])
+            self.begin_operation(
+                "Opening text offline…" if viewer == "text" else "Opening selected file in its isolated viewer…"
+            )
+
+            def worker():
+                text = None
+                error = None
+                try:
+                    if viewer == "text":
+                        text = session.read_text_entry(entry["index"])
+                    else:
+                        session.open_entry(entry["index"])
+                except Exception as exc:
+                    error = str(exc) if isinstance(exc, (ArchiveError, OSError, ValueError)) else "The selected file could not be opened."
+                GLib.idle_add(self.open_finished, entry, text, error)
+
+            threading.Thread(target=worker, daemon=False).start()
+
+        def open_finished(self, entry, text, error):
+            self.busy = False
+            self.spinner.stop()
+            if self.finish_closing():
+                return False
+            if error:
+                self.status.set_text(display_text(error))
+            elif text is not None:
+                self.text_name.set_text(display_text(entry["name"]))
+                self.text_view.get_buffer().set_text(text.replace("\x00", "�"))
+                self.stack.set_visible_child_name("text")
+                self.status.set_text("Read-only text preview · Offline")
+            else:
+                self.status.set_text("The viewer has closed. Select another file to view.")
+            self.update_controls()
+            return False
+
+        def on_back(self, _):
+            if self.busy or self.closing:
+                return
+            self.text_view.get_buffer().set_text("")
+            self.stack.set_visible_child_name("contents")
+            self.status.set_text("Select a file to view.")
+            self.update_controls()
+
+        def on_cancel(self, _):
+            if not self.busy:
+                return
+            self.cancelled.set()
+            self.cancel_button.set_sensitive(False)
+            self.status.set_text("Cancelling the current operation…")
+
+        def finish_closing(self):
+            if not self.closing:
+                return False
+            if self.session:
+                self.session.close()
+                self.session = None
+            self.destroy()
+            return True
+
+        def on_close(self, *_):
+            if self.busy:
+                self.closing = True
+                self.cancelled.set()
+                self.status.set_text("Closing the isolated session…")
+                self.update_controls()
+                return True
+            if self.session:
+                self.session.close()
+                self.session = None
+            return False
+
+    window = ArchiveWindow()
+    window.show_all()
+
+    def terminate():
+        if not window.on_close():
+            window.destroy()
+        return False
+
+    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, terminate)
+    if archive is not None:
+        GLib.idle_add(window.inspect, os.path.abspath(archive))
+    Gtk.main()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="PH4NTXM Archive Airlock")
+    parser.add_argument("archive", nargs="?")
+    parser.add_argument("--check", action="store_true", help="Check isolation prerequisites")
+    arguments = parser.parse_args()
+    try:
+        if arguments.check:
+            check_ready()
+            print("Archive Airlock prerequisites verified.")
+        else:
+            desktop(arguments.archive)
+    except (ArchiveError, OSError, ValueError) as exc:
+        print("Archive Airlock: " + str(exc), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

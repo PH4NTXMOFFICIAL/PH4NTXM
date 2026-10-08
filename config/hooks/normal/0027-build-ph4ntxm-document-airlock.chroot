@@ -6,10 +6,12 @@ set -eu
 
 SOURCE=/usr/local/src/ph4ntxm-document-airlock
 python3 "$SOURCE/tests/test-airlock.py"
-install -D -m 0644 "$SOURCE/airlock.py" \
-    /usr/local/lib/ph4ntxm-document-airlock/airlock.py
+python3 "$SOURCE/tests/test-archives.py"
+install -d -m 0755 /usr/local/lib/ph4ntxm-document-airlock
+install -m 0644 "$SOURCE/airlock.py" "$SOURCE/archives.py" "$SOURCE/archive_protocol.py" \
+    /usr/local/lib/ph4ntxm-document-airlock/
 install -D -m 0755 /usr/bin/bwrap \
     /usr/local/libexec/ph4ntxm-document-airlock/bwrap
-chmod 0755 /usr/local/bin/ph4ntxm-document-airlock
+chmod 0755 /usr/local/bin/ph4ntxm-document-airlock /usr/local/bin/ph4ntxm-archive-airlock
 unshare --pid --fork /bin/sh "$SOURCE/build.sh"
 rm -rf "$SOURCE"

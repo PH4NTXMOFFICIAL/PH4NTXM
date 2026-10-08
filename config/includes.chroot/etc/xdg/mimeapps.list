@@ -1,4 +1,15 @@
 [Default Applications]
+application/zip=ph4ntxm-archive-airlock.desktop
+application/x-zip-compressed=ph4ntxm-archive-airlock.desktop
+application/vnd.rar=ph4ntxm-archive-airlock.desktop
+application/x-rar=ph4ntxm-archive-airlock.desktop
+application/x-rar-compressed=ph4ntxm-archive-airlock.desktop
+application/x-7z-compressed=ph4ntxm-archive-airlock.desktop
+application/x-tar=ph4ntxm-archive-airlock.desktop
+application/x-compressed-tar=ph4ntxm-archive-airlock.desktop
+application/x-bzip-compressed-tar=ph4ntxm-archive-airlock.desktop
+application/x-xz-compressed-tar=ph4ntxm-archive-airlock.desktop
+application/x-zstd-compressed-tar=ph4ntxm-archive-airlock.desktop
 application/pdf=ph4ntxm-document-airlock.desktop
 image/png=ph4ntxm-image-viewer.desktop
 image/jpeg=ph4ntxm-image-viewer.desktop
@@ -55,6 +66,17 @@ image/x-quicktime=ph4ntxm-image-viewer.desktop
 application/x-navi-animation=ph4ntxm-image-viewer.desktop
 
 [Added Associations]
+application/zip=ph4ntxm-archive-airlock.desktop;
+application/x-zip-compressed=ph4ntxm-archive-airlock.desktop;
+application/vnd.rar=ph4ntxm-archive-airlock.desktop;
+application/x-rar=ph4ntxm-archive-airlock.desktop;
+application/x-rar-compressed=ph4ntxm-archive-airlock.desktop;
+application/x-7z-compressed=ph4ntxm-archive-airlock.desktop;
+application/x-tar=ph4ntxm-archive-airlock.desktop;
+application/x-compressed-tar=ph4ntxm-archive-airlock.desktop;
+application/x-bzip-compressed-tar=ph4ntxm-archive-airlock.desktop;
+application/x-xz-compressed-tar=ph4ntxm-archive-airlock.desktop;
+application/x-zstd-compressed-tar=ph4ntxm-archive-airlock.desktop;
 application/pdf=ph4ntxm-document-airlock.desktop;firefox-esr.desktop;
 image/png=ph4ntxm-image-viewer.desktop;ph4ntxm-document-airlock.desktop;
 image/jpeg=ph4ntxm-image-viewer.desktop;ph4ntxm-document-airlock.desktop;

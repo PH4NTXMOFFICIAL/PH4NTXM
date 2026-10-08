@@ -12,7 +12,7 @@ Startup checks KVM access, private namespaces, trusted image hashes, actual avai
 
 ## [ RUNTIME ]
 
-Input must be a nonempty regular file of at most 64 MiB. The converter uses 384 MiB guest RAM for images, 512 MiB for PDFs and 768 MiB for Office formats, with another 192 MiB required as host reserve. An account-level lock permits one conversion at a time.
+Input must be a nonempty regular file of at most 64 MiB. The converter uses 384 MiB guest RAM for images, 512 MiB for PDFs and 768 MiB for Office formats, with another 192 MiB required as host reserve. An account-level lock permits one Document or Archive Airlock guest operation at a time.
 
 The guest has no network adapter or shared home directory. Its root image is read-only, and document bytes enter through a bounded channel. Host-side validation accepts rendered RGB pages rather than the original document structure.
 

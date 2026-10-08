@@ -56,7 +56,15 @@ def main():
     Path("/tmp/home").mkdir()
     Path("/tmp/job").mkdir()
     os.chdir("/tmp/job")
-    magic, size, suffix = struct.unpack("!8sI16s", read_exact(sys.stdin.buffer, 28))
+    magic = read_exact(sys.stdin.buffer, 8)
+    from archive_protocol import INPUT_MAGIC as ARCHIVE_INPUT_MAGIC
+
+    if magic == ARCHIVE_INPUT_MAGIC:
+        from archive_guest import main as archive_main
+
+        archive_main()
+        return
+    size, suffix = struct.unpack("!I16s", read_exact(sys.stdin.buffer, 20))
     suffix = suffix.rstrip(b"\x00").decode("ascii")
     if magic != INPUT_MAGIC or not 0 < size <= MAX_INPUT or suffix not in SUFFIXES:
         raise ValueError("Invalid request")

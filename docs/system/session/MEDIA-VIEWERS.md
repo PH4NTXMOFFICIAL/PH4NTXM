@@ -22,6 +22,8 @@ A transient user service limits memory, swap, tasks and CPU. Memory is capped at
 
 Closing the window stops child processes and the transient unit, then removes temporary state. Component failure or resource exhaustion closes the isolated view and reports an error. Source media remains read-only throughout the viewer session.
 
+Archive Airlock can hand off one extracted media file from its private runtime workspace. The explicit handoff revalidates the runtime directory, both temporary directories and the regular file without following symlinks. Ordinary media requests still reject arbitrary files under `/run/user`. The selected file stays read-only inside the viewer and is removed by Archive Airlock after the viewer exits.
+
 ## [ CHECKS ]
 
 Use `ph4ntxm-media --kind image --check` or the video equivalent to inspect prerequisites. This tests isolation/resource controls without decoding a chosen media file.

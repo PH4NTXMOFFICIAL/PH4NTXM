@@ -146,15 +146,17 @@ RAM Seeding allocates one percent of physical RAM reported by native `sysinfo`, 
 
 Kernel settings and systemd restrictions follow each component's needs. SSH and OpenSSL configuration prefer supported hybrid post-quantum key exchanges with classical fallback. The application and peer negotiate the supported exchange.
 
-## [ DOCUMENT AND MEDIA ISOLATION ]
+## [ DOCUMENT, ARCHIVE AND MEDIA ISOLATION ]
 
 Document Airlock validates local input and trusted guest artifacts before starting a disposable offline KVM guest. The guest has no network adapter or shared host home. A bounded protocol returns RGB pages. The host broker checks framing, dimensions and total size before building a new raster PDF.
 
 The UI previews those pages and exports only to a new filename. The exported PDF contains the rendered page images without the original active document structure or metadata. Cancellation, timeout or invalid output ends conversion. KVM, private tmpfs storage, sufficient memory and disabled swap are prerequisites.
 
-Media Viewers use a different boundary: offline namespaces, read-only selected files, a private bus/home and nested Xephyr display. A separate audio process receives fixed-format PCM. A transient user service applies memory, swap, task and CPU limits, and cleanup stops the session's processes. The selected source files remain read-only throughout playback. Airlock and Media Viewers read actual available RAM for their launch budgets and refuse a managed inventory environment; persona capacity does not increase their allocation limits.
+Archive Airlock reuses the same trusted guest artifacts with a separate bounded archive protocol. Archive parsing stays in the guest. The host validates a limited listing and streams one selected regular file into a private RAM workspace under a fixed filename. Links, special files and unsafe names are blocked. Supported files pass to Document Airlock or Media Viewers after the archive guest exits; small UTF-8 text files have a read-only preview. Extracted bytes retain the selected file's original structure and are not sanitized by unpacking.
 
-See [Document Airlock](docs/system/session/DOCUMENT-AIRLOCK.md) and [Media Viewers](docs/system/session/MEDIA-VIEWERS.md) for limits and checks.
+Media Viewers use a different boundary: offline namespaces, read-only selected files, a private bus/home and nested Xephyr display. A separate audio process receives fixed-format PCM. A transient user service applies memory, swap, task and CPU limits, and cleanup stops the session's processes. The selected source files remain read-only throughout playback. Both Airlocks and Media Viewers read actual available RAM for their launch budgets and refuse a managed inventory environment; persona capacity does not increase their allocation limits.
+
+See [Document Airlock](docs/system/session/DOCUMENT-AIRLOCK.md), [Archive Airlock](docs/system/session/ARCHIVE-AIRLOCK.md) and [Media Viewers](docs/system/session/MEDIA-VIEWERS.md) for limits and checks.
 
 ## [ OPERATOR VIEWS AND DIAGNOSTICS ]
 

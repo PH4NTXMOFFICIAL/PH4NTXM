@@ -12,7 +12,7 @@ Boot Pilot is the starting view for readiness, while Health and Identity provide
 
 ## [ RUNTIME ]
 
-Boot Pilot refreshes grouped identity, network and system checks and provides Wi-Fi selection. Continue and browser launch become available after its checks pass. Detailed Report opens the terminal Health report, which is a snapshot rather than another continuously updating dashboard.
+Boot Pilot refreshes grouped identity, network and system checks and provides Wi-Fi selection. Continue and browser launch become available after its checks pass. Detailed Report opens the GTK Health report, which is a snapshot rather than another continuously updating dashboard.
 
 Identity shows the hostname, machine ID, visible MACs and mode read when it opens. It's static and shows what assigned on boot. It does not regenerate identity. Its tray is a launcher, not a live audit indicator.
 
@@ -20,7 +20,7 @@ Lockdown requests restrictive networking through the privileged firewall helper.
 
 USB Nuke arms or disarms matching storage-removal events. It does not select a particular drive serial. Panic Button instead presents an immediate confirmation action. Its tray's blinking state means that confirmation application is open. Both ultimately use the system emergency path.
 
-Document Airlock converts supported local documents in a disposable KVM guest and lets you review/export a raster PDF. Media viewers open original local files in disposable offline sandboxes. Airlock exports a new artifact. Media viewers keep selected source files read-only.
+Document Airlock converts supported local documents in a disposable KVM guest and lets you review/export a raster PDF. Archive Airlock lists local ZIP, RAR, 7z and TAR archives in the same offline guest infrastructure, then opens one selected file through its isolated viewer or a read-only text preview. Media viewers open original local files in disposable offline sandboxes. Document Airlock exports a new artifact. Media viewers keep selected source files read-only.
 
 The [OpSec Suite](PH4NTXM-OPSEC-SUITE.md) opens Network, Kernel, Process, Radio, ConnWatch and Shredder as GTK windows with the shared PH4NTXM appearance. Inspection reports provide findings, evidence views, Check Again and Copy Report. ConnWatch refreshes the existing monitor statistics and history while its window is open. Shredder shows a marked queue, confirms overwrite and deletion, and displays execution results. The terminal workflows remain available.
 
@@ -43,4 +43,5 @@ For routine inspection, start with the readiness views and follow the reported c
 [ph4ntxm-panic-button](../../../config/includes.chroot/usr/local/bin/ph4ntxm-panic-button)  
 [ph4ntxm-usb-nuke](../../../config/includes.chroot/usr/local/bin/ph4ntxm-usb-nuke)  
 [ph4ntxm-document-airlock](../../../config/includes.chroot/usr/local/bin/ph4ntxm-document-airlock)  
+[ph4ntxm-archive-airlock](../../../config/includes.chroot/usr/local/bin/ph4ntxm-archive-airlock)\
 [ph4ntxm-media](../../../config/includes.chroot/usr/local/bin/ph4ntxm-media)
