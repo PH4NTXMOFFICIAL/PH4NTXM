@@ -10,7 +10,7 @@ A special thank you to everyone who has taken the time to test, feature or suppo
 ## [ IGURU.GR - 2026-09-18 ]
 
 <p align="left">
-  <a href="https://iguru.gr/ph4ntxm-proto-elliniko-debian-live-linux-gia-cybersecurity-kai-privacy/">
+  <a href="https://en.iguru.gr/ph4ntxm-proto-elliniko-debian-live-linux-gia-cybersecurity-kai-privacy/">
     <img src="https://img.shields.io/badge/iGuru.gr-Featured-gold" alt="Featured on iGuru.gr">
   </a>
 </p>
@@ -28,5 +28,13 @@ A special thank you to everyone who has taken the time to test, feature or suppo
 <p align="left">
   <a href="https://www.linuxlinks.com/ph4ntxm-debian-cybersecurity-privacy-distribution/">
     <img src="https://img.shields.io/badge/LinuxLinks.com-Featured-gold" alt="Featured on LinuxLinks.com">
+  </a>
+</p>
+
+## [ HACKS.GR - 2026-10-08 ]
+
+<p align="left">
+  <a href="https://en.hacks.gr/ph4ntxm-elliniko-leitourgiko-anonymia-diadiktyo/">
+    <img src="https://img.shields.io/badge/Hacks.gr-Featured-gold" alt="Featured on Hacks.gr">
   </a>
 </p>
