@@ -7,5 +7,10 @@ setup(
     name="ph4ntxm-opsec-shredder",
     version="1.0",
     packages=find_packages(),
-    entry_points={"console_scripts": ["ph4-shred=ph4ntxm_opsec_shredder.cli:main"]},
+    entry_points={
+        "console_scripts": [
+            "ph4-shred=ph4ntxm_opsec_shredder.cli:main",
+            "ph4ntxm-opsec-shredder-gtk=ph4ntxm_opsec_shredder.gui:main",
+        ]
+    },
 )

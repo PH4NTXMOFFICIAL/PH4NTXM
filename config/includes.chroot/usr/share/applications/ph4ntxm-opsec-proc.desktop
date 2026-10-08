@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
 Name=PH4NTXM OpSec Process
-Comment=Show the process security report in a terminal
-Exec=xfce4-terminal --disable-server --class=PH4NTXM-OpSec-Process --title="PH4NTXM OpSec Process" --hold --command="sudo /usr/local/bin/ph4ntxm-opsec-proc"
+Comment=Inspect process security and review available remediation
+Exec=/usr/local/bin/ph4ntxm-opsec-proc-gtk
 StartupWMClass=PH4NTXM-OpSec-Process
 Icon=ph4ntxm-opsec-proc
 Terminal=false
 Categories=System;Security;X-PH4NTXMOpSecSuite;
-StartupNotify=false
+StartupNotify=true

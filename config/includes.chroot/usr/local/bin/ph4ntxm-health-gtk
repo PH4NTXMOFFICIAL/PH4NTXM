@@ -1,0 +1,268 @@
+#!/usr/bin/python3
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+from datetime import datetime
+import sys
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+
+from ph4ntxm_opsec_ui import (
+    Application,
+    ReportWindow,
+    data_row,
+    finding_row,
+    label,
+    run_backend,
+    scroll,
+    section,
+)
+
+ROW_STATUSES = {
+    "pass": ("OK", "good"),
+    "warning": ("Warning", "warn"),
+    "error": ("Error", "bad"),
+    "critical": ("Critical", "bad"),
+    "info": ("Info", "info"),
+}
+
+
+def validate_report(report):
+    if report.get("schema_version") != 1 or report.get("complete") is not True:
+        raise ValueError("The Health report did not complete")
+    for key in ("score", "warnings", "errors", "critical_errors"):
+        if type(report.get(key)) is not int or report[key] < 0:
+            raise ValueError("The Health assessment is invalid")
+    if report["score"] > 100 or report["critical_errors"] > report["errors"]:
+        raise ValueError("The Health assessment is invalid")
+    for key in ("mode", "status", "collected_at"):
+        if not isinstance(report.get(key), str):
+            raise ValueError("The Health assessment is incomplete")
+    stamp = datetime.fromisoformat(report["collected_at"])
+    if stamp.tzinfo is None:
+        raise ValueError("The Health report timestamp is invalid")
+    sections = report.get("sections")
+    if not isinstance(sections, list) or not sections:
+        raise ValueError("The Health report contains no evidence")
+    for group in sections:
+        if (
+            not isinstance(group, dict)
+            or not isinstance(group.get("title"), str)
+            or not isinstance(group.get("rows"), list)
+        ):
+            raise ValueError("The Health report contains an invalid section")
+        for row in group["rows"]:
+            if (
+                not isinstance(row, dict)
+                or not isinstance(row.get("label"), str)
+                or not isinstance(row.get("value"), str)
+                or row.get("status") not in ROW_STATUSES
+            ):
+                raise ValueError("The Health report contains an invalid row")
+    return report
+
+
+def assessment_status(report):
+    if report["critical_errors"] or report["score"] < 70:
+        return "bad"
+    return "good" if report["score"] >= 90 else "warn"
+
+
+def display_status(group, row, report):
+    if group != "Final Assessment":
+        return ROW_STATUSES[row["status"]]
+    counters = {
+        "Warnings": ("warnings", "Warning", "warn"),
+        "Errors": ("errors", "Error", "bad"),
+        "Critical Gates": ("critical_errors", "Critical", "bad"),
+    }
+    if row["label"] in counters:
+        key, text, status = counters[row["label"]]
+        return (text, status) if report[key] else ("OK", "good")
+    return "Assessment", assessment_status(report)
+
+
+def report_text(report):
+    lines = [
+        "PH4NTXM Health Report",
+        f"Collected: {report['collected_at']}",
+        f"Mode: {report['mode']}",
+        f"System status: {report['status']}",
+        f"Health score: {report['score']} / 100",
+        f"Warnings: {report['warnings']}",
+        f"Errors: {report['errors']}",
+        f"Critical gates: {report['critical_errors']}",
+    ]
+    for group in report["sections"]:
+        lines.extend(("", f"[ {group['title']} ]"))
+        for row in group["rows"]:
+            state, _ = display_status(group["title"], row, report)
+            lines.append(f"{row['label']}: {row['value']} [{state}]")
+    return "\n".join(lines)
+
+
+class HealthWindow(ReportWindow):
+    def __init__(self, application):
+        super().__init__(
+            application,
+            "PH4NTXM Health",
+            "Session health report",
+            "ph4ntxm-health",
+        )
+        self.score_caption.set_text("Health score")
+
+    def build_pages(self):
+        self.overview = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.stack.add_titled(scroll(self.overview), "overview", "Overview")
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        self.category = Gtk.ComboBoxText()
+        self.category.append_text("All sections")
+        self.category.set_active(0)
+        self.category.connect("changed", self.refilter)
+        self.search = Gtk.SearchEntry()
+        self.search.set_placeholder_text("Search checks and report values")
+        self.search.connect("search-changed", self.refilter)
+        self.review_only = Gtk.CheckButton(label="Review only")
+        self.review_only.connect("toggled", self.refilter)
+        controls.pack_start(self.category, False, False, 0)
+        controls.pack_start(self.search, True, True, 0)
+        controls.pack_end(self.review_only, False, False, 0)
+        page.pack_start(controls, False, False, 0)
+        self.rows = Gtk.ListStore(str, str, str, str, str)
+        self.filtered_rows = self.rows.filter_new()
+        self.filtered_rows.set_visible_func(self.row_visible)
+        self.sorted_rows = Gtk.TreeModelSort(model=self.filtered_rows)
+        view = self.table(
+            self.sorted_rows,
+            (
+                ("Section", 0, 210),
+                ("Check", 1, 210),
+                ("Value", 2, 340),
+                ("Status", 3, 100),
+            ),
+        )
+        view.set_tooltip_column(2)
+        view.get_selection().connect("changed", self.select_row)
+        page.pack_start(scroll(view), True, True, 0)
+        self.details = label(
+            "Select a check to see its complete value", "data-value", True
+        )
+        details_scroll = scroll(self.details)
+        details_scroll.set_min_content_height(64)
+        details_scroll.set_max_content_height(130)
+        page.pack_start(details_scroll, False, True, 0)
+        self.stack.add_titled(page, "report", "Full Report")
+
+    def collect_report(self, progress):
+        progress("Checking system, persona and protection state")
+        return validate_report(
+            run_backend(["/usr/local/bin/ph4ntxm-health", "--json"], timeout=120)
+        )
+
+    def clear_pages(self):
+        self.rows.clear()
+        self.category.remove_all()
+        self.category.append_text("All sections")
+        self.category.set_active(0)
+        self.details.set_text("Report evidence will appear after the check")
+
+    def row_visible(self, model, iterator, _):
+        row = model[iterator]
+        category = self.category.get_active_text()
+        query = self.search.get_text().strip().casefold()
+        return (
+            (self.category.get_active() <= 0 or row[0] == category)
+            and (not self.review_only.get_active() or row[4] in ("warn", "bad"))
+            and (not query or query in " ".join(row[:4]).casefold())
+        )
+
+    def refilter(self, _):
+        if hasattr(self, "filtered_rows"):
+            self.filtered_rows.refilter()
+
+    def select_row(self, selection):
+        model, iterator = selection.get_selected()
+        if iterator is None:
+            self.details.set_text("Select a check to see its complete value")
+            return
+        row = model[iterator]
+        self.details.set_text(f"{row[0]} · {row[1]} · {row[3]}\n{row[2]}")
+
+    def populate(self, report):
+        self.set_summary(
+            report["status"],
+            score=report["score"],
+            status=assessment_status(report),
+            detail=(
+                f"{report['warnings']} warnings · {report['errors']} errors · "
+                f"{report['critical_errors']} critical gates"
+            ),
+            updated=report["collected_at"],
+        )
+        assessment = section("Assessment")
+        for title, key in (
+            ("Warnings", "warnings"),
+            ("Errors", "errors"),
+            ("Critical gates", "critical_errors"),
+        ):
+            assessment.pack_start(data_row(title, report[key]), False, False, 0)
+        assessment.pack_start(
+            label(
+                "This report inspects current session state. Read individual "
+                "findings and check again after a change.",
+                "subtitle",
+            ),
+            False,
+            False,
+            0,
+        )
+        self.overview.pack_start(assessment, False, False, 0)
+        issue_count = 0
+        for group in report["sections"]:
+            self.category.append_text(group["title"])
+            findings = []
+            for row in group["rows"]:
+                state, severity = display_status(group["title"], row, report)
+                self.rows.append(
+                    (group["title"], row["label"], row["value"], state, severity)
+                )
+                if (
+                    group["title"] != "Final Assessment"
+                    and severity in ("warn", "bad")
+                ):
+                    findings.append((row, state, severity))
+            if findings:
+                box = section(group["title"])
+                for row, state, severity in findings:
+                    box.pack_start(
+                        finding_row(
+                            f"{row['label']}: {row['value']}", severity, state
+                        ),
+                        False,
+                        False,
+                        0,
+                    )
+                self.overview.pack_start(box, False, False, 0)
+                issue_count += len(findings)
+        if not issue_count:
+            box = section("Findings")
+            box.pack_start(
+                finding_row("No findings require review", "good"), False, False, 0
+            )
+            self.overview.pack_start(box, False, False, 0)
+        self.refilter(None)
+
+    def copy_text(self, report):
+        return report_text(report)
+
+
+def main():
+    return Application(HealthWindow, "org.ph4ntxm.Health").run(sys.argv)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

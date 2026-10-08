@@ -160,16 +160,7 @@ class IdentityWindow(Gtk.Window):
 
     def open_report(self, _):
         try:
-            subprocess.Popen(
-                [
-                    "/usr/bin/xfce4-terminal",
-                    "--disable-server",
-                    "--class=PH4NTXM-Health",
-                    "--title=PH4NTXM Health",
-                    "--hold",
-                    "--command=/usr/local/bin/ph4ntxm-health",
-                ]
-            )
+            subprocess.Popen(["/usr/local/bin/ph4ntxm-health-gtk"])
         except OSError:
             pass
 

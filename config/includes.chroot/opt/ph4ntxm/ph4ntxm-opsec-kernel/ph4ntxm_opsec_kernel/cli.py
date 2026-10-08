@@ -1,14 +1,13 @@
 # Copyright (C) PH4NTXM
 # Licensed under the GNU General Public License v3.0.
 
-from ph4ntxm_opsec_kernel.checks import (
-    get_kernel_info,
-    get_loaded_modules,
-    analyze_modules,
-    get_sysctl_state,
-    analyze_sysctl_state,
-    get_kernel_hardening,
-    assess_kernel,
+from ph4ntxm_opsec_kernel.report import (
+    collect_report,
+    verdict,
+    format_finding,
+    hardening_status,
+    module_status,
+    format_module,
 )
 
 RESET = "\033[0m"
@@ -77,175 +76,6 @@ def kv(key, value, status=None):
     print(f"{status_tag(status)} {gray(f'{key}:'):<30} {value}")
 
 
-def verdict(score):
-    if score >= 85:
-        return "No high-severity findings", "good"
-
-    if score >= 60:
-        return "Review recommended", "warn"
-
-    return "Attention required", "bad"
-
-
-def format_finding(finding):
-    mapping = {
-        "suspicious_modules_present": ("Suspicious modules detected", "bad"),
-        "suspicious_module_name": ("Suspicious module name", "warn"),
-        "kernel_lockdown_disabled": (
-            "Kernel lockdown unavailable (intentional)",
-            "info",
-        ),
-        "module_signature_enforcement_disabled": (
-            "Module signature enforcement disabled (intentional)",
-            "info",
-        ),
-        "modules_loading_enabled": (
-            "Module loading is still enabled (intentional)",
-            "info",
-        ),
-        "kptr_restrict_disabled": ("Kernel pointer restrictions disabled", "bad"),
-        "dmesg_restrict_disabled": ("Kernel dmesg restriction disabled", "warn"),
-        "unrestricted_bpf": ("Unrestricted BPF enabled", "warn"),
-        "ptrace_scope_weak": ("Weak ptrace restrictions", "warn"),
-        "randomize_va_space_disabled": (
-            "ASLR (address space randomization) disabled",
-            "bad",
-        ),
-        "perf_event_paranoid_weak": ("Weak perf_event restrictions", "warn"),
-        "unprivileged_userns_enabled_warn": (
-            "Unprivileged userns clone enabled (intentional)",
-            "info",
-        ),
-        "unprivileged_userfaultfd_enabled": (
-            "Unprivileged userfaultfd enabled",
-            "warn",
-        ),
-        "kexec_enabled": ("kexec loader available", "info"),
-        "crashkernel_not_armed": ("Crashkernel fallback not armed", "warn"),
-        "kexec_loader_unlocked": (
-            "Crashkernel armed but kexec loader unlocked",
-            "warn",
-        ),
-        "sysrq_enabled": ("Keyboard SysRq enabled", "warn"),
-        "rp_filter_disabled": ("Reverse path filter disabled", "info"),
-        "rp_filter_profile_mismatch": (
-            "Reverse path filter does not match active mode",
-            "warn",
-        ),
-        "bpf_jit_harden_disabled": ("BPF JIT hardening disabled (intentional)", "info"),
-        "tcp_timestamps_disabled": (
-            "TCP timestamps disabled by active profile",
-            "info",
-        ),
-        "tcp_sack_disabled": ("TCP SACK disabled by active profile", "info"),
-        "tcp_timestamps_profile_mismatch": (
-            "TCP timestamps do not match active mode",
-            "warn",
-        ),
-        "tcp_sack_profile_mismatch": ("TCP SACK does not match active mode", "warn"),
-        "tcp_syncookies_disabled": ("TCP SYN cookies disabled", "warn"),
-        "accept_redirects_enabled": ("ICMP redirects accepted", "warn"),
-        "send_redirects_enabled": ("ICMP redirects sending enabled", "warn"),
-        "accept_source_route_enabled": ("IP source routing enabled", "warn"),
-        "ipv6_enabled_warn": ("IPv6 state does not match active mode", "warn"),
-    }
-
-    text, severity = mapping.get(
-        finding, (finding.replace("_", " ").capitalize(), "warn")
-    )
-
-    return text, severity
-
-
-def module_status(module):
-    reasons = module.get("reasons", [])
-
-    if "ephemeral_module" in reasons:
-        return "bad"
-
-    if reasons:
-        return "warn"
-
-    return "active"
-
-
-def format_module(module):
-    parts = []
-
-    if module.get("size"):
-        parts.append(f"Size={module['size']}")
-
-    if module.get("used_by"):
-        parts.append(f"Used by={module['used_by']}")
-
-    if module.get("path"):
-        parts.append(f"Path={module['path']}")
-
-    return " ".join(parts)
-
-
-def hardening_status(key, value, mode):
-    hardened = {
-        "kernel.kptr_restrict": ("1", "2"),
-        "kernel.dmesg_restrict": ("1",),
-        "kernel.yama.ptrace_scope": ("1", "2", "3"),
-        "kernel.unprivileged_bpf_disabled": ("1", "2"),
-        "kernel.unprivileged_userns_clone": ("0",),
-        "kernel.kexec_load_disabled": ("1",),
-        "kernel.randomize_va_space": ("2",),
-        "kernel.perf_event_paranoid": ("2", "3", "4"),
-        "kernel.sysrq": ("0",),
-        "vm.unprivileged_userfaultfd": ("0",),
-        "net.ipv4.tcp_syncookies": ("1",),
-        "net.ipv4.conf.all.accept_redirects": ("0",),
-        "net.ipv4.conf.default.accept_redirects": ("0",),
-        "net.ipv4.conf.all.send_redirects": ("0",),
-        "net.ipv4.conf.default.send_redirects": ("0",),
-        "net.ipv4.conf.all.accept_source_route": ("0",),
-        "net.ipv4.conf.default.accept_source_route": ("0",),
-        "net.core.bpf_jit_harden": ("1", "2"),
-        "net.ipv6.conf.all.disable_ipv6": ("1",),
-        "net.ipv6.conf.default.disable_ipv6": ("1",),
-    }
-
-    profile_values = {
-        "linux": {
-            "net.ipv4.conf.all.rp_filter": ("2",),
-            "net.ipv4.conf.default.rp_filter": ("2",),
-            "net.ipv4.tcp_timestamps": ("1",),
-            "net.ipv4.tcp_sack": ("1",),
-            "net.ipv6.conf.all.disable_ipv6": ("0",),
-            "net.ipv6.conf.default.disable_ipv6": ("0",),
-        },
-        "windows": {
-            "net.ipv4.conf.all.rp_filter": ("2",),
-            "net.ipv4.conf.default.rp_filter": ("2",),
-            "net.ipv4.tcp_timestamps": ("0",),
-            "net.ipv4.tcp_sack": ("1",),
-            "net.ipv6.conf.all.disable_ipv6": ("0",),
-            "net.ipv6.conf.default.disable_ipv6": ("0",),
-        },
-        "lonewolf": {
-            "net.ipv4.conf.all.rp_filter": ("1",),
-            "net.ipv4.conf.default.rp_filter": ("1",),
-            "net.ipv4.tcp_timestamps": ("0",),
-            "net.ipv4.tcp_sack": ("1",),
-            "net.ipv6.conf.all.disable_ipv6": ("1",),
-            "net.ipv6.conf.default.disable_ipv6": ("1",),
-        },
-    }
-
-    allowed = profile_values.get(mode, {}).get(key, hardened.get(key))
-
-    if not allowed:
-        return None
-
-    if value is None:
-        return "warn"
-
-    return "good" if str(value) in allowed else "warn"
-
-
 def render_lockdown(value):
     normalized = str(value).strip().lower()
     normalized = normalized.replace("[", "").replace("]", "")
@@ -267,7 +97,8 @@ def render_module_sig_enforce(value):
 def main():
     section("PH4NTXM OpSec Kernel")
 
-    kernel_info = get_kernel_info()
+    report = collect_report()
+    kernel_info = report["kernel_info"]
 
     section("Kernel")
 
@@ -282,7 +113,7 @@ def main():
     else:
         kv("Kernel", kernel_info["error"], "bad")
 
-    modules = get_loaded_modules()
+    modules = report["modules"]
 
     section("Loaded Modules")
 
@@ -300,7 +131,7 @@ def main():
     else:
         kv("Modules", modules["error"], "bad")
 
-    module_analysis = analyze_modules(modules)
+    module_analysis = report["module_analysis"]
 
     section("Module Analysis")
 
@@ -326,13 +157,8 @@ def main():
     else:
         kv("Analysis", module_analysis["error"], "bad")
 
-    sysctl_state = get_sysctl_state()
-    sysctl_analysis = analyze_sysctl_state(sysctl_state)
-    try:
-        with open("/run/ph4ntxm/mode", "r") as handle:
-            mode = handle.read().strip()
-    except OSError:
-        mode = None
+    sysctl_state = report["sysctl_state"]
+    mode = report["mode"]
 
     section("sysctl")
 
@@ -350,7 +176,7 @@ def main():
     else:
         kv("sysctl", sysctl_state["error"], "bad")
 
-    hardening = get_kernel_hardening()
+    hardening = report["hardening"]
 
     section("Hardening")
 
@@ -388,7 +214,7 @@ def main():
     else:
         kv("Hardening", hardening["error"], "bad")
 
-    assessment = assess_kernel(module_analysis, sysctl_analysis, hardening)
+    assessment = report["assessment"]
 
     section("Kernel Assessment")
 

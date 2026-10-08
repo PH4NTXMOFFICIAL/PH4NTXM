@@ -7,5 +7,10 @@ setup(
     name="ph4ntxm-opsec-net",
     version="1.0",
     packages=find_packages(),
-    entry_points={"console_scripts": ["ph4ntxm-opsec-net=ph4ntxm_opsec_net.cli:main"]},
+    entry_points={
+        "console_scripts": [
+            "ph4ntxm-opsec-net=ph4ntxm_opsec_net.cli:main",
+            "ph4ntxm-opsec-net-gtk=ph4ntxm_opsec_net.gui:main",
+        ]
+    },
 )

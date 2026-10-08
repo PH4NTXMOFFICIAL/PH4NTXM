@@ -8,6 +8,10 @@ setup(
     version="1.0",
     packages=find_packages(),
     entry_points={
-        "console_scripts": ["ph4ntxm-opsec-radio=" "ph4ntxm_opsec_radio.cli:main"]
+        "console_scripts": [
+            "ph4ntxm-opsec-radio=ph4ntxm_opsec_radio.cli:main",
+            "ph4ntxm-opsec-radio-gtk=ph4ntxm_opsec_radio.gui:main",
+            "ph4ntxm-opsec-radio-backend=ph4ntxm_opsec_radio.backend:main",
+        ]
     },
 )

@@ -23,13 +23,27 @@ HEALTH=100
 WARNINGS=0
 ERRORS=0
 CRITICAL_ERRORS=0
+REPORT_JSON=0
+REPORT_PENDING_STATUS=""
+REPORT_RECORDS=()
+
+if [[ "${1:-}" == --json ]]; then
+    REPORT_JSON=1
+    exec {REPORT_OUTPUT_FD}>&1
+    exec >/dev/null
+fi
 
 separator() {
+    ((REPORT_JSON)) && return 0
     printf "${GRAY}%0.s─" $(seq 1 "$LINE_WIDTH")
     printf "${RESET}\n"
 }
 
 section() {
+    if ((REPORT_JSON)); then
+        REPORT_RECORDS+=("section" "$1" "" "")
+        return 0
+    fi
     printf "\n"
     separator
     printf "${CYAN}[ %s ]${RESET}\n" "$1"
@@ -47,23 +61,46 @@ print_line() {
         NONE) value="None" ;;
     esac
 
-    printf "  %-30s ${color}%s${RESET}\n" "$label" "$value"
+    if ((REPORT_JSON)); then
+        local report_status
+        case "$color" in
+            "$GREEN") report_status=pass ;;
+            "$AMBER") report_status=warning ;;
+            "$RED") report_status=error ;;
+            *) report_status=info ;;
+        esac
+        if [[ "$report_status" == error && "$REPORT_PENDING_STATUS" == critical ]]; then
+            report_status=critical
+        fi
+        if [[ "$report_status" == warning || "$report_status" == error || "$report_status" == critical ]]; then
+            REPORT_PENDING_STATUS=""
+        fi
+        REPORT_RECORDS+=("row" "${label%:}" "$value" "$report_status")
+    else
+        printf "  %-30s ${color}%s${RESET}\n" "$label" "$value"
+    fi
 }
 
 warning() {
     ((++WARNINGS))
     HEALTH=$((HEALTH - 2))
+    ((REPORT_JSON)) && REPORT_PENDING_STATUS=warning
+    return 0
 }
 
 error() {
     ((++ERRORS))
     HEALTH=$((HEALTH - 6))
+    ((REPORT_JSON)) && REPORT_PENDING_STATUS=error
+    return 0
 }
 
 critical_error() {
     ((++ERRORS))
     ((++CRITICAL_ERRORS))
     HEALTH=$((HEALTH - 15))
+    ((REPORT_JSON)) && REPORT_PENDING_STATUS=critical
+    return 0
 }
 
 protected_file() {
@@ -869,3 +906,40 @@ print_line "Errors:" "$ERRORS" "$RED"
 print_line "Critical Gates:" "$CRITICAL_ERRORS" "$RED"
 
 separator
+
+if ((REPORT_JSON)); then
+    printf '%s\0' "${REPORT_RECORDS[@]}" | /usr/bin/python3 -c '
+import json
+import sys
+from datetime import datetime, timezone
+
+fields = sys.stdin.buffer.read().split(b"\0")
+if not fields or fields.pop() != b"" or len(fields) % 4:
+    raise SystemExit("Invalid Health report records")
+sections = []
+for index in range(0, len(fields), 4):
+    kind, label, value, status = (field.decode("utf-8", "replace") for field in fields[index:index + 4])
+    if kind == "section":
+        sections.append({"title": label, "rows": []})
+    elif kind == "row" and sections:
+        sections[-1]["rows"].append({"label": label, "value": value, "status": status})
+    else:
+        raise SystemExit("Invalid Health report record")
+mode, score, status, warnings, errors, critical_errors = sys.argv[1:]
+report = {
+    "schema_version": 1,
+    "title": "PH4NTXM Health Report",
+    "complete": True,
+    "collected_at": datetime.now(timezone.utc).isoformat(),
+    "mode": mode,
+    "score": int(score),
+    "status": status,
+    "warnings": int(warnings),
+    "errors": int(errors),
+    "critical_errors": int(critical_errors),
+    "sections": [section for section in sections if section["rows"]],
+}
+json.dump(report, sys.stdout, ensure_ascii=True)
+sys.stdout.write("\n")
+' "$MODE" "$HEALTH" "$STATUS" "$WARNINGS" "$ERRORS" "$CRITICAL_ERRORS" >&"$REPORT_OUTPUT_FD"
+fi

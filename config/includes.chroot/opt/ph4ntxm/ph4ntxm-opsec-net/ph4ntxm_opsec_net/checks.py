@@ -58,6 +58,7 @@ ENABLE_PTR_LOOKUP = os.environ.get("PH4NTXM_PTR_LOOKUP") == "1"
 IP = "/usr/sbin/ip"
 SS = "/usr/bin/ss"
 SYSCTL = "/usr/sbin/sysctl"
+_UNSET_MODE = object()
 
 
 def result(ok, data=None, error=None, findings=None):
@@ -140,15 +141,17 @@ def resolve_ptr(ip):
 
 def get_default_routes():
     routes = []
+    unavailable = []
     for family, cmd in (("ipv4", [IP, "route"]), ("ipv6", [IP, "-6", "route"])):
         output = run(cmd)
         if not output["ok"]:
+            unavailable.append({"family": family, "error": output.get("error")})
             continue
         for line in output["data"]["stdout"].splitlines():
             line = line.strip()
             if line.startswith("default"):
                 routes.append({"family": family, "raw": line})
-    return result(True, data={"routes": routes})
+    return result(True, data={"routes": routes, "unavailable": unavailable})
 
 
 def analyze_routes(route_data):
@@ -235,7 +238,7 @@ def detect_ipv6_exposure():
     disabled = output["data"]["stdout"].strip() == "1"
     return result(
         True,
-        data={"enabled": not disabled},
+        data={"enabled": not disabled, "raw_value": output["data"]["stdout"].strip()},
         findings=["ipv6_enabled"] if not disabled else [],
     )
 
@@ -247,13 +250,23 @@ def get_network_namespace():
         isolated = current != init
         return result(
             True,
-            data={"namespace": current, "isolated": isolated, "available": True},
+            data={
+                "namespace": current,
+                "init_namespace": init,
+                "isolated": isolated,
+                "available": True,
+            },
             findings=[] if isolated else ["namespace_shared"],
         )
     except OSError:
         return result(
             True,
-            data={"namespace": "unavailable", "isolated": False, "available": False},
+            data={
+                "namespace": "unavailable",
+                "init_namespace": None,
+                "isolated": False,
+                "available": False,
+            },
         )
 
 
@@ -304,7 +317,13 @@ def get_active_connections():
         connections.append(
             {
                 "ip": ip,
+                "protocol": parts[0],
+                "state": parts[1],
+                "recv_q": parts[2],
+                "send_q": parts[3],
+                "local": parts[4],
                 "remote": remote,
+                "raw": line,
                 "process": process,
                 "pid": pid,
                 "exe": exe,
@@ -374,7 +393,9 @@ def analyze_connections(connection_data):
     )
 
 
-def assess_session(route_analysis, dns_analysis, connection_analysis, ipv6, namespace):
+def assess_session(
+    route_analysis, dns_analysis, connection_analysis, ipv6, namespace, mode=_UNSET_MODE
+):
     if not all(
         [
             route_analysis["ok"],
@@ -397,11 +418,12 @@ def assess_session(route_analysis, dns_analysis, connection_analysis, ipv6, name
         findings.append("no_routes_detected")
 
     if ipv6["data"]["enabled"]:
-        try:
-            with open("/run/ph4ntxm/mode", "r", encoding="ascii") as handle:
-                mode = handle.read().strip()
-        except OSError:
-            mode = None
+        if mode is _UNSET_MODE:
+            try:
+                with open("/run/ph4ntxm/mode", "r", encoding="ascii") as handle:
+                    mode = handle.read().strip()
+            except OSError:
+                mode = None
         if mode == "lonewolf":
             score -= SEVERITY["ipv6_enabled"]
             findings.append("ipv6_enabled")

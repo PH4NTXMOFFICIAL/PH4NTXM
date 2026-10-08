@@ -1,5 +1,6 @@
 Defaults !fqdn
 Defaults:ph4ntxm timestamp_timeout=0
+Defaults!/usr/local/bin/ph4ntxm-opsec-proc-backend,/usr/local/bin/ph4ntxm-opsec-radio-backend timestamp_timeout=-1,timestamp_type=ppid
 Defaults:ph4ntxm !setenv
 Defaults:ph4ntxm secure_path=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 

@@ -1,0 +1,300 @@
+#!/usr/bin/python3
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+from collections import deque
+from datetime import datetime, timezone
+from pathlib import Path
+import os
+import subprocess
+import sys
+import threading
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import GLib, GObject, Gtk
+
+from ph4ntxm_opsec_ui import Application, ReportWindow, label, scroll, section
+
+STATE_DIR = Path("/run/ph4ntxm-opsec-connwatch")
+HISTORY_LIMIT = 4096
+
+
+def read_stats(path):
+    rows = []
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as handle:
+            modified = os.fstat(handle.fileno()).st_mtime
+            malformed = 0
+            for line in handle:
+                if not line.strip() or line.startswith(("IP Address", "----")):
+                    continue
+                fields = [field.strip() for field in line.split("|")]
+                if (
+                    len(fields) < 3
+                    or not fields[0]
+                    or not fields[1].isdigit()
+                    or int(fields[1]) > 9223372036854775807
+                ):
+                    malformed += 1
+                    continue
+                rows.append((fields[0], int(fields[1]), fields[2]))
+        return {
+            "ok": not malformed,
+            "rows": rows,
+            "modified": modified,
+            "error": (
+                f"{malformed} snapshot rows could not be read" if malformed else None
+            ),
+        }
+    except OSError as error:
+        return {"ok": False, "rows": [], "modified": None, "error": str(error)}
+
+
+def read_history(path):
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as handle:
+            rows = [line.rstrip("\r\n") for line in deque(handle, maxlen=HISTORY_LIMIT)]
+        return {"ok": True, "rows": rows, "error": None}
+    except OSError as error:
+        return {"ok": False, "rows": [], "error": str(error)}
+
+
+def collect_snapshot():
+    try:
+        completed = subprocess.run(
+            ["/usr/bin/systemctl", "is-active", "ph4ntxm-opsec-connwatch.service"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+        state = completed.stdout.strip()
+        known = bool(state) and completed.returncode in (0, 3, 4)
+        service = {
+            "ok": known,
+            "active": completed.returncode == 0,
+            "state": state if known else "Unavailable",
+            "error": (
+                None if known
+                else completed.stderr.strip() or "Service state unavailable"
+            ),
+        }
+    except (OSError, subprocess.TimeoutExpired) as error:
+        service = {
+            "ok": False, "active": False,
+            "state": "Unavailable", "error": str(error),
+        }
+    stats = read_stats(STATE_DIR / "connwatch-stats.log")
+    history = read_history(STATE_DIR / "connwatch-alerts.history")
+    high = sum(hits > 50 for _, hits, _ in stats["rows"])
+    if not service["ok"] or not service["active"]:
+        title, score, status = "Monitoring unavailable", None, "warn"
+    elif not stats["ok"]:
+        title, score, status = "Snapshot unavailable", None, "warn"
+    elif high:
+        title, score, status = (
+            "High inbound attempt volume", max(0, 100 - high * 10), "warn"
+        )
+    elif stats["rows"]:
+        title, score, status = "Inbound attempts observed", 85, "warn"
+    else:
+        title, score, status = "No attempts recorded", 100, "good"
+    return {
+        "service": service,
+        "stats": stats,
+        "history": history,
+        "title": title,
+        "score": score,
+        "status": status,
+        "high_volume": high,
+        "collected_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def sync_rows(model, rows):
+    iterator = model.get_iter_first()
+    for values in rows:
+        if iterator is None:
+            model.append(values)
+        else:
+            if tuple(model[iterator]) != tuple(values):
+                model.set(
+                    iterator, *(item for pair in enumerate(values) for item in pair)
+                )
+            iterator = model.iter_next(iterator)
+    while iterator is not None:
+        current = iterator
+        iterator = model.iter_next(iterator)
+        model.remove(current)
+
+
+class ConnWatchWindow(ReportWindow):
+    def __init__(self, application):
+        super().__init__(
+            application,
+            "PH4NTXM OpSec ConnWatch",
+            "Saved inbound SYN activity and alert history",
+            "ph4ntxm-opsec-connwatch",
+        )
+        self.score_caption.set_text("Activity score")
+        self.poll_source = GLib.timeout_add(1500, self.poll)
+
+    def build_pages(self):
+        self.overview = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.stack.add_titled(scroll(self.overview), "overview", "Overview")
+        facts = section("Monitor snapshot")
+        self.facts = {}
+        for name in (
+            "Service", "Stats snapshot", "Saved sources", "High volume", "Alerts"
+        ):
+            widget = label("Checking", "data-value", True)
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18)
+            row.pack_start(label(name, "data-label"), False, False, 0)
+            widget.set_xalign(1)
+            row.pack_end(widget, True, True, 0)
+            facts.pack_start(row, False, False, 0)
+            self.facts[name] = widget
+        self.overview.pack_start(facts, False, False, 0)
+        self.evidence = label("", "subtitle", True)
+        self.evidence.set_no_show_all(True)
+        self.overview.pack_start(self.evidence, False, False, 0)
+        self.overview.pack_start(
+            label(
+                "Stats update only when packet activity occurs. Saved five-minute "
+                "counts can remain unchanged during quiet periods. Counts may include "
+                "routine network noise. Target ports are shown as saved by the "
+                "monitor.",
+                "subtitle",
+            ),
+            False,
+            False,
+            0,
+        )
+        self.sources = Gtk.ListStore(str, GObject.TYPE_INT64, str, str)
+        self.sorted_sources = Gtk.TreeModelSort(model=self.sources)
+        view = self.table(
+            self.sorted_sources,
+            (
+                ("Source address", 0, 360), ("5m Hits", 1, 100),
+                ("Target ports", 2, 210), ("Activity", 3, 110),
+            ),
+        )
+        view.set_tooltip_column(0)
+        self.stack.add_titled(scroll(view), "sources", "Sources")
+        self.alerts = Gtk.ListStore(str)
+        history = self.table(self.alerts, (("Saved volume alert", 0, 850),))
+        history.set_tooltip_column(0)
+        self.stack.add_titled(scroll(history), "history", "Alert History")
+
+    def collect_report(self, progress):
+        return collect_snapshot()
+
+    def refresh(self, _=None):
+        if self.running or self.closed:
+            return GLib.SOURCE_REMOVE
+        if self.report is None or _ is not None:
+            self.set_busy(True, "Reading saved ConnWatch evidence")
+        else:
+            self.running = True
+        threading.Thread(target=self.collect, daemon=True).start()
+        return GLib.SOURCE_REMOVE
+
+    def finish(self, report, error):
+        if self.closed:
+            return GLib.SOURCE_REMOVE
+        if error is None:
+            try:
+                self.populate(report)
+            except Exception as failure:
+                error = str(failure)
+        if error:
+            self.report = None
+            self.set_summary("Snapshot unavailable", status="warn", detail=error)
+            self.evidence.set_text(error)
+            self.evidence.show()
+        else:
+            self.report = report
+        self.set_busy(False)
+        self.stack.show_all()
+        return GLib.SOURCE_REMOVE
+
+    def populate(self, report):
+        stats = report["stats"]
+        service = report["service"]
+        history = report["history"]
+        self.set_summary(
+            report["title"],
+            score=report["score"],
+            status=report["status"],
+            detail=(
+                f"{len(stats['rows'])} saved sources · "
+                f"{report['high_volume']} high volume"
+            ),
+        )
+        if report["score"] is None:
+            self.show_score("Unavailable")
+        modified = stats["modified"]
+        stamp = (
+            datetime.fromtimestamp(modified)
+            .astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+            if modified is not None else "Unavailable"
+        )
+        self.facts["Service"].set_text(service["state"])
+        self.facts["Stats snapshot"].set_text(stamp)
+        self.facts["Saved sources"].set_text(str(len(stats["rows"])))
+        self.facts["High volume"].set_text(str(report["high_volume"]))
+        self.facts["Alerts"].set_text(
+            f"Latest {len(history['rows'])}, up to {HISTORY_LIMIT}"
+            if history["ok"] else "Unavailable"
+        )
+        errors = [
+            outcome["error"] for outcome in (service, stats, history)
+            if not outcome["ok"] and outcome.get("error")
+        ]
+        self.evidence.set_text("\n".join(errors))
+        self.evidence.set_visible(bool(errors))
+        sync_rows(
+            self.sources,
+            [
+                (source, hits, ports, "High" if hits > 50 else "Recorded")
+                for source, hits, ports in stats["rows"]
+            ],
+        )
+        sync_rows(self.alerts, [(text,) for text in history["rows"]])
+        checked = datetime.fromisoformat(report["collected_at"]).astimezone()
+        self.activity.set_text(f"Read {checked:%H:%M:%S} · Auto-refresh every 1.5s")
+
+    def poll(self):
+        if self.closed:
+            return GLib.SOURCE_REMOVE
+        self.refresh()
+        return GLib.SOURCE_CONTINUE
+
+    def on_destroy(self, _):
+        if hasattr(self, "poll_source"):
+            GLib.source_remove(self.poll_source)
+        super().on_destroy(_)
+
+    def copy_text(self, report):
+        lines = [
+            "PH4NTXM OpSec ConnWatch",
+            f"Service: {report['service']['state']}",
+            f"Stats snapshot: {self.facts['Stats snapshot'].get_text()}",
+            "Activity score: "
+            f"{report['score'] if report['score'] is not None else 'Unavailable'}",
+            f"Verdict: {report['title']}",
+            "Source address | 5m Hits | Target ports",
+        ]
+        lines.extend(" | ".join(map(str, row)) for row in report["stats"]["rows"])
+        lines.extend(("", "Latest saved alerts:", *report["history"]["rows"]))
+        return "\n".join(lines)
+
+
+def main():
+    return Application(ConnWatchWindow, "org.ph4ntxm.OpSecConnWatch").run(sys.argv)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

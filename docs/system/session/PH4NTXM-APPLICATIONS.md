@@ -22,6 +22,10 @@ USB Nuke arms or disarms matching storage-removal events. It does not select a p
 
 Document Airlock converts supported local documents in a disposable KVM guest and lets you review/export a raster PDF. Media viewers open original local files in disposable offline sandboxes. Airlock exports a new artifact. Media viewers keep selected source files read-only.
 
+The [OpSec Suite](PH4NTXM-OPSEC-SUITE.md) opens Network, Kernel, Process, Radio, ConnWatch and Shredder as GTK windows with the shared PH4NTXM appearance. Inspection reports provide findings, evidence views, Check Again and Copy Report. ConnWatch refreshes the existing monitor statistics and history while its window is open. Shredder shows a marked queue, confirms overwrite and deletion, and displays execution results. The terminal workflows remain available.
+
+Health opens the same GTK report from the menu, Boot Pilot and Identity. It provides grouped findings and a searchable full report, while the existing terminal command remains available.
+
 Application errors should be traced to the relevant helper, service or isolation prerequisite. A displayed status, accepted action and completed backend operation are separate points in the flow.
 
 ## [ CHECKS ]

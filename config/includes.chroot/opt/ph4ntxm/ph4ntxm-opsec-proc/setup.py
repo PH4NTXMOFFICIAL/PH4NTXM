@@ -8,6 +8,10 @@ setup(
     version="1.0",
     packages=find_packages(),
     entry_points={
-        "console_scripts": ["ph4ntxm-opsec-proc=" "ph4ntxm_opsec_proc.cli:main"]
+        "console_scripts": [
+            "ph4ntxm-opsec-proc=ph4ntxm_opsec_proc.cli:main",
+            "ph4ntxm-opsec-proc-gtk=ph4ntxm_opsec_proc.gui:main",
+            "ph4ntxm-opsec-proc-backend=ph4ntxm_opsec_proc.backend:main",
+        ]
     },
 )

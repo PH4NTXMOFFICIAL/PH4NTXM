@@ -300,7 +300,7 @@ def _acquire_lock():
     return None
 
 
-def shred_all(passes=DEFAULT_PASSES, progress_callback=None):
+def shred_all(passes=DEFAULT_PASSES, progress_callback=None, expected_marks=None):
     passes = max(1, min(MAX_PASSES, int(passes)))
     descriptor = _acquire_lock()
     if descriptor is None:
@@ -308,6 +308,8 @@ def shred_all(passes=DEFAULT_PASSES, progress_callback=None):
 
     try:
         files = _load_marks()
+        if expected_marks is not None and files != list(expected_marks):
+            return [("error", "System", "Marked targets changed; review and confirm the updated queue")]
         results = []
         for path in list(files):
             try:

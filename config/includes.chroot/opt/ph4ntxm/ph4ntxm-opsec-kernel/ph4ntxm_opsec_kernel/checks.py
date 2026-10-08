@@ -9,6 +9,7 @@ import subprocess
 SYSCTL = "/usr/sbin/sysctl"
 LSMOD = "/usr/sbin/lsmod"
 MODINFO = "/usr/sbin/modinfo"
+_UNSET_MODE = object()
 
 SEVERITY = {
     "suspicious_modules_present": 15,
@@ -80,6 +81,17 @@ SYSCTL_KEYS = (
     "net.ipv4.conf.default.rp_filter",
     "net.ipv4.tcp_timestamps",
     "net.ipv4.tcp_sack",
+    "net.core.bpf_jit_harden",
+    "net.ipv6.conf.all.disable_ipv6",
+    "net.ipv6.conf.default.disable_ipv6",
+)
+
+
+OPTIONAL_SYSCTL_KEYS = (
+    "kernel.unprivileged_bpf_disabled",
+    "kernel.yama.ptrace_scope",
+    "kernel.unprivileged_userns_clone",
+    "vm.unprivileged_userfaultfd",
     "net.core.bpf_jit_harden",
     "net.ipv6.conf.all.disable_ipv6",
     "net.ipv6.conf.default.disable_ipv6",
@@ -209,19 +221,45 @@ def analyze_modules(module_data):
 def read_sysctl(key):
     output = run([SYSCTL, "-n", key])
 
+    if not output["ok"] and key == "net.core.bpf_jit_harden":
+        output = run([
+            "/usr/bin/sudo", "-n", "--",
+            "/usr/local/sbin/ph4ntxm-session-status", "read",
+            "/proc/sys/net/core/bpf_jit_harden",
+        ])
+
     if not output["ok"]:
         return None
 
-    return output["data"]["stdout"].strip()
+    value = output["data"]["stdout"].strip()
+    if key == "net.core.bpf_jit_harden" and value not in ("0", "1", "2"):
+        return None
+    return value or None
+
+
+def missing_interface(path):
+    try:
+        os.stat(path)
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
+    return False
 
 
 def get_sysctl_state():
     values = {key: read_sysctl(key) for key in SYSCTL_KEYS}
+    unsupported = [
+        key
+        for key in OPTIONAL_SYSCTL_KEYS
+        if values.get(key) is None
+        and missing_interface("/proc/sys/" + key.replace(".", "/"))
+    ]
 
-    return result(True, data={"values": values})
+    return result(True, data={"values": values, "unsupported": unsupported})
 
 
-def analyze_sysctl_state(sysctl_state):
+def analyze_sysctl_state(sysctl_state, mode=_UNSET_MODE):
     if not sysctl_state["ok"]:
         return sysctl_state
     findings = []
@@ -254,7 +292,8 @@ def analyze_sysctl_state(sysctl_state):
         findings.append("bpf_jit_harden_disabled")
     if values.get("net.ipv4.tcp_syncookies") == "0":
         findings.append("tcp_syncookies_disabled")
-    mode = read_file("/run/ph4ntxm/mode")
+    if mode is _UNSET_MODE:
+        mode = read_file("/run/ph4ntxm/mode")
     expected = {
         "linux": {"timestamps": "1", "sack": "1", "rp_filter": "2", "ipv6": "0"},
         "windows": {"timestamps": "0", "sack": "1", "rp_filter": "2", "ipv6": "0"},
@@ -347,16 +386,38 @@ def get_kernel_hardening():
     crashkernel_loaded = read_file("/sys/kernel/kexec_crash_loaded")
     kexec_load_disabled = read_file("/proc/sys/kernel/kexec_load_disabled")
 
-    module_sig_enforce = read_file("/proc/sys/kernel/module_sig_enforce")
+    module_sig_enforce = read_file("/sys/module/module/parameters/sig_enforce")
+    if module_sig_enforce not in ("Y", "N", "y", "n", "1", "0"):
+        module_sig_enforce = None
+    unsupported = [
+        key
+        for key, value, path in (
+            ("lockdown", lockdown, "/sys/kernel/security/lockdown"),
+            (
+                "module_sig_enforce",
+                module_sig_enforce,
+                "/sys/module/module/parameters/sig_enforce",
+            ),
+        )
+        if value is None and missing_interface(path)
+    ]
 
     return result(
         True,
         data={
             "lockdown": lockdown_mode,
             "modules_disabled": modules_disabled == "1",
-            "module_sig_enforce": module_sig_enforce == "1",
+            "module_sig_enforce": module_sig_enforce in ("Y", "y", "1"),
             "crashkernel_loaded": crashkernel_loaded == "1",
             "kexec_loader_locked": kexec_load_disabled == "1",
+            "unsupported": unsupported,
+            "raw_values": {
+                "lockdown": lockdown,
+                "modules_disabled": modules_disabled,
+                "module_sig_enforce": module_sig_enforce,
+                "crashkernel_loaded": crashkernel_loaded,
+                "kexec_loader_locked": kexec_load_disabled,
+            },
         },
     )
 

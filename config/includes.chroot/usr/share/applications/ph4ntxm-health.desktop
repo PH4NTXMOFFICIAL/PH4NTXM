@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
 Name=PH4NTXM Health
-Comment=Show the session health report in a terminal
-Exec=xfce4-terminal --disable-server --class=PH4NTXM-Health --title="PH4NTXM Health" --hold --command="/usr/local/bin/ph4ntxm-health"
+Comment=Inspect session health, findings and runtime evidence
+Exec=/usr/local/bin/ph4ntxm-health-gtk
 StartupWMClass=PH4NTXM-Health
 Icon=ph4ntxm-health
 Terminal=false

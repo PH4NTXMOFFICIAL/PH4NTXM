@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
 Name=PH4NTXM OpSec Shredder
-Comment=Show Shredder options in a terminal
-Exec=xfce4-terminal --disable-server --class=PH4NTXM-OpSec-Shredder --title="PH4NTXM OpSec Shredder" --hold --command="/usr/local/bin/ph4-shred --help"
+Comment=Mark files and folders for best-effort overwrite and deletion
+Exec=/usr/local/bin/ph4ntxm-opsec-shredder-gtk
 StartupWMClass=PH4NTXM-OpSec-Shredder
 Icon=ph4ntxm-opsec-shredder
 Terminal=false

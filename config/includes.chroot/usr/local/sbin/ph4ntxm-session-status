@@ -13,7 +13,7 @@ READABLE = {
         "persona_seed", "boot_mac", "session_dhcp",
         "fake_dmi/sys_vendor", "fake_dmi/product_name", "fake_dmi/product_uuid",
     )
-}
+} | {"/proc/sys/net/core/bpf_jit_harden"}
 CHECKABLE = {
     BASE + name for name in (
         "mode", "lonewolf_seed", "persona_seed", "gpu_env", "screen_env",

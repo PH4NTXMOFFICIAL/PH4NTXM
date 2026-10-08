@@ -8,6 +8,9 @@ setup(
     version="1.0",
     packages=find_packages(),
     entry_points={
-        "console_scripts": ["ph4ntxm-opsec-kernel=" "ph4ntxm_opsec_kernel.cli:main"]
+        "console_scripts": [
+            "ph4ntxm-opsec-kernel=ph4ntxm_opsec_kernel.cli:main",
+            "ph4ntxm-opsec-kernel-gtk=ph4ntxm_opsec_kernel.gui:main",
+        ]
     },
 )

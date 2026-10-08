@@ -75,6 +75,10 @@ window {
     color: #ff6b88;
 }
 
+.status-warning {
+    color: #e7b96c;
+}
+
 .status-dot {
     font-size: 38px;
 }

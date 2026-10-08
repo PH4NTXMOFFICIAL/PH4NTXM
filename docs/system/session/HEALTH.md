@@ -6,13 +6,13 @@ Produces the categorized PH4NTXM runtime health report.
 
 ## [ STARTUP ]
 
-Health is a terminal report gathered when the command runs. Boot Pilot and Identity can open it in a held terminal, keeping the output visible after collection finishes.
+The menu, Boot Pilot and Identity open Health in a GTK window using the shared PH4NTXM interface and the selected Abyss or Ghost edition. The `ph4ntxm-health` terminal command remains available.
 
-The report starts from the current mode and local system state. It does not rerun initialization or automatically repair findings.
+The report starts from the current mode and local system state. It does not rerun initialization or automatically repair findings. Collection runs in the background; Check Again gathers a new snapshot and Copy Report copies the full collected report.
 
 ## [ RUNTIME ]
 
-Sections inspect the system foundation, identity records and hardware views, CPU/GPU/display data, memory and resource state, networking and termination prerequisites. Missing data is reported separately from a valid value.
+Sections inspect the system foundation, identity records and hardware views, CPU/GPU/display data, memory and resource state, networking and termination prerequisites. Missing data is reported separately from a valid value. Overview groups findings by section. Full Report includes every reported check, with section, search and Review only filters; selecting a row shows its complete value.
 
 CPU and RAM labels use the session persona. Memory usage is scaled from actual host usage, while memory-pressure warnings still use the actual usage percentage.
 
@@ -24,7 +24,7 @@ Scoring begins at 100. A warning subtracts two, an error six and a critical erro
 
 Without critical errors, 90 or above is Excellent, 70 or above is Good, and lower scores require attention. The report lists the individual findings and critical gates alongside the score.
 
-Route inspection is local. A route lookup such as `ip route get` does not send a public connectivity probe, and the report is not continuously refreshed after printing.
+Route inspection is local. A route lookup such as `ip route get` does not send a public connectivity probe, and the report is not continuously refreshed. The GTK window and terminal use the same checks and scoring; the GTK frontend reads the structured `ph4ntxm-health --json` output without parsing terminal colors.
 
 ## [ CHECKS ]
 
@@ -37,3 +37,4 @@ A readable generated file alone does not prove its corresponding mount, module, 
 ## [ SOURCE ]
 
 [ph4ntxm-health](../../../config/includes.chroot/usr/local/bin/ph4ntxm-health)
+[ph4ntxm-health-gtk](../../../config/includes.chroot/usr/local/bin/ph4ntxm-health-gtk)

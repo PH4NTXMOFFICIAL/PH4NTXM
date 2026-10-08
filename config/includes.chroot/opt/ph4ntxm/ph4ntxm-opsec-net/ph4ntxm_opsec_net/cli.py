@@ -3,18 +3,12 @@
 
 import sys
 import os
-from ph4ntxm_opsec_net.checks import (
-    get_default_routes,
-    analyze_routes,
-    get_dns_servers,
-    analyze_dns,
-    detect_dns_backend,
-    detect_ipv6_exposure,
-    get_network_namespace,
-    is_local_ip,
-    get_active_connections,
-    analyze_connections,
-    assess_session,
+from ph4ntxm_opsec_net.checks import is_local_ip
+from ph4ntxm_opsec_net.report import (
+    collect_report,
+    format_finding,
+    format_connection,
+    verdict,
 )
 
 from ph4ntxm_opsec_net.remediation import REMEDIATIONS
@@ -84,67 +78,6 @@ def status_tag(level):
 
 def kv(key, value, status=None):
     print(f"{status_tag(status)} {gray(f'{key}:'):<30} {value}")
-
-
-def format_finding(finding):
-    mapping = {
-        "dns_external_resolver": ("External DNS resolver detected", "warn"),
-        "active_connections_present": ("Active connections present", "info"),
-        "suspicious_connections_present": (
-            "Suspicious connection heuristic match",
-            "warn",
-        ),
-        "namespace_shared": ("Using host network namespace (intentional)", "info"),
-        "namespace_visibility_restricted": (
-            "Network namespace visibility restricted",
-            "info",
-        ),
-        "ipv6_enabled": ("IPv6 enabled", "warn"),
-        "no_routes_detected": ("No default routes detected (offline)", "info"),
-        "possible_reverse_shell": ("Shell-like public connection (heuristic)", "bad"),
-        "unauthorized_dns_traffic": ("Unauthorized DNS traffic (leak)", "bad"),
-        "unexpected_public_connection": ("Unexpected public connection", "bad"),
-    }
-
-    text, severity = mapping.get(
-        finding, (finding.replace("_", " ").capitalize(), "warn")
-    )
-
-    return text, severity
-
-
-def format_connection(conn):
-    parts = []
-
-    if conn.get("remote"):
-        parts.append(f"Remote={conn['remote']}")
-
-    if conn.get("process"):
-        parts.append(f"Process={conn['process']}")
-
-    if conn.get("pid"):
-        parts.append(f"PID={conn['pid']}")
-
-    if conn.get("uid") is not None:
-        parts.append(f"UID={conn['uid']}")
-
-    if conn.get("ptr"):
-        parts.append(f"PTR={conn['ptr']}")
-
-    if conn.get("exe"):
-        parts.append(f"Executable={conn['exe']}")
-
-    return " ".join(parts)
-
-
-def verdict(score):
-    if score >= 85:
-        return "No high-severity findings", "good"
-
-    if score >= 60:
-        return "Review recommended", "warn"
-
-    return "Attention required", "bad"
 
 
 def remediation_menu(findings):
@@ -257,8 +190,8 @@ def remediation_menu(findings):
 def main():
     section("PH4NTXM OpSec Network")
 
-    route_data = get_default_routes()
-    route_analysis = analyze_routes(route_data)
+    report = collect_report()
+    route_analysis = report["route_analysis"]
 
     section("Routes")
 
@@ -274,8 +207,7 @@ def main():
     else:
         kv("Routes", red(route_analysis.get("error", "Failed")), "bad")
 
-    dns_data = get_dns_servers()
-    dns_analysis = analyze_dns(route_analysis, dns_data)
+    dns_analysis = report["dns_analysis"]
 
     section("DNS")
 
@@ -287,7 +219,7 @@ def main():
 
             kv("Resolver", server, "good" if is_private else "active")
 
-        backend = detect_dns_backend()
+        backend = report["dns_backend"]
 
         if backend["ok"]:
             kv("Backend", backend["data"]["backend"], "active")
@@ -295,8 +227,8 @@ def main():
     else:
         kv("DNS", red(dns_analysis.get("error", "Failed")), "bad")
 
-    ipv6 = detect_ipv6_exposure()
-    namespace = get_network_namespace()
+    ipv6 = report["ipv6"]
+    namespace = report["namespace"]
 
     section("Network State")
 
@@ -319,8 +251,8 @@ def main():
         else:
             kv("Isolation", "Visibility Restricted", "info")
 
-    connection_data = get_active_connections()
-    connection_analysis = analyze_connections(connection_data)
+    connection_data = report["connection_data"]
+    connection_analysis = report["connection_analysis"]
 
     section("Active Connections")
 
@@ -349,9 +281,7 @@ def main():
     else:
         kv("Connections", red(connection_data.get("error", "Failed")), "bad")
 
-    assessment = assess_session(
-        route_analysis, dns_analysis, connection_analysis, ipv6, namespace
-    )
+    assessment = report["assessment"]
 
     section("Session Assessment")
 
