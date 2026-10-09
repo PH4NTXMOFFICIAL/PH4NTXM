@@ -38,22 +38,21 @@ jobs:
                 ca-certificates
 
               ./build.sh --edition abyss
-              chmod -R a+rX output
+              chmod a+r build/abyss/ph4ntxm-abyss-amd64.* build/abyss/SHA256SUMS
             '
 
-      - name: Show published outputs
+      - name: Show build outputs
         run: |
-          find output -maxdepth 3 -type f -printf '%p  %s bytes\n'
-          echo
-          find output -name SHA256SUMS -type f -exec sh -c '
-            echo "==> $1"
-            cat "$1"
-          ' _ {} \;
+          ls -lh build/abyss/ph4ntxm-abyss-amd64.* build/abyss/SHA256SUMS
+          cd build/abyss
+          sha256sum --check SHA256SUMS
 
       - name: Upload PH4NTXM Abyss Edition Test ISO
         uses: actions/upload-artifact@v7
         with:
           name: ph4ntxm-abyss-test-${{ github.sha }}
-          path: output/
+          path: |
+            build/abyss/ph4ntxm-abyss-amd64.*
+            build/abyss/SHA256SUMS
           if-no-files-found: error
           retention-days: 14
