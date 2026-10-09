@@ -1,9 +1,6 @@
 name: Build PH4NTXM Abyss Edition Test ISO
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
