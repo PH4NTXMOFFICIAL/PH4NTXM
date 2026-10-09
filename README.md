@@ -84,7 +84,7 @@ sudo ./build.sh --edition abyss
 
 Prefer Ghost? Use `sudo ./build.sh --edition ghost` for the last command.
 
-Your completed ISO and checksum appear under `output/`. Follow [INSTALLATION.md](INSTALLATION.md) to verify the image and prepare your boot media.
+Your completed ISO and checksum appear under `build/<edition>/`. Follow [INSTALLATION.md](INSTALLATION.md) to verify the image and prepare your boot media.
 
 On your first boot, start with Boot Pilot and follow the protection checks before opening the browser.
 

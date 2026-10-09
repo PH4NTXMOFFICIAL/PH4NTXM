@@ -48,13 +48,13 @@ Build only after both signatures match the trusted key.
 A good signature with an owner-trust warning still requires fingerprint confirmation.  
 The signatures cover source revisions, not local changes or the built ISO.
 
-Each exported build includes `SHA256SUMS`. Run this from its `output/` subdirectory alongside the ISO, and repeat after transfer:
+Each successful build includes `SHA256SUMS`. Run this from `build/<edition>/` alongside the ISO, and repeat after transfer:
 
 ```bash
 sha256sum --check SHA256SUMS
 ```
 
-Keep the source revision, local change record, edition and exported checksums together when recording a build. They identify what was built and which exported files were checked. A checksum verifies the file against that record. Source authenticity still comes from the trusted signing key.
+Keep the source revision, local change record, edition and checksums together when recording a build. They identify what was built and which image was checked. A checksum verifies the file against that record. Source authenticity still comes from the trusted signing key.
 
 ## [ REDISTRIBUTION ]
 

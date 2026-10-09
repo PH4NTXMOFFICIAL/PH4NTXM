@@ -42,7 +42,7 @@ To inspect the prepared configuration without downloading packages or building a
 
 Run preparation with sudo if an earlier sudo build owns the edition directory. Inspect the resulting `build/<edition>/config/` tree to see the shared configuration with that edition applied. If a previous live-build is still present, prepare-only stops. The normal build command performs the required cleanup first.
 
-The wrapper prepares each edition under `build/<edition>/`, runs `lb config` and `lb build`, and copies successful outputs into a new directory under `output/`, together with `SHA256SUMS`. Repeating the build command cleans the selected edition's previous live-build state while preserving its package cache and previously exported images. It does not clean builds in the repository root or the other edition.
+The wrapper prepares each edition under `build/<edition>/`, runs `lb config` and `lb build`, and writes `SHA256SUMS` beside the resulting ISO. Repeating the build command replaces the selected edition's previous ISO and checksum while preserving its package cache. It does not clean builds in the repository root or the other edition.
 
 The usual `sudo lb config` followed by `sudo lb build` from the repository root also builds Abyss through this wrapper. Choose Ghost explicitly with `--edition ghost`.
 
@@ -54,9 +54,9 @@ See [BUILD EDITIONS](docs/build/BUILD-EDITIONS.md) for source layout and appeara
 
 ## [ CLEANUP AND OUTPUTS ]
 
-The build script cleans the selected edition's previous build before rebuilding. The ISO inside `build/abyss/` or `build/ghost/` is a working output. Successful builds also export a separate copy into a timestamped directory under `output/`.
+The build script keeps one current ISO per edition inside `build/abyss/` or `build/ghost/`, with `SHA256SUMS` alongside it. There is no additional copy or timestamped export. Save an image elsewhere before rebuilding if you want to retain it.
 
-Plain `lb clean` removes intermediate state and matching generated images in the working directory where it runs. At the repository root it cleans older root-level builds. It does not descend into `build/abyss/` or `build/ghost/`. When run inside an edition's build directory, it removes that directory's generated ISO. The exported copies under the repository's `output/` directory are retained by this workflow.
+Plain `lb clean` removes intermediate state and matching generated images in the working directory where it runs. At the repository root it cleans older root-level builds. It does not descend into `build/abyss/` or `build/ghost/`. When run inside an edition's build directory, it removes that directory's generated ISO. The wrapper also removes the previous checksum when cleaning before a new build. Older `output/` directories from earlier versions are not used or deleted automatically.
 
 Cleanup preserves the source under `config/` and `editions/`. Switching the next build to the other edition uses the same clone. Package caches are kept by plain `lb clean`. `--purge` also removes the cache in the directory being cleaned.
 

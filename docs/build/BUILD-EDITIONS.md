@@ -18,7 +18,7 @@ Preparation copies the shared configuration and selected edition into `build/<ed
 
 Boot menu entries remain in the shared configuration. Edition-specific GRUB and Syslinux appearance files belong under `editions/<name>/config/bootloaders/`.
 
-Keep source, artwork, build tools and required tests in Git. Generated build trees, package caches and exported images are excluded.
+Keep source, artwork, build tools and required tests in Git. Generated build trees, package caches and generated images are excluded.
 
 ## [ BUILD ]
 
@@ -31,7 +31,7 @@ Omitting `--edition` selects Abyss. Repository-root `sudo lb config` followed by
 
 The wrapper runs `lb config` and `lb build` in the selected workspace. Rebuilds clean that edition's previous build while retaining its package cache. Checks reject unsafe workspaces, leftover mounts and concurrent builds of the same edition.
 
-Successful builds export `ph4ntxm-<edition>-amd64.hybrid.iso`, manifests and `SHA256SUMS` into `output/<edition>-<UTC timestamp>-<sequence>/`, for example `abyss-20260919T153000Z-001`. Each edition has a persistent counter in `output/.<edition>-sequence`. Deleting old exports or cleaning the build does not reset it. Keep these counter files to retain numbering. Interrupted exports may leave gaps. Existing exports and the other edition's build are preserved. See [INSTALLATION](../../INSTALLATION.md#-cleanup-and-outputs-) for cleanup details and [DISTRIBUTION](../../DISTRIBUTION.md) for source verification and distribution policy.
+Successful builds keep `ph4ntxm-<edition>-amd64.hybrid.iso`, manifests and `SHA256SUMS` directly in `build/<edition>/`. The next build replaces that edition's previous image; save it elsewhere first if you need it. No second ISO copy or timestamped export is created. The other edition's build is preserved. See [INSTALLATION](../../INSTALLATION.md#-cleanup-and-outputs-) for cleanup details and [DISTRIBUTION](../../DISTRIBUTION.md) for source verification and distribution policy.
 
 ## [ APPEARANCE ]
 

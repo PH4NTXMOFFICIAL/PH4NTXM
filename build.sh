@@ -75,6 +75,7 @@ if [[ -d "$WORK/.build" || -d "$WORK/chroot" || -d "$WORK/binary" ]]; then
         exit 1
     fi
     (cd -- "$WORK" && lb clean)
+    rm -f -- "$WORK/SHA256SUMS"
 fi
 
 python3 "$ROOT/tools/prepare-edition.py" --edition "$EDITION"
@@ -89,4 +90,4 @@ fi
     lb build "${BUILD_ARGS[@]}"
 )
 
-python3 "$ROOT/tools/prepare-edition.py" --edition "$EDITION" --publish
+python3 "$ROOT/tools/prepare-edition.py" --edition "$EDITION" --finalize
