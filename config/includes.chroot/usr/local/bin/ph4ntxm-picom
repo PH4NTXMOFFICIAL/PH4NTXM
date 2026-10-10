@@ -6,4 +6,4 @@ CONFIG="$HOME/.config/picom/picom.conf"
 
 pgrep -x picom >/dev/null 2>&1 && exit 0
 
-exec picom --backend xrender --config "$CONFIG"
+exec picom --config "$CONFIG"

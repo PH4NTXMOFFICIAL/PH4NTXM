@@ -12,7 +12,7 @@ The shared state is the connection between these layers. A generated file, a com
 
 `editions/abyss` and `editions/ghost` supply appearance overlays. `build.sh` validates the selection, prepares an independent tree under `build/<edition>`, runs live-build and keeps the latest ISO/checksum in that workspace. A per-edition lock prevents two builds from modifying the same working tree.
 
-Both editions share the protection chain and boot modes. XFCE uses Picom's XRender backend, with XFWM compositing disabled. The shared configuration supplies rounded corners and 95 percent opacity for eligible normal windows. Fullscreen windows, Firefox/Tor Browser, image/media viewers and Document Airlock are excluded from this opacity rule. XFCE Terminal keeps its separate background opacity. Vsync, shadows and blur are disabled in the shared Picom configuration.
+Both editions share the protection chain and boot modes. XFCE uses Picom's GLX backend, with XFWM compositing disabled. The shared configuration supplies rounded corners and 95 percent opacity for eligible normal windows. Fullscreen windows, Firefox/Tor Browser, image/media viewers and Document Airlock are excluded from this opacity rule. XFCE Terminal keeps its separate background opacity. Background blur uses `dual_kawase` at strength `2`. Menus, dropdown lists and tooltips are excluded from background blur. Vsync, shadows and frame background blur are disabled in the shared Picom configuration.
 
 See [Build Editions](docs/build/BUILD-EDITIONS.md) for the build overlay details.
 
