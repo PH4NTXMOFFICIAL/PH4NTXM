@@ -4,17 +4,19 @@
 
 from contextlib import contextmanager
 from ctypes import c_int
+import io
 import json
 import logging
 from pathlib import Path
 import struct
 import sys
+from zlib import crc32
 
 from libarchive import ffi
 from libarchive.entry import ArchiveEntry
 from libarchive.exception import ArchiveError
 
-from airlock import read_exact
+from airlock import AirlockError, read_exact
 from archive_protocol import (
     ACK_MAGIC,
     CHUNK_SIZE,
@@ -44,18 +46,98 @@ class ArchiveRejected(ValueError):
     pass
 
 
+def read_rar_bytes(source, size):
+    try:
+        return read_exact(source, size)
+    except AirlockError as error:
+        raise ArchiveRejected("The RAR header is damaged or unsupported.") from error
+
+
+def rar_vint(source, limit=10):
+    value = 0
+    encoded = bytearray()
+    for offset in range(limit):
+        byte = read_rar_bytes(source, 1)[0]
+        encoded.append(byte)
+        if offset == 9 and byte > 1:
+            raise ArchiveRejected("The RAR header is damaged or unsupported.")
+        value |= (byte & 0x7F) << (offset * 7)
+        if byte < 0x80:
+            return value, bytes(encoded)
+    raise ArchiveRejected("The RAR header is damaged or unsupported.")
+
+
+def validate_rar_volume(path, pointer, family):
+    if any(ffi.filter_name(pointer, index) != b"none" for index in range(ffi.filter_count(pointer))):
+        raise ArchiveRejected("Compressed wrappers around RAR archives are not supported.")
+    signature, scan_limit = {
+        0xD0000: (b"Rar!\x1a\x07\x00", 128 * 1024),
+        0x100000: (b"Rar!\x1a\x07\x01\x00", 512 * 1024),
+    }[family]
+    with Path(path).open("rb") as source:
+        prefix = source.read(8)
+        if prefix.startswith(signature):
+            offset = 0
+        elif prefix.startswith((b"MZ", b"\x7fELF")):
+            source.seek(0)
+            prefix = source.read(scan_limit)
+            offset = next((position for position in range(0, len(prefix) - len(signature) + 1, 16) if prefix[position : position + len(signature)] == signature), None)
+            if offset is None:
+                raise ArchiveRejected("The self-extracting RAR header could not be verified.")
+        else:
+            raise ArchiveRejected("The RAR header could not be verified.")
+        source.seek(offset + len(signature))
+        if family == 0xD0000:
+            header = read_rar_bytes(source, 7)
+            checksum, header_type, flags, size = struct.unpack("<HBHH", header)
+            if header_type != 0x73 or size < 13:
+                raise ArchiveRejected("The RAR header is damaged or unsupported.")
+            header += read_rar_bytes(source, size - len(header))
+            if crc32(header[2:]) & 0xFFFF != checksum:
+                raise ArchiveRejected("The RAR header is damaged or unsupported.")
+            multipart = bool(flags & 0x0001)
+        else:
+            checksum = struct.unpack("<I", read_rar_bytes(source, 4))[0]
+            size, encoded_size = rar_vint(source, 3)
+            if not 3 <= size < 2 * 1024 * 1024:
+                raise ArchiveRejected("The RAR header is damaged or unsupported.")
+            header = read_rar_bytes(source, size)
+            if crc32(encoded_size + header) != checksum:
+                raise ArchiveRejected("The RAR header is damaged or unsupported.")
+            fields = io.BytesIO(header)
+            header_type, _ = rar_vint(fields)
+            header_flags, _ = rar_vint(fields)
+            if header_type != 1 or header_flags & 0x001A:
+                raise ArchiveRejected("The RAR header is damaged or unsupported.")
+            extra_size = rar_vint(fields)[0] if header_flags & 0x0001 else 0
+            if extra_size >= len(header) - fields.tell():
+                raise ArchiveRejected("The RAR header is damaged or unsupported.")
+            main_fields = io.BytesIO(header[fields.tell() : len(header) - extra_size])
+            flags, _ = rar_vint(main_fields)
+            multipart = bool(flags & 0x0003)
+        if multipart:
+            raise ArchiveRejected("Multipart RAR archives are not supported. Choose a single-volume archive.")
+
+
 class ArchiveReader:
-    def __init__(self, pointer):
+    def __init__(self, pointer, path):
         self.pointer = pointer
+        self.path = path
+        self.volume_checked = False
 
     def __iter__(self):
         while True:
             entry = ArchiveEntry(self.pointer)
             result = ffi.read_next_header2(self.pointer, entry._entry_p)
+            if result not in (ffi.ARCHIVE_OK, ffi.ARCHIVE_EOF):
+                raise ArchiveRejected("The archive is damaged or unsupported.")
+            if not self.volume_checked:
+                family = archive_format(self.pointer) & 0xFF0000
+                if family in (0xD0000, 0x100000):
+                    validate_rar_volume(self.path, self.pointer, family)
+                self.volume_checked = True
             if result == ffi.ARCHIVE_EOF:
                 return
-            if result != ffi.ARCHIVE_OK:
-                raise ArchiveRejected("The archive is damaged or unsupported.")
             yield entry
 
     def format_label(self):
@@ -77,7 +159,7 @@ def archive_reader(path):
                 raise ArchiveRejected("The archive reader is unavailable.")
         if ffi.read_open_filename_w(pointer, str(path), CHUNK_SIZE) != ffi.ARCHIVE_OK:
             raise ArchiveRejected("The archive is damaged or unsupported.")
-        yield ArchiveReader(pointer)
+        yield ArchiveReader(pointer, path)
     finally:
         ffi.read_free(pointer)
 

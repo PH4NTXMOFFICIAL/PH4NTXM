@@ -3,6 +3,7 @@
 # Licensed under the GNU General Public License v3.0.
 
 from contextlib import contextmanager
+import gzip
 import io
 import json
 from pathlib import Path
@@ -16,6 +17,7 @@ import unittest
 import warnings
 from unittest.mock import patch
 import zipfile
+from zlib import crc32
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import archive_guest as archive
@@ -38,6 +40,30 @@ class ArchiveGuestTests(unittest.TestCase):
                 for name, data in records:
                     writer.writestr(name, data)
         return target
+
+    def rar4_block(self, header_type, flags, payload=b""):
+        body = struct.pack("<BHH", header_type, flags, 7 + len(payload)) + payload
+        return struct.pack("<H", crc32(body) & 0xFFFF) + body
+
+    def vint(self, value):
+        result = bytearray()
+        while value > 0x7F:
+            result.append((value & 0x7F) | 0x80)
+            value >>= 7
+        result.append(value)
+        return bytes(result)
+
+    def rar5_block(self, body):
+        value = self.vint(len(body)) + body
+        return struct.pack("<I", crc32(value)) + value
+
+    def rar_archive(self, version, flags):
+        if version == 4:
+            return b"Rar!\x1a\x07\x00" + self.rar4_block(0x73, flags, b"\0" * 6) + self.rar4_block(0x7B, 0)
+        body = b"\x01\x00" + self.vint(flags)
+        if flags & 2:
+            body += b"\x01"
+        return b"Rar!\x1a\x07\x01\x00" + self.rar5_block(body) + self.rar5_block(b"\x05\x04\x00")
 
     def unpack_response(self, data):
         source = io.BytesIO(data)
@@ -137,6 +163,99 @@ class ArchiveGuestTests(unittest.TestCase):
         target.write_bytes(b"this is plain text")
         with self.assertRaises((archive.ArchiveError, archive.ArchiveRejected)):
             archive.list_archive(target)
+
+    def test_multipart_rar_rejected_before_listing_or_extraction(self):
+        for version, flags in ((4, 1), (4, 0x101), (5, 1), (5, 3)):
+            target = self.root / "source.rar"
+            target.write_bytes(self.rar_archive(version, flags))
+            with self.subTest(version=version, flags=flags):
+                with self.assertRaisesRegex(archive.ArchiveRejected, "Multipart RAR"):
+                    archive.list_archive(target)
+                outgoing = io.BytesIO()
+                with self.assertRaisesRegex(archive.ArchiveRejected, "Multipart RAR"):
+                    archive.Response(outgoing).extract(target, 0)
+                self.assertEqual(outgoing.getvalue(), b"")
+
+    def test_single_volume_rar_and_rar5_headers_still_open(self):
+        for version, flags in ((4, 0), (4, 0x100), (5, 0), (5, 4)):
+            target = self.root / "source.rar"
+            target.write_bytes(self.rar_archive(version, flags))
+            with self.subTest(version=version, flags=flags):
+                self.assertEqual(archive.list_archive(target), {"format": "RAR", "entries": []})
+
+    def test_sfx_scan_matches_aligned_native_signature(self):
+        for version in (4, 5):
+            target = self.root / "source.rar"
+            prefix = bytearray(b"MZ" + b"\0" * (65536 - 2))
+            fake = self.rar_archive(version, 1)
+            prefix[17 : 17 + len(fake)] = fake
+            target.write_bytes(prefix + self.rar_archive(version, 0) + b"\0" * 1024)
+            with self.subTest(version=version):
+                self.assertEqual(archive.list_archive(target), {"format": "RAR", "entries": []})
+                fake = self.rar_archive(version, 0)
+                prefix[17 : 17 + len(fake)] = fake
+                target.write_bytes(prefix + self.rar_archive(version, 1) + b"\0" * 1024)
+                with self.assertRaisesRegex(archive.ArchiveRejected, "Multipart RAR"):
+                    archive.list_archive(target)
+
+    def test_embedded_rar_markers_do_not_change_container_format(self):
+        for version in (4, 5):
+            payload = self.rar_archive(version, 1)
+            target = self.zip_archive((("part.rar", payload),))
+            self.assertEqual(archive.list_archive(target)["format"], "ZIP")
+            target = self.root / "source.tar"
+            with tarfile.open(target, "w") as writer:
+                entry = tarfile.TarInfo("part.rar")
+                entry.size = len(payload)
+                writer.addfile(entry, io.BytesIO(payload))
+            self.assertEqual(archive.list_archive(target)["format"], "TAR")
+
+    def test_filtered_rar_cannot_bypass_volume_check(self):
+        for version in (4, 5):
+            for flags in (0, 1):
+                target = self.root / "wrapped.rar"
+                target.write_bytes(gzip.compress(self.rar_archive(version, flags)))
+                with self.subTest(version=version, flags=flags):
+                    with self.assertRaisesRegex(archive.ArchiveRejected, "Compressed wrappers"):
+                        archive.list_archive(target)
+
+    def test_rar_header_crc_bounds_and_parser_agreement(self):
+        malformed = [
+            b"Rar!\x1a\x07\x00" + b"\0" * 3,
+            b"Rar!\x1a\x07\x01\x00" + b"\0" * 4 + b"\x80" * 3,
+            b"Rar!\x1a\x07\x01\x00" + self.rar5_block(b"\x01\x02\x01\x00"),
+            b"Rar!\x1a\x07\x01\x00" + self.rar5_block(b"\x01\x08\x00"),
+            b"Rar!\x1a\x07\x01\x00" + self.rar5_block(b"\x01\x10\x00"),
+            b"Rar!\x1a\x07\x01\x00" + self.rar5_block(b"\x01\x01\x05\x00"),
+        ]
+        bad_crc = bytearray(self.rar_archive(5, 0))
+        bad_crc[8] ^= 1
+        malformed.append(bytes(bad_crc))
+        with patch.object(archive.ffi, "filter_count", return_value=1), patch.object(archive.ffi, "filter_name", return_value=b"none"):
+            for data in malformed:
+                target = self.root / "malformed.rar"
+                target.write_bytes(data)
+                family = 0x100000 if data[6] == 1 else 0xD0000
+                with self.subTest(data=data):
+                    with self.assertRaises(archive.ArchiveRejected):
+                        archive.validate_rar_volume(target, None, family)
+        self.assertEqual(archive.rar_vint(io.BytesIO(b"\xff" * 9 + b"\x01"))[0], 2 ** 64 - 1)
+        for data in (b"\xff" * 9 + b"\x02", b"\x80" * 10, b""):
+            with self.assertRaises(archive.ArchiveRejected):
+                archive.rar_vint(io.BytesIO(data))
+
+    def test_multipart_error_response_preserves_protocol_handshake(self):
+        source = self.rar_archive(4, 1)
+        incoming = io.BytesIO(struct.pack("!II", len(source), protocol.LIST_INDEX) + source + protocol.ACK_MAGIC)
+        outgoing = io.BytesIO()
+        with patch.object(archive, "ARCHIVE_PATH", self.root / "received"), patch.object(archive.sys, "stdin", SimpleNamespace(buffer=incoming)), patch.object(archive.sys, "stdout", SimpleNamespace(buffer=outgoing)):
+            archive.main()
+        stream = io.BytesIO(outgoing.getvalue())
+        self.assertEqual(stream.read(8), protocol.ERROR_MAGIC)
+        size = struct.unpack("!I", stream.read(4))[0]
+        self.assertIn("Multipart RAR", json.loads(stream.read(size))["error"])
+        self.assertEqual(stream.read(), protocol.END_MAGIC)
+        self.assertEqual(incoming.read(), b"")
 
     def test_name_entry_metadata_and_declared_size_limits(self):
         target = self.zip_archive((("x" * (protocol.MAX_NAME + 1) + ".txt", b"x"),))

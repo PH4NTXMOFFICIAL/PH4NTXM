@@ -119,6 +119,7 @@ def desktop(archive=None):
             self.closing = False
             self.cancelled = threading.Event()
             self.entries = {}
+            self.chooser_dialog = None
             root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
             self.add(root)
             header = add_class(
@@ -154,7 +155,8 @@ def desktop(archive=None):
             self.store = Gtk.ListStore(int, str, str, str, str, bool, str, str, str)
             self.filtered = self.store.filter_new()
             self.filtered.set_visible_func(self.entry_visible)
-            self.tree = Gtk.TreeView(model=self.filtered)
+            self.sorted = Gtk.TreeModelSort(model=self.filtered)
+            self.tree = Gtk.TreeView(model=self.sorted)
             self.tree.set_headers_visible(True)
             self.tree.set_enable_search(False)
             self.tree.set_tooltip_column(8)
@@ -282,8 +284,18 @@ def desktop(archive=None):
             all_filter.set_name("All files")
             all_filter.add_pattern("*")
             dialog.add_filter(all_filter)
-            filename = dialog.get_filename() if dialog.run() == Gtk.ResponseType.ACCEPT else None
-            dialog.destroy()
+            self.chooser_dialog = dialog
+            filename = None
+            try:
+                response = dialog.run()
+                if response == Gtk.ResponseType.ACCEPT and not self.closing:
+                    filename = dialog.get_filename()
+            finally:
+                self.chooser_dialog = None
+                dialog.destroy()
+            if self.closing:
+                self.finish_closing()
+                return
             if filename:
                 self.inspect(filename)
 
@@ -419,7 +431,7 @@ def desktop(archive=None):
             self.status.set_text("Cancelling the current operation…")
 
         def finish_closing(self):
-            if not self.closing:
+            if not self.closing or self.busy or self.chooser_dialog is not None:
                 return False
             if self.session:
                 self.session.close()
@@ -428,11 +440,13 @@ def desktop(archive=None):
             return True
 
         def on_close(self, *_):
-            if self.busy:
-                self.closing = True
-                self.cancelled.set()
+            self.closing = True
+            self.cancelled.set()
+            self.update_controls()
+            if self.busy or self.chooser_dialog is not None:
                 self.status.set_text("Closing the isolated session…")
-                self.update_controls()
+                if self.chooser_dialog is not None:
+                    self.chooser_dialog.response(Gtk.ResponseType.CANCEL)
                 return True
             if self.session:
                 self.session.close()
