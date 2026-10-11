@@ -3,23 +3,68 @@
 # Licensed under the GNU General Public License v3.0.
 
 from datetime import datetime
+import subprocess
 import sys
+import threading
 
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
+from gi.repository import GLib, Gtk
 
 from ph4ntxm_opsec_ui import (
     Application,
+    add_class,
     ReportWindow,
     data_row,
     finding_row,
     label,
+    read_session_mode,
     run_backend,
     scroll,
     section,
+    set_status,
 )
+
+from ph4ntxm_opsec_ui.browser_check import BrowserCheckSession
+from ph4ntxm_opsec_ui.tor_browser_check import tor_browser_report
+
+BROWSER_STATUSES = {
+    "match": ("Matches", "good"),
+    "different": ("Differs", "warn"),
+    "blocked": ("Blocked", "good"),
+    "unavailable": ("Unavailable", "info"),
+    "info": ("Info", "info"),
+}
+
+
+def browser_value(value):
+    if value is None:
+        return "Unavailable"
+    if isinstance(value, list):
+        return ", ".join(str(item) for item in value) or "None observed"
+    return str(value)
+
+
+def browser_report_text(report):
+    lines = [
+        "PH4NTXM Browser Check",
+        f"Collected: {report['collected_at']}",
+        f"Mode: {report['mode']}",
+        report["scope"],
+    ]
+    for row in report["rows"]:
+        state, _ = BROWSER_STATUSES[row["status"]]
+        lines.extend((
+            "",
+            f"{row['label']}: {state}",
+            f"Expected: {browser_value(row['expected'])}",
+            f"Observed: {browser_value(row['observed'])}",
+        ))
+        if row["detail"]:
+            lines.append(row["detail"])
+    return "\n".join(lines)
+
 
 ROW_STATUSES = {
     "pass": ("OK", "good"),
@@ -106,6 +151,13 @@ def report_text(report):
 
 class HealthWindow(ReportWindow):
     def __init__(self, application):
+        self.browser_session = None
+        self.browser_process = None
+        self.browser_source = 0
+        self.browser_generation = 0
+        self.browser_busy = False
+        self.browser_report = None
+        self.browser_lock = threading.Lock()
         super().__init__(
             application,
             "PH4NTXM Health",
@@ -156,6 +208,208 @@ class HealthWindow(ReportWindow):
         details_scroll.set_max_content_height(130)
         page.pack_start(details_scroll, False, True, 0)
         self.stack.add_titled(page, "report", "Full Report")
+        self.build_browser_page()
+
+    def build_browser_page(self):
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        intro = section("Browser Check")
+        self.browser_intro = label("", "subtitle")
+        intro.pack_start(self.browser_intro, False, False, 0)
+        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.browser_start = add_class(Gtk.Button(), "primary")
+        self.browser_start.connect("clicked", self.start_browser_check)
+        self.browser_cancel = Gtk.Button(label="Cancel")
+        self.browser_cancel.connect("clicked", self.cancel_browser_check)
+        self.browser_copy = Gtk.Button(label="Copy Browser Report")
+        self.browser_copy.connect("clicked", self.copy_browser_report)
+        controls.pack_start(self.browser_start, False, False, 0)
+        controls.pack_start(self.browser_cancel, False, False, 0)
+        controls.pack_end(self.browser_copy, False, False, 0)
+        intro.pack_start(controls, False, False, 0)
+        self.browser_status = label("No browser check collected", "data-value", True)
+        intro.pack_start(self.browser_status, False, False, 0)
+        page.pack_start(intro, False, False, 0)
+        self.browser_rows = Gtk.ListStore(str, str, str, str, str)
+        self.browser_sorted = Gtk.TreeModelSort(model=self.browser_rows)
+        view = self.table(
+            self.browser_sorted,
+            (("Check", 0, 165), ("Expected", 1, 220),
+             ("Observed", 2, 220), ("Result", 3, 110)),
+        )
+        view.get_selection().connect("changed", self.select_browser_row)
+        page.pack_start(scroll(view), True, True, 0)
+        self.browser_details = label("Select a result for its full explanation", "data-value", True)
+        details = scroll(self.browser_details)
+        details.set_min_content_height(72)
+        details.set_max_content_height(130)
+        page.pack_start(details, False, True, 0)
+        self.browser_scope = label("Browser checks are collected separately from the Health score.", "subtitle")
+        page.pack_start(self.browser_scope, False, False, 0)
+        self.stack.add_titled(page, "browser", "Browser Check")
+        self.update_browser_controls()
+
+    def update_browser_controls(self):
+        mode = read_session_mode()
+        tor = mode == "lonewolf"
+        self.browser_start.set_label("Check Tor Browser" if tor else "Check Firefox")
+        self.browser_intro.set_text(
+            "Inspect Tor Browser verification, protection and private session evidence locally."
+            if tor else
+            "Open a local Firefox tab and compare browser-visible values with the session persona."
+        )
+        self.browser_start.set_sensitive(
+            not self.closed and not self.running and not self.browser_busy
+            and mode in ("linux", "windows", "lonewolf")
+        )
+        self.browser_cancel.set_sensitive(self.browser_busy)
+        self.browser_copy.set_sensitive(self.browser_report is not None and not self.browser_busy)
+
+    def set_busy(self, busy, phase=None):
+        super().set_busy(busy, phase)
+        if hasattr(self, "browser_start"):
+            self.update_browser_controls()
+
+    def select_browser_row(self, selection):
+        model, iterator = selection.get_selected()
+        if iterator is None:
+            self.browser_details.set_text("Select a result for its full explanation")
+            return
+        row = model[iterator]
+        self.browser_details.set_text(
+            f"{row[0]} · {row[3]}\nExpected: {row[1]}\nObserved: {row[2]}\n{row[4]}"
+        )
+
+    def start_browser_check(self, _=None):
+        if self.closed or self.running or self.browser_busy:
+            return
+        mode = read_session_mode()
+        if mode not in ("linux", "windows", "lonewolf"):
+            return
+        self.browser_generation += 1
+        generation = self.browser_generation
+        self.browser_busy = True
+        self.browser_report = None
+        self.browser_rows.clear()
+        self.browser_details.set_text("Results will appear after the check")
+        self.browser_status.set_text(
+            "Checking Tor Browser locally…" if mode == "lonewolf" else "Preparing the local Firefox check…"
+        )
+        set_status(self.browser_status, "info")
+        self.update_browser_controls()
+        threading.Thread(target=self.prepare_browser_check, args=(generation, mode), daemon=True).start()
+
+    def prepare_browser_check(self, generation, mode):
+        session = None
+        try:
+            if mode == "lonewolf":
+                report = tor_browser_report()
+                GLib.idle_add(self.finish_browser_check, generation, report, None)
+                return
+            session = BrowserCheckSession()
+            with self.browser_lock:
+                if self.closed or generation != self.browser_generation:
+                    session.close()
+                    return
+                self.browser_session = session
+                url = session.start()
+            GLib.idle_add(self.open_browser_check, generation, session, url)
+        except Exception as error:
+            if session is not None:
+                session.close()
+            GLib.idle_add(self.finish_browser_check, generation, None, str(error))
+
+    def open_browser_check(self, generation, session, url):
+        if self.closed or generation != self.browser_generation:
+            session.close()
+            return GLib.SOURCE_REMOVE
+        try:
+            process = subprocess.Popen(
+                ["/usr/bin/firefox-esr", "-new-tab", url],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+        except OSError as error:
+            return self.finish_browser_check(generation, None, str(error))
+        self.browser_process = process
+        threading.Thread(target=process.wait, daemon=True).start()
+        self.browser_status.set_text("Waiting for the local Firefox tab…")
+        self.browser_source = GLib.timeout_add(250, self.poll_browser_check, generation)
+        return GLib.SOURCE_REMOVE
+
+    def poll_browser_check(self, generation):
+        if self.closed or generation != self.browser_generation:
+            self.browser_source = 0
+            return GLib.SOURCE_REMOVE
+        try:
+            report = self.browser_session.poll()
+            if report is None and self.browser_process.poll() not in (None, 0):
+                raise RuntimeError("Firefox could not open the local check. Try again.")
+        except Exception as error:
+            self.browser_source = 0
+            return self.finish_browser_check(generation, None, str(error))
+        if report is None:
+            return GLib.SOURCE_CONTINUE
+        self.browser_source = 0
+        return self.finish_browser_check(generation, report, None)
+
+    def close_browser_session(self):
+        if self.browser_source:
+            GLib.source_remove(self.browser_source)
+            self.browser_source = 0
+        with self.browser_lock:
+            session = self.browser_session
+            self.browser_session = None
+        if session is not None:
+            session.close()
+        self.browser_process = None
+
+    def finish_browser_check(self, generation, report, error):
+        if self.closed or generation != self.browser_generation:
+            return GLib.SOURCE_REMOVE
+        self.close_browser_session()
+        self.browser_busy = False
+        if error:
+            self.browser_status.set_text("Browser check unavailable")
+            set_status(self.browser_status, "warn")
+            self.browser_details.set_text(error)
+        else:
+            self.browser_report = report
+            for row in report["rows"]:
+                state, _ = BROWSER_STATUSES[row["status"]]
+                self.browser_rows.append((
+                    row["label"], browser_value(row["expected"]),
+                    browser_value(row["observed"]), state, row["detail"],
+                ))
+            differences = sum(row["status"] == "different" for row in report["rows"])
+            unavailable = sum(row["status"] == "unavailable" for row in report["rows"])
+            stamp = datetime.fromisoformat(report["collected_at"]).astimezone().strftime("%H:%M:%S")
+            self.browser_status.set_text(
+                f"Checked {stamp} · {differences} different · {unavailable} unavailable"
+            )
+            set_status(self.browser_status, "warn" if differences or unavailable else "good")
+            self.browser_scope.set_text(report["scope"])
+        self.update_browser_controls()
+        return GLib.SOURCE_REMOVE
+
+    def cancel_browser_check(self, _=None):
+        self.browser_generation += 1
+        self.close_browser_session()
+        self.browser_busy = False
+        if not self.closed:
+            self.browser_status.set_text("Browser check cancelled")
+            set_status(self.browser_status, "info")
+            self.update_browser_controls()
+
+    def copy_browser_report(self, _):
+        if self.browser_report is not None:
+            from gi.repository import Gdk
+            Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(
+                browser_report_text(self.browser_report), -1
+            )
+            self.browser_status.set_text("Browser report copied to clipboard")
+
+    def on_destroy(self, _):
+        super().on_destroy(_)
+        self.cancel_browser_check()
 
     def collect_report(self, progress):
         progress("Checking system, persona and protection state")
@@ -257,7 +511,10 @@ class HealthWindow(ReportWindow):
         self.refilter(None)
 
     def copy_text(self, report):
-        return report_text(report)
+        text = report_text(report)
+        if self.browser_report is not None:
+            text += "\n\n" + browser_report_text(self.browser_report)
+        return text
 
 
 def main():

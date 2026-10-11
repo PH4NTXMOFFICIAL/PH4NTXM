@@ -164,6 +164,8 @@ Boot Pilot refreshes identity, network and system checks, provides Wi-Fi selecti
 
 Identity is a snapshot of selected identifiers. Health collects a broader local report, including resources, guardian state and termination wiring. Critical findings force its Unsafe / Not Ready result even when other sections pass.
 
+Health also provides an on-demand Browser Check outside its score. Linux and Windows use a temporary loopback page opened through the existing Firefox launcher to compare browser-visible values with the persona. Lone Wolf instead inspects local Tor Browser readiness, temporary-session evidence and last-saved preferences without a JavaScript probe. The checker runs as the desktop user, changes no browser policy and ends on completion, cancellation, timeout or window closure.
+
 The OpSec Suite includes Network, Kernel, Process, Radio, ConnWatch and Shredder. Each component collects and presents its own evidence and findings, with confirmed remediation actions where supported.
 
 See [Applications](docs/system/session/PH4NTXM-APPLICATIONS.md), [Health](docs/system/session/HEALTH.md) and [OpSec Suite](docs/system/session/PH4NTXM-OPSEC-SUITE.md).

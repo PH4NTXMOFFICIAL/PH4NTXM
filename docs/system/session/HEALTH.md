@@ -26,6 +26,18 @@ Without critical errors, 90 or above is Excellent, 70 or above is Good, and lowe
 
 Route inspection is local. A route lookup such as `ip route get` does not send a public connectivity probe, and the report is not continuously refreshed. The GTK window and terminal use the same checks and scoring; the GTK frontend reads the structured `ph4ntxm-health --json` output without parsing terminal colors.
 
+## [ BROWSER CHECK ]
+
+Browser Check is an on-demand GTK tab, separate from the Health score. In Linux and Windows modes, Check Firefox opens a local tab through the existing Firefox launcher. It compares JavaScript and HTTP user agents, configured platform values, logical CPU count, languages and disabled WebGL, WebRTC and Web Audio APIs with the selected persona. Timezone, screen dimensions, pixel ratio and a bounded font sample provide additional context.
+
+Screen and viewport values depend on the active display, scaling and window size. Pixel ratio also depends on page zoom; compare at 100%. Firefox's concurrency preference is a cap and can yield fewer threads than the persona. Font checks test at most 24 candidate families by DOM metrics, rather than claiming a complete font inventory.
+
+The temporary checker runs as the desktop user on IPv4 loopback with a unique session URL. It uses no external resources, sends no public connectivity requests and changes no browser preferences. Completion, cancellation, timeout or closing Health ends the checker. The browser remains open, and collected results remain in memory until the window closes. Copy Browser Report copies that result; Copy Report includes it alongside the Health report.
+
+In Lone Wolf mode, Check Tor Browser collects local installation verification, gate and guardian state, Tor readiness, existing listeners and temporary-session evidence. It inspects the installed Safest default and readable last-saved profile settings where available. Saved preferences do not prove the current in-memory browser setting. Checks requiring a running browser explicitly ask you to open Tor Browser and run the check again when it is closed. A running browser with unreadable session or profile data is reported separately as unavailable. When protected process inspection is denied, the checker can correlate existing launcher and profile locks with the private session files. That evidence is labeled Info and does not claim executable or environment verification. This path opens no probe page, enables no JavaScript and changes no Tor Browser security or remote-control settings.
+
+Neither path verifies a public IP, external DNS routing or anonymity. Missing evidence is displayed as unavailable, rather than treated as a match.
+
 ## [ CHECKS ]
 
 The access check requires a configured session password and rejects unrestricted passwordless sudo. Protected runtime checks use the bounded session-status helper, without opening arbitrary root files or requesting a password on every refresh.
@@ -38,3 +50,6 @@ A readable generated file alone does not prove its corresponding mount, module, 
 
 [ph4ntxm-health](../../../config/includes.chroot/usr/local/bin/ph4ntxm-health)
 [ph4ntxm-health-gtk](../../../config/includes.chroot/usr/local/bin/ph4ntxm-health-gtk)
+[Browser Check](../../../config/includes.chroot/opt/ph4ntxm/ph4ntxm-opsec-ui/ph4ntxm_opsec_ui/browser_check.py)
+[Tor Browser Check](../../../config/includes.chroot/opt/ph4ntxm/ph4ntxm-opsec-ui/ph4ntxm_opsec_ui/tor_browser_check.py)
+[Browser probe assets](../../../config/includes.chroot/opt/ph4ntxm/ph4ntxm-opsec-ui/ph4ntxm_opsec_ui/browser_check_assets)

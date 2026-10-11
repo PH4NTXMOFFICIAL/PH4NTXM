@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Browser Check · PH4NTXM</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script src="probe.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <span class="wordmark">PH4NTXM</span>
+      <span class="local-tag"><span aria-hidden="true">●</span> LOCAL CHECK</span>
+    </header>
+    <section class="intro" aria-labelledby="page-title">
+      <div class="eyebrow">HEALTH / BROWSER</div>
+      <h1 id="page-title">Browser Check</h1>
+      <p class="lead">See what this browser exposes to a page, compared with your active PH4NTXM mode.</p>
+      <div class="session-meta">
+        <span id="mode">Active mode · awaiting report</span>
+        <span id="collected-at">Single-use local session</span>
+      </div>
+    </section>
+    <section class="status-panel" aria-labelledby="check-status">
+      <div class="status-icon" id="status-icon" aria-hidden="true">↗</div>
+      <div class="status-copy" role="status" aria-live="polite" aria-atomic="true">
+        <h2 id="check-status">Ready to check</h2>
+        <p id="check-detail">The check runs once when this page opens.</p>
+      </div>
+      <a class="results-link" href="#results" id="results-link" hidden>View results <span aria-hidden="true">↓</span></a>
+    </section>
+    <noscript><p class="notice">JavaScript is unavailable. This browser probe needs JavaScript to read browser values. Keep your privacy settings as they are and return to Health; this session cannot complete.</p></noscript>
+    <section class="results-section" id="results" aria-labelledby="results-title" hidden>
+      <div class="section-heading">
+        <h2 id="results-title">Observed browser values</h2>
+        <span class="result-count" id="result-count"></span>
+      </div>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Browser comparison results">
+        <table>
+          <caption class="visually-hidden">Expected and observed values for the active mode. Unavailable values do not establish a match.</caption>
+          <thead><tr><th scope="col">Check</th><th scope="col">Expected</th><th scope="col">Observed</th><th scope="col">Result</th></tr></thead>
+          <tbody id="result-rows"></tbody>
+        </table>
+      </div>
+      <p class="rerun-note">To run another check, open Browser Check again in Health.</p>
+    </section>
+    <aside class="privacy-note" aria-labelledby="privacy-title">
+      <h2 id="privacy-title">This check stays on this device.</h2>
+      <p>Browser values go only to the temporary local PH4NTXM checker. This page uses no external resources, requests no permissions, and does not change browser settings.</p>
+    </aside>
+  </main>
+</body>
+</html>

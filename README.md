@@ -48,7 +48,7 @@ Tor Browser opens after the protection and Tor readiness checks pass. If Tor bec
 
 Check your system:
 
-Boot Pilot shows protection status, helps you connect to Wi-Fi and opens the browser for your mode. Identity displays the current identifiers, and Health explains the checks in more detail. The OpSec Suite includes Network, Kernel, Process, Radio, ConnWatch and Shredder for inspection, monitoring and confirmed remediation actions where supported.
+Boot Pilot shows protection status, helps you connect to Wi-Fi and opens the browser for your mode. Identity displays the current identifiers, and Health explains the checks in more detail. Health also includes a Browser Check for local Firefox persona comparisons or Tor Browser readiness in Lone Wolf mode. The OpSec Suite includes Network, Kernel, Process, Radio, ConnWatch and Shredder for inspection, monitoring and confirmed remediation actions where supported.
 
 Open documents and media separately from your desktop files:
 

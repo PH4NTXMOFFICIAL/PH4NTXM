@@ -1,0 +1,128 @@
+:root {
+    color-scheme: dark;
+    --background: #091323;
+    --surface: #111e32;
+    --surface-raised: #15243b;
+    --text: #eff3fc;
+    --muted: #a4b2c9;
+    --line: #293951;
+    --cyan: #61ddeb;
+    --magenta: #eb81d5;
+    --pass: #8ce3c0;
+    --warn: #f2cf89;
+    --fail: #ff9bae;
+    --badge-pass: #153a35;
+    --badge-warn: #3c3223;
+    --badge-fail: #41283a;
+    font-family: system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+}
+:root[data-edition="ghost"] {
+    color-scheme: light;
+    --background: #f2f3f7;
+    --surface: #ffffff;
+    --surface-raised: #e9edf5;
+    --text: #17243a;
+    --muted: #516177;
+    --line: #d2dae6;
+    --cyan: #006f82;
+    --magenta: #923278;
+    --pass: #1c6752;
+    --warn: #80570f;
+    --fail: #a63255;
+    --badge-pass: #e0f3eb;
+    --badge-warn: #fff0d3;
+    --badge-fail: #fbe4ec;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--background); color: var(--text); }
+.shell { max-width: 1260px; margin: 0 auto; padding: 34px 48px 24px; }
+.masthead { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.wordmark { font-size: 21px; font-weight: 800; letter-spacing: 0.13em; }
+.local-tag { display: flex; gap: 9px; align-items: center; color: var(--cyan); font-size: 11px; font-weight: 750; letter-spacing: 0.13em; }
+.local-tag span { font-size: 8px; }
+.intro { padding: 48px 0 30px; }
+.eyebrow { color: var(--cyan); font-size: 11px; font-weight: 750; letter-spacing: 0.17em; }
+h1 { margin: 10px 0 14px; font-size: clamp(34px, 4vw, 48px); line-height: 1.1; letter-spacing: -0.035em; }
+.lead { max-width: 690px; color: var(--muted); font-size: 17px; margin: 0; }
+.session-meta { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 24px; color: var(--muted); font-size: 12px; }
+.session-meta span:first-child { color: var(--text); }
+.status-panel { display: flex; align-items: center; gap: 19px; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.status-icon { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; border-radius: 50%; background: var(--surface-raised); color: var(--cyan); font-size: 24px; }
+.status-complete { color: var(--pass); background: var(--badge-pass); }
+.status-different { color: var(--fail); background: var(--badge-fail); }
+.status-unavailable { color: var(--warn); background: var(--badge-warn); }
+.status-copy { flex: 1; min-width: 0; }
+h2 { font-size: 17px; margin: 0; line-height: 1.35; }
+.status-copy p { color: var(--muted); font-size: 13px; margin: 5px 0 0; }
+a { color: var(--cyan); }
+.results-link { flex: 0 0 auto; font-size: 13px; text-underline-offset: 5px; }
+.results-link span { margin-left: 8px; }
+a:focus-visible, .table-wrap:focus-visible { outline: 2px solid var(--cyan); outline-offset: 5px; }
+.results-section { margin-top: 40px; scroll-margin-top: 24px; }
+.section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 17px; }
+.result-count { color: var(--muted); font-size: 12px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+table { width: 100%; border-collapse: collapse; text-align: left; background: var(--surface); font-size: 13px; table-layout: fixed; }
+thead { background: var(--surface-raised); }
+thead th { padding: 13px 20px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 750; }
+thead th:first-child { width: 29%; }
+thead th:nth-child(2) { width: 24%; }
+thead th:nth-child(3) { width: 30%; }
+thead th:last-child { width: 17%; }
+tbody tr + tr { border-top: 1px solid var(--line); }
+tbody th, tbody td { padding: 19px 20px; vertical-align: top; overflow-wrap: anywhere; }
+.check-name { font-size: 13px; font-weight: 650; }
+.check-detail { display: block; margin-top: 5px; font-size: 11px; font-weight: 400; color: var(--muted); line-height: 1.6; }
+.value { font-family: ui-monospace, monospace; font-size: 11px; line-height: 1.75; }
+.expected-value { color: var(--muted); }
+.badge { display: inline-block; max-width: 100%; padding: 4px 8px; border-radius: 5px; font-size: 9px; font-weight: 750; letter-spacing: 0.03em; line-height: 1.5; color: var(--muted); background: var(--surface-raised); }
+.badge-match, .badge-blocked { color: var(--pass); background: var(--badge-pass); }
+.badge-different { color: var(--fail); background: var(--badge-fail); }
+.badge-unavailable { color: var(--warn); background: var(--badge-warn); }
+.rerun-note { color: var(--muted); font-size: 12px; margin: 14px 0 0; }
+.privacy-note { border-left: 2px solid var(--magenta); padding-left: 20px; margin: 36px 0 42px; max-width: 810px; }
+.privacy-note h2 { font-size: 14px; }
+.privacy-note p { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+.notice { padding: 20px; color: var(--warn); background: var(--badge-warn); border-radius: 8px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 760px) {
+    .shell { padding: 22px 20px; }
+    .intro { padding-top: 34px; }
+    .status-panel { align-items: flex-start; flex-wrap: wrap; gap: 14px; padding: 20px; }
+    .status-copy { flex: 1 1 calc(100% - 58px); }
+    .results-link { margin-left: 58px; }
+    .table-wrap { overflow: visible; }
+    table, tbody, tr { display: block; }
+    thead { display: none; }
+    tbody tr { padding: 20px; }
+    tbody th, tbody td { display: block; padding: 0; width: auto; }
+    .check-name { padding-bottom: 13px; }
+    .value, .result-cell { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: start; gap: 14px; margin-top: 10px; }
+    td::before { content: attr(data-label); font-family: system-ui, sans-serif; color: var(--muted); font-size: 10px; }
+    .badge { justify-self: start; }
+    .section-heading h2 { font-size: 15px; }
+    .local-tag { font-size: 9px; }
+    .wordmark { font-size: 17px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+}
+
+.font-probe-sample {
+    position: absolute;
+    left: -10000px;
+    top: 0;
+    display: inline-block;
+    visibility: hidden;
+    white-space: nowrap;
+    font-family: serif;
+    font-size: 72px;
+    font-weight: 400;
+    font-style: normal;
+    font-variant: normal;
+    letter-spacing: 0;
+    line-height: normal;
+}
