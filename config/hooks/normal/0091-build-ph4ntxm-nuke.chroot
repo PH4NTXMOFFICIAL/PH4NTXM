@@ -67,8 +67,8 @@ memtest_bad=$(awk '
 ' /proc/meminfo 2>/dev/null) || memtest_bad=
 case "$memtest_bad" in
     '') echo "PH4NTXM: KERNEL MEMTEST: RESULT UNAVAILABLE" ;;
-    *[!0]*) printf 'PH4NTXM: KERNEL MEMTEST: BAD MEMORY DETECTED (%s kB)\n' "$memtest_bad" ;;
-    *) echo "PH4NTXM: KERNEL MEMTEST: NO ERRORS DETECTED" ;;
+    *[!0]*) printf 'PH4NTXM: KERNEL MEMTEST: COMPLETE - BAD MEMORY DETECTED (%s kB)\n' "$memtest_bad" ;;
+    *) echo "PH4NTXM: KERNEL MEMTEST: COMPLETE - NO ERRORS DETECTED" ;;
 esac
 sync
 if /bin/ph4ntxm-ram-scrub; then
