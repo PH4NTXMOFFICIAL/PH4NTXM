@@ -31,6 +31,14 @@ A special thank you to everyone who has taken the time to test, feature or suppo
   </a>
 </p>
 
+## [ ITECHGUIDES.COM - 2026-10-04 ]
+
+<p align="left">
+  <a href="https://www.itechguides.com/ph4ntxm-debian-based-cybersecurity-and-privacy-linux-distribution/">
+    <img src="https://img.shields.io/badge/iTechGuides.com-Featured-gold" alt="Featured on iTechGuides.com">
+  </a>
+</p>
+
 ## [ HACKS.GR - 2026-10-08 ]
 
 <p align="left">
