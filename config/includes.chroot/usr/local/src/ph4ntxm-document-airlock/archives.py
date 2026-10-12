@@ -30,6 +30,14 @@ class ArchiveError(Exception):
     pass
 
 
+class PasswordRequired(ArchiveError):
+    pass
+
+
+class PasswordIncorrect(ArchiveError):
+    pass
+
+
 def read_exact(stream, size):
     data = bytearray()
     while len(data) < size:
@@ -78,10 +86,14 @@ def validate_listing(value):
     if not isinstance(entries, list) or len(entries) > MAX_ENTRIES:
         raise ArchiveError("The archive exceeds the entry limit.")
     for index, entry in enumerate(entries):
-        if not isinstance(entry, dict) or set(entry) != {"index", "name", "size", "kind", "reason"}:
+        if not isinstance(entry, dict) or set(entry) != {"index", "name", "size", "kind", "reason", "encrypted"}:
             raise ArchiveError("The isolated reader returned invalid file metadata.")
         if type(entry["index"]) is not int or entry["index"] != index:
             raise ArchiveError("The isolated reader returned invalid entry numbers.")
+        if type(entry["encrypted"]) is not bool:
+            raise ArchiveError("The isolated reader returned invalid encryption metadata.")
+        if entry["encrypted"] and entry["kind"] == "file" and value["format"] != "ZIP":
+            raise ArchiveError("This archive encryption is not supported.")
         if entry["kind"] not in {"file", "directory", "blocked"}:
             raise ArchiveError("The isolated reader returned an invalid entry type.")
         if not isinstance(entry["name"], str) or not safe_name(entry["name"]):
@@ -112,11 +124,25 @@ class ArchiveSession:
         self.entries = []
         self.cancelled = threading.Event()
         self.view = None
+        self.password = bytearray()
 
     def close(self):
         self.cancelled.set()
+        self.clear_password()
         self.clear_view()
         self.temporary.cleanup()
+
+    def clear_password(self):
+        self.password[:] = b"\x00" * len(self.password)
+        self.password.clear()
+
+    def set_password(self, password):
+        try:
+            encoded = airlock.encode_password(password)
+        except airlock.AirlockError as error:
+            raise ArchiveError(str(error)) from None
+        self.clear_password()
+        self.password.extend(encoded)
 
     def clear_view(self):
         if self.view is not None:
@@ -250,6 +276,7 @@ class ArchiveSession:
             return self.run_process(index, receive, command, source, metadata.st_size)
 
     def run_process(self, index, receive, command, source, size):
+        password = bytes(self.password)
         if command is None:
             command = airlock.vm_command(".pdf", GUEST_RAM_MIB)
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, start_new_session=True, close_fds=True, env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"})
@@ -286,7 +313,8 @@ class ArchiveSession:
 
         def send():
             try:
-                process.stdin.write(struct.pack("!8sII", INPUT_MAGIC, size, index))
+                process.stdin.write(struct.pack("!8sIIH", INPUT_MAGIC, size, index, len(password)))
+                process.stdin.write(password)
                 remaining = size
                 while remaining:
                     chunk = source.read(min(remaining, CHUNK_SIZE))
@@ -317,10 +345,25 @@ class ArchiveSession:
                 if not 0 < length <= 4096:
                     raise ArchiveError("The isolated reader returned an invalid error response.")
                 error = json.loads(read_exact(process.stdout, length).decode("utf-8"))
-                if not isinstance(error, dict) or set(error) != {"error"} or not isinstance(error["error"], str) or not safe_name(error["error"]):
+                if not isinstance(error, dict) or set(error) != {"code", "error"} or not isinstance(error["code"], str) or error["code"] not in {"password_required", "password_incorrect", "archive", "unsupported"} or not isinstance(error["error"], str) or not 0 < len(error["error"]) <= 512 or not safe_name(error["error"]):
                     raise ArchiveError("The isolated reader could not inspect this archive.")
                 if read_exact(process.stdout, 8) != END_MAGIC:
                     raise ArchiveError("The isolated reader returned an invalid stream ending.")
+                if not sent.wait(5):
+                    raise ArchiveError("The archive could not be delivered to the isolated reader.")
+                process.stdin.write(ACK_MAGIC)
+                process.stdin.flush()
+                if process.stdout.read(1):
+                    raise ArchiveError("The isolated reader returned unexpected trailing data.")
+                process.wait(timeout=5)
+                if failure or process.returncode != 0 or self.cancelled.is_set():
+                    raise ArchiveError(failure[0] if failure else "The isolated archive reader stopped unexpectedly.")
+                if error["code"] == "password_required":
+                    self.clear_password()
+                    raise PasswordRequired("This archive entry requires a password.")
+                if error["code"] == "password_incorrect":
+                    self.clear_password()
+                    raise PasswordIncorrect("The archive password was not accepted. Try again.")
                 raise ArchiveError(error["error"])
             result = receive(process.stdout, magic)
             if read_exact(process.stdout, 8) != END_MAGIC:

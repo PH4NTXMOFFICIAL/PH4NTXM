@@ -19,7 +19,9 @@ from pathlib import Path
 
 ASSET_DIR = Path("/usr/local/share/ph4ntxm-document-airlock")
 BWRAP_PATH = "/usr/local/libexec/ph4ntxm-document-airlock/bwrap"
-INPUT_MAGIC = b"PH4DAI01"
+INPUT_MAGIC = b"PH4DAI02"
+ERROR_MAGIC = b"PH4DAE02"
+MAX_PASSWORD_BYTES = 1024
 OUTPUT_MAGIC = b"PH4DAO01"
 END_MAGIC = b"PH4DONE1"
 ACK_MAGIC = b"PH4ACK01"
@@ -55,6 +57,28 @@ IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff"}
 
 class AirlockError(Exception):
     pass
+
+
+class PasswordRequired(AirlockError):
+    pass
+
+
+class PasswordIncorrect(AirlockError):
+    pass
+
+
+def encode_password(password):
+    if password is None:
+        return b""
+    if not isinstance(password, str):
+        raise AirlockError("Enter a text password.")
+    try:
+        encoded = password.encode("utf-8")
+    except UnicodeError:
+        raise AirlockError("The password contains unsupported characters.") from None
+    if len(encoded) > MAX_PASSWORD_BYTES or b"\x00" in encoded:
+        raise AirlockError("The password must be at most 1024 UTF-8 bytes and contain no null characters.")
+    return encoded
 
 
 def read_exact(stream, size):
@@ -325,7 +349,37 @@ def vm_command(suffix, ram=None):
 
 
 def receive_pages(stream, directory, acknowledge=None):
-    if read_exact(stream, 8) != OUTPUT_MAGIC:
+    magic = read_exact(stream, 8)
+    if magic == ERROR_MAGIC:
+        length = struct.unpack("!I", read_exact(stream, 4))[0]
+        if not 0 < length <= 4096:
+            raise AirlockError("The isolated converter returned an invalid error response.")
+        try:
+            error = json.loads(read_exact(stream, length).decode("utf-8"))
+        except (ValueError, UnicodeError, RecursionError):
+            raise AirlockError("The isolated converter returned an invalid error response.") from None
+        if (
+            not isinstance(error, dict)
+            or set(error) != {"code", "error"}
+            or not isinstance(error["code"], str)
+            or error["code"] not in {"password_required", "password_incorrect", "conversion", "unsupported"}
+            or not isinstance(error["error"], str)
+            or not 0 < len(error["error"]) <= 512
+            or any(ord(character) < 32 for character in error["error"])
+        ):
+            raise AirlockError("The isolated converter returned an invalid error response.")
+        if read_exact(stream, 8) != END_MAGIC:
+            raise AirlockError("The isolated converter returned an invalid stream ending.")
+        if acknowledge is not None:
+            acknowledge()
+        if stream.read(1):
+            raise AirlockError("The isolated converter returned trailing data.")
+        if error["code"] == "password_required":
+            raise PasswordRequired("This document requires a password.")
+        if error["code"] == "password_incorrect":
+            raise PasswordIncorrect("The encrypted document could not be opened with this password. Check the password and file.")
+        raise AirlockError(error["error"])
+    if magic != OUTPUT_MAGIC:
         raise AirlockError(
             "The isolated converter did not return the Airlock protocol."
         )
@@ -435,10 +489,21 @@ class AirlockSession:
         self.pages = []
         self.cancelled = threading.Event()
 
-    def close(self):
+    def close(self, cancel=True):
+        if cancel:
+            self.cancelled.set()
+        self.pages = []
         self.temporary.cleanup()
 
-    def convert(self, suffix, data, command=None):
+    def convert(self, suffix, data, command=None, password=None):
+        encoded_password = encode_password(password)
+        if suffix not in SUFFIXES or not 0 < len(data) <= MAX_INPUT:
+            raise AirlockError("The document request exceeds the supported limits.")
+        if self.cancelled.is_set():
+            raise AirlockError("Conversion cancelled.")
+        self.pages = []
+        for path in self.directory.glob("page-*.rgbz"):
+            path.unlink()
         lock_path = self.directory.parent / "ph4ntxm-airlock.lock"
         descriptor = os.open(lock_path, os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
         with os.fdopen(descriptor, "wb") as lock:
@@ -451,11 +516,13 @@ class AirlockSession:
                 raise AirlockError(
                     "Another Airlock operation is already running."
                 ) from None
-            self._convert(suffix, data, command)
+            self._convert(suffix, data, command, encoded_password)
 
-    def _convert(self, suffix, data, command):
+    def _convert(self, suffix, data, command, password):
         done = threading.Event()
         timed_out = threading.Event()
+        sent = threading.Event()
+        memory_failure = []
         process = subprocess.Popen(
             vm_command(suffix, check_memory(suffix)) if command is None else command,
             stdin=subprocess.PIPE,
@@ -479,16 +546,27 @@ class AirlockSession:
                     timed_out.set()
                     stop()
                     return
+                try:
+                    if available_memory_mib() < HOST_RESERVE_MIB:
+                        memory_failure.append("Available RAM became too low. The isolated converter was stopped.")
+                        stop()
+                        return
+                except (AirlockError, OSError, ValueError):
+                    memory_failure.append("Actual available RAM could not be verified.")
+                    stop()
+                    return
 
         def send():
             try:
                 process.stdin.write(
                     struct.pack(
-                        "!8sI16s", INPUT_MAGIC, len(data), suffix.encode("ascii")
+                        "!8sI16sH", INPUT_MAGIC, len(data), suffix.encode("ascii"), len(password)
                     )
                 )
+                process.stdin.write(password)
                 process.stdin.write(data)
                 process.stdin.flush()
+                sent.set()
             except (BrokenPipeError, OSError):
                 pass
             finally:
@@ -504,6 +582,8 @@ class AirlockSession:
         sender.start()
 
         def acknowledge():
+            if not sent.wait(5):
+                raise AirlockError("The document could not be delivered to the isolated converter.")
             process.stdin.write(ACK_MAGIC)
             process.stdin.flush()
 
@@ -513,16 +593,24 @@ class AirlockSession:
             done.set()
             watcher.join()
             status = process.wait(timeout=5)
-            if status != 0 or self.cancelled.is_set() or timed_out.is_set():
+            if status != 0 or self.cancelled.is_set() or timed_out.is_set() or memory_failure:
                 raise AirlockError("Conversion was cancelled, timed out, or failed.")
             self.pages = pages
-        except (AirlockError, OSError, subprocess.TimeoutExpired):
+        except (AirlockError, OSError, subprocess.TimeoutExpired) as error:
+            self.pages = []
+            for path in self.directory.glob("page-*.rgbz"):
+                path.unlink(missing_ok=True)
+            if memory_failure:
+                raise AirlockError(memory_failure[0]) from None
             if self.cancelled.is_set():
                 raise AirlockError("Conversion cancelled.") from None
             if timed_out.is_set():
                 raise AirlockError(
                     "Conversion exceeded the five-minute limit."
                 ) from None
+            if isinstance(error, (PasswordRequired, PasswordIncorrect)):
+                if process.wait(timeout=5) == 0:
+                    raise error from None
             raise AirlockError(
                 "Conversion failed. The document may be unsupported or exceed the resource limits."
             ) from None

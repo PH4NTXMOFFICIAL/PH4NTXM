@@ -11,7 +11,7 @@ import unicodedata
 from pathlib import Path
 
 sys.path.insert(0, "/usr/local/lib/ph4ntxm-document-airlock")
-from archives import ArchiveError, ArchiveSession, check_ready, viewer_kind
+from archives import ArchiveError, ArchiveSession, PasswordIncorrect, PasswordRequired, check_ready, viewer_kind
 
 CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
 ICON_FILE = "/usr/share/icons/Lyra-blue-dark/apps/scalable/ph4ntxm-archive-airlock.svg"
@@ -61,7 +61,7 @@ def entry_state(entry):
         return VIEWER_LABELS[viewer], "Empty file", False, viewer
     if size is not None and size > VIEWER_LIMITS[viewer]:
         return VIEWER_LABELS[viewer], "Above viewing limit", False, viewer
-    return VIEWER_LABELS[viewer], "Ready to view", True, viewer
+    return VIEWER_LABELS[viewer], "Password protected" if entry.get("encrypted") else "Ready to view", True, viewer
 
 
 def desktop(archive=None):
@@ -70,6 +70,7 @@ def desktop(archive=None):
     gi.require_version("Gtk", "3.0")
     gi.require_version("Gdk", "3.0")
     from gi.repository import Gdk, GLib, Gtk, Pango
+    from password_dialog import ask_password
 
     def add_class(widget, name):
         widget.get_style_context().add_class(name)
@@ -120,6 +121,7 @@ def desktop(archive=None):
             self.cancelled = threading.Event()
             self.entries = {}
             self.chooser_dialog = None
+            self.password_dialog = None
             root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
             self.add(root)
             header = add_class(
@@ -208,7 +210,7 @@ def desktop(archive=None):
             self.stack.set_visible_child_name("contents")
             self.notice = wrapped_label(
                 "Select a file to view through its isolated viewer. "
-                "Encrypted and multipart archives are not supported.",
+                "Password-protected ZIP files are supported. Encrypted RAR/7z and multipart archives are not supported.",
                 "subtitle",
             )
             content.pack_start(self.notice, False, False, 0)
@@ -372,13 +374,23 @@ def desktop(archive=None):
             self.update_controls()
             return False
 
-        def on_open(self):
+        def on_open(self, entry=None, password_message=None):
             if self.busy or self.closing or not self.session:
                 return
-            entry = self.selected_entry()
+            if entry is None:
+                entry = self.selected_entry()
             if not entry or not entry_state(entry)[2]:
                 return
             session = self.session
+            if password_message or (entry.get("encrypted") and not session.password):
+                password = ask_password(self, "Unlock Archive", password_message or "Enter the password for this archive entry.")
+                if self.finish_closing():
+                    return
+                if password is None:
+                    self.status.set_text("Opening the archive file was cancelled.")
+                    return
+                session.set_password(password)
+                password = None
             viewer = viewer_kind(entry["name"])
             self.begin_operation(
                 "Opening text offline…" if viewer == "text" else "Opening selected file in its isolated viewer…"
@@ -393,7 +405,7 @@ def desktop(archive=None):
                     else:
                         session.open_entry(entry["index"])
                 except Exception as exc:
-                    error = str(exc) if isinstance(exc, (ArchiveError, OSError, ValueError)) else "The selected file could not be opened."
+                    error = exc if isinstance(exc, (ArchiveError, OSError, ValueError)) else ArchiveError("The selected file could not be opened.")
                 GLib.idle_add(self.open_finished, entry, text, error)
 
             threading.Thread(target=worker, daemon=False).start()
@@ -403,7 +415,20 @@ def desktop(archive=None):
             self.spinner.stop()
             if self.finish_closing():
                 return False
+            if self.cancelled.is_set():
+                self.session.clear_password()
+                self.status.set_text("Opening the archive file was cancelled.")
+                self.update_controls()
+                return False
+            if isinstance(error, (PasswordRequired, PasswordIncorrect)):
+                self.session.clear_password()
+                self.status.set_text(str(error))
+                self.update_controls()
+                self.on_open(entry, str(error))
+                return False
             if error:
+                if entry.get("encrypted"):
+                    self.session.clear_password()
                 self.status.set_text(display_text(error))
             elif text is not None:
                 self.text_name.set_text(display_text(entry["name"]))
@@ -431,7 +456,7 @@ def desktop(archive=None):
             self.status.set_text("Cancelling the current operation…")
 
         def finish_closing(self):
-            if not self.closing or self.busy or self.chooser_dialog is not None:
+            if not self.closing or self.busy or self.chooser_dialog is not None or self.password_dialog is not None:
                 return False
             if self.session:
                 self.session.close()
@@ -443,10 +468,12 @@ def desktop(archive=None):
             self.closing = True
             self.cancelled.set()
             self.update_controls()
-            if self.busy or self.chooser_dialog is not None:
+            if self.busy or self.chooser_dialog is not None or self.password_dialog is not None:
                 self.status.set_text("Closing the isolated session…")
                 if self.chooser_dialog is not None:
                     self.chooser_dialog.response(Gtk.ResponseType.CANCEL)
+                if self.password_dialog is not None:
+                    self.password_dialog.response(Gtk.ResponseType.CANCEL)
                 return True
             if self.session:
                 self.session.close()

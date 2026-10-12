@@ -6,6 +6,7 @@ import contextlib
 import importlib.machinery
 import importlib.util
 import io
+import json
 import os
 import struct
 import subprocess
@@ -41,6 +42,98 @@ class AirlockTests(unittest.TestCase):
 
     def receive(self, data):
         return airlock.receive_pages(io.BytesIO(data), self.root)
+
+    def error_stream(self, code="password_required", message="This document requires a password."):
+        payload = json.dumps({"code": code, "error": message}).encode("utf-8")
+        return airlock.ERROR_MAGIC + struct.pack("!I", len(payload)) + payload + airlock.END_MAGIC
+
+    def converter(self, response, status=0):
+        code = (
+            "import struct,sys; "
+            "magic,size,suffix,length=struct.unpack('!8sI16sH',sys.stdin.buffer.read(30)); "
+            "assert magic==%r; sys.stdin.buffer.read(length); sys.stdin.buffer.read(size); "
+            "sys.stdout.buffer.write(%r); sys.stdout.buffer.flush(); "
+            "assert sys.stdin.buffer.read(8)==%r; sys.exit(%d)"
+        ) % (airlock.INPUT_MAGIC, response, airlock.ACK_MAGIC, status)
+        return [sys.executable, "-c", code]
+
+    def test_password_is_bounded_utf8_and_never_placed_in_process_arguments(self):
+        self.assertEqual(airlock.encode_password(None), b"")
+        self.assertEqual(airlock.encode_password("  κωδικός\n  "), "  κωδικός\n  ".encode())
+        for password in ("nul\x00password", "é" * 513, 123, "\ud800"):
+            with self.subTest(password=repr(password)):
+                with self.assertRaises(airlock.AirlockError):
+                    airlock.encode_password(password)
+        session = airlock.AirlockSession(self.root)
+        try:
+            command = self.converter(stream())
+            secret = "do-not-record-this-secret"
+            real_popen = subprocess.Popen
+            with mock.patch.object(airlock.subprocess, "Popen", wraps=real_popen) as popen:
+                session.convert(".pdf", b"input", command, password=secret)
+            self.assertNotIn(secret, repr(popen.call_args))
+            self.assertEqual(len(session.pages), 1)
+        finally:
+            session.close()
+
+    def test_password_errors_require_complete_successful_protocol_before_retry(self):
+        session = airlock.AirlockSession(self.root)
+        try:
+            for code, error in (("password_required", airlock.PasswordRequired), ("password_incorrect", airlock.PasswordIncorrect)):
+                with self.assertRaises(error):
+                    session.convert(".pdf", b"input", self.converter(self.error_stream(code)))
+                self.assertEqual(session.pages, [])
+                self.assertEqual(list(session.directory.glob("page-*.rgbz")), [])
+            session.convert(".pdf", b"input", self.converter(stream()), password="right")
+            self.assertEqual(len(session.pages), 1)
+        finally:
+            session.close()
+        for response, status in ((self.error_stream()+b"extra",0), (self.error_stream(),1)):
+            session = airlock.AirlockSession(self.root)
+            try:
+                with self.assertRaises(airlock.AirlockError) as result:
+                    session.convert(".pdf", b"input", self.converter(response,status))
+                self.assertNotIsInstance(result.exception, airlock.PasswordRequired)
+            finally:
+                session.close()
+
+    def test_password_failure_cleanup_preserves_user_cancellation_state(self):
+        for cancelled in (False, True):
+            with self.subTest(cancelled=cancelled):
+                session = airlock.AirlockSession(self.root)
+                shared_cancelled = threading.Event()
+                session.cancelled = shared_cancelled
+                with self.assertRaises(airlock.PasswordRequired):
+                    session.convert(".pdf", b"input", self.converter(self.error_stream()))
+                if cancelled:
+                    shared_cancelled.set()
+                session.close(cancel=False)
+                self.assertEqual(shared_cancelled.is_set(), cancelled)
+                self.assertEqual(session.pages, [])
+                self.assertFalse(session.directory.exists())
+
+    def test_explicit_session_close_still_cancels(self):
+        session = airlock.AirlockSession(self.root)
+        session.close()
+        self.assertTrue(session.cancelled.is_set())
+        self.assertFalse(session.directory.exists())
+
+    def test_malformed_password_response_is_rejected(self):
+        for code, message in (([],"safe"), ("unknown","safe"), ("password_required",None), ("password_required","bad\nmessage")):
+            with self.subTest(code=code,message=message):
+                with self.assertRaises(airlock.AirlockError):
+                    self.receive(self.error_stream(code,message))
+
+    def test_failed_partial_pages_are_removed_before_next_conversion(self):
+        session = airlock.AirlockSession(self.root)
+        try:
+            with self.assertRaises(airlock.AirlockError):
+                session.convert(".pdf", b"input", self.converter(stream(),1))
+            self.assertEqual(list(session.directory.glob("page-*.rgbz")), [])
+            session.convert(".pdf", b"input", self.converter(stream()))
+            self.assertEqual(len(session.pages), 1)
+        finally:
+            session.close()
 
     def test_pixels_round_trip(self):
         pixels = bytes(range(256)) * 3
@@ -226,7 +319,7 @@ class AirlockTests(unittest.TestCase):
     def test_complete_protocol_from_failed_process_is_not_exportable(self):
         session = airlock.AirlockSession(self.root)
         code = (
-            "import sys, struct; h=sys.stdin.buffer.read(28); sys.stdin.buffer.read(struct.unpack('!8sI16s', h)[1]); sys.stdout.buffer.write(%r); sys.stdout.buffer.flush(); sys.stdin.buffer.read(8); sys.exit(1)"
+            "import sys, struct; h=sys.stdin.buffer.read(30); sys.stdin.buffer.read(sum(struct.unpack('!8sI16sH', h)[index] for index in (1,3))); sys.stdout.buffer.write(%r); sys.stdout.buffer.flush(); sys.stdin.buffer.read(8); sys.exit(1)"
             % stream()
         )
         try:
@@ -239,7 +332,7 @@ class AirlockTests(unittest.TestCase):
     def test_success_does_not_signal_reaped_process(self):
         session = airlock.AirlockSession(self.root)
         code = (
-            "import sys, struct; h=sys.stdin.buffer.read(28); sys.stdin.buffer.read(struct.unpack('!8sI16s', h)[1]); sys.stdout.buffer.write(%r); sys.stdout.buffer.flush(); sys.stdin.buffer.read(8)"
+            "import sys, struct; h=sys.stdin.buffer.read(30); sys.stdin.buffer.read(sum(struct.unpack('!8sI16sH', h)[index] for index in (1,3))); sys.stdout.buffer.write(%r); sys.stdout.buffer.flush(); sys.stdin.buffer.read(8)"
             % stream()
         )
         try:
@@ -254,8 +347,8 @@ class AirlockTests(unittest.TestCase):
         session = airlock.AirlockSession(self.root)
         code = (
             "import sys,struct,select; "
-            "h=sys.stdin.buffer.read(28); "
-            "sys.stdin.buffer.read(struct.unpack('!8sI16s',h)[1]); "
+            "h=sys.stdin.buffer.read(30); "
+            "sys.stdin.buffer.read(sum(struct.unpack('!8sI16sH',h)[index] for index in (1,3))); "
             "ready=select.select([sys.stdin],[],[],0.1)[0]; "
             "sys.exit(7) if ready else None; "
             "sys.stdout.buffer.write(%r); sys.stdout.buffer.flush(); sys.stdin.buffer.read(8)"
@@ -386,7 +479,7 @@ class LauncherTests(unittest.TestCase):
             stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
             self.assertEqual(self.launcher.main(), 0)
         read_input.assert_called_once_with("source.pdf")
-        session.convert.assert_called_once_with(".pdf", b"document")
+        session.convert.assert_called_once_with(".pdf", b"document", password=None)
         session.export.assert_called_once_with("result.pdf")
         session.close.assert_called_once_with()
         desktop.assert_not_called()

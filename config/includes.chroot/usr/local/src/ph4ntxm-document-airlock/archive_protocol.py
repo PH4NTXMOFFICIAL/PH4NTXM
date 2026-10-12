@@ -5,7 +5,7 @@ from pathlib import PurePosixPath
 import re
 import unicodedata
 
-INPUT_MAGIC = b"PH4ARI01"
+INPUT_MAGIC = b"PH4ARI02"
 LIST_MAGIC = b"PH4ARL01"
 DATA_MAGIC = b"PH4ARD01"
 ERROR_MAGIC = b"PH4ARE01"

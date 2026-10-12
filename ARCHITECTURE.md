@@ -156,6 +156,10 @@ Archive Airlock reuses the same trusted guest artifacts with a separate bounded 
 
 Media Viewers use a different boundary: offline namespaces, read-only selected files, a private bus/home and nested Xephyr display. A separate audio process receives fixed-format PCM. A transient user service applies memory, swap, task and CPU limits, and cleanup stops the session's processes. The selected source files remain read-only throughout playback. Both Airlocks and Media Viewers read actual available RAM for their launch budgets and refuse a managed inventory environment; persona capacity does not increase their allocation limits.
 
+Document and Archive Airlock use versioned, bounded private request protocols for optional UTF-8 passwords. The host passes document/archive bytes without decrypting or parsing them. ZIP decryption uses libarchive in the offline guest and rejects reader warnings, including authentication failures. PDF decryption uses guest pikepdf; Office loading uses guest LibreOffice UNO over a private pipe with macros and document updates disabled. Passwords are excluded from command arguments, environment variables, persistent storage and logs. The archive password remains scoped to its current session and is not forwarded to Document Airlock.
+
+Password errors have bounded typed responses. The host verifies response framing and guest exit before requesting a retry. Failed output is discarded, retries use fresh guests, and real-memory admission and runtime guards remain separate from persona hardware reporting. Exported Document Airlock PDFs contain raster pages and have no inherited encryption. Encrypted RAR/7z remain unsupported.
+
 See [Document Airlock](docs/system/session/DOCUMENT-AIRLOCK.md), [Archive Airlock](docs/system/session/ARCHIVE-AIRLOCK.md) and [Media Viewers](docs/system/session/MEDIA-VIEWERS.md) for limits and checks.
 
 ## [ OPERATOR VIEWS AND DIAGNOSTICS ]

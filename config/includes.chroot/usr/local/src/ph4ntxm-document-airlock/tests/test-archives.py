@@ -27,8 +27,8 @@ REAL_CHECK_STORAGE = archives.check_storage
 MISSING = object()
 
 
-def entry(name="notes.txt", size=4, kind="file", reason=""):
-    return {"index": 0, "name": name, "size": size, "kind": kind, "reason": reason}
+def entry(name="notes.txt", size=4, kind="file", reason="", encrypted=False):
+    return {"index": 0, "name": name, "size": size, "kind": kind, "reason": reason, "encrypted": encrypted}
 
 
 def listing(entries=None, format="ZIP"):
@@ -51,7 +51,7 @@ def data_stream(chunks=(b"text",)):
 def command(response, exit_code=0, wait_ack=True):
     code = (
         "import struct,sys; "
-        "magic,size,index=struct.unpack('!8sII',sys.stdin.buffer.read(16)); "
+        "magic,size,index,length=struct.unpack('!8sIIH',sys.stdin.buffer.read(18)); sys.stdin.buffer.read(length); "
         "assert magic==%r; "
         "assert sys.stdin.buffer.read(size)==b'snapshot'; "
         "sys.stdout.buffer.write(%r); sys.stdout.buffer.flush(); "
@@ -352,8 +352,42 @@ class ArchiveTests(unittest.TestCase):
             session.extract(0, command(response, 1))
         self.assertIsNone(session.view)
 
+    def test_encryption_metadata_is_strict_and_cannot_enable_other_formats(self):
+        for encrypted in (0, 1, None, "yes", []):
+            with self.subTest(encrypted=encrypted):
+                with self.assertRaises(archives.ArchiveError):
+                    self.receive_listing(listing([entry(encrypted=encrypted)]))
+        for family in ("RAR", "7z", "TAR"):
+            with self.subTest(family=family):
+                with self.assertRaises(archives.ArchiveError):
+                    self.receive_listing(listing([entry(encrypted=True)],family))
+        self.assertEqual(self.receive_listing(listing([entry(encrypted=True)])), listing([entry(encrypted=True)]))
+
+    def test_password_error_discards_view_and_clears_cached_secret(self):
+        for code, error in (("password_required",archives.PasswordRequired), ("password_incorrect",archives.PasswordIncorrect)):
+            session = self.session([entry(encrypted=True)])
+            session.set_password("secret")
+            payload = json.dumps({"code":code,"error":"The password was not accepted."}).encode()
+            response = archives.ERROR_MAGIC + struct.pack("!I",len(payload)) + payload + archives.END_MAGIC
+            with self.assertRaises(error):
+                session.extract(0,command(response))
+            self.assertFalse(session.password)
+            self.assertIsNone(session.view)
+            self.assertEqual(list(session.directory.glob("view-*")), [])
+
+    def test_secret_lifetime_is_limited_to_the_current_archive(self):
+        session = self.session()
+        session.set_password("κωδικός")
+        old = session.password
+        self.assertEqual(bytes(old),"κωδικός".encode())
+        session.set_password("next")
+        self.assertEqual(bytes(session.password),b"next")
+        session.close()
+        self.assertFalse(old)
+        self.assertFalse(session.password)
+
     def test_isolated_error_response_is_strict_and_never_opens_a_view(self):
-        payload = json.dumps({"error": "Archive is encrypted"}).encode()
+        payload = json.dumps({"code": "archive", "error": "Archive is encrypted"}).encode()
         response = archives.ERROR_MAGIC + struct.pack("!I", len(payload)) + payload + archives.END_MAGIC
         session = self.session()
         with self.assertRaisesRegex(archives.ArchiveError, "encrypted"):

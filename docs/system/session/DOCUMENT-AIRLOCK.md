@@ -22,6 +22,14 @@ After conversion, the isolated process has closed. The UI lets you review pages 
 
 Export requires a new `.pdf` filename and refuses an existing destination. Closing removes temporary pages. The command-line form supports `--check` for prerequisites and `document --output new.pdf` for direct conversion/export.
 
+## [ PASSWORDS ]
+
+Password-protected PDFs and supported encrypted OpenDocument (`.odt`, `.ods`, `.odp`, `.odg`) and Office Open XML (`.docx`, `.xlsx`, `.pptx`) documents can be opened through a masked GTK prompt. Encrypted legacy `.doc`, `.xls` and `.ppt` are outside this support; their existing unencrypted conversion remains available. PDF decryption uses pikepdf inside the disposable guest. Office documents use LibreOffice through a private UNO pipe with a password property, disabled macros and disabled document updates. Password support depends on the installed LibreOffice import filter; unsupported encryption fails the conversion.
+
+The password is sent through the bounded private input channel, never command arguments or environment variables, with no password file or log. A missing or rejected password is reported before rendered output is accepted. Retrying starts a new guest and removes incomplete results. Cancel and Close stop the operation. Existing input, page, pixel, timeout and actual-RAM limits still apply; low host RAM stops conversion.
+
+The source remains unchanged. Export produces a new unencrypted raster PDF; it does not inherit the source password. The command-line conversion prompts without echo in an interactive terminal. Noninteractive calls fail with instructions to use the GTK app or an interactive terminal.
+
 ## [ CHECKS ]
 
 Review page layout, fonts and pagination in the preview before exporting, particularly for Office documents.

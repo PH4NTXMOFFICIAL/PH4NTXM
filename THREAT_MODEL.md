@@ -79,7 +79,7 @@ Hardware, CPU, GPU, and display personas cover selected reporting surfaces, not 
 Browser wrappers configure participating launches. Accounts, extensions, and direct executable access remain operator-controlled.  
 Packet transformation covers supported packet layouts, while TLS, HTTP, traffic correlation, and application identifiers require separate assessment.  
 Document Airlock isolates its selected document parsing in an offline KVM guest and exports validated pixels through a bounded broker. Visible sensitive content, direct host opening, hypervisor escapes and a compromised host remain outside its guarantees.  
-Archive Airlock isolates archive parsing in the offline KVM guest, validates bounded listings and file streams, and hands selected files to their isolated viewers. Unpacking does not sanitize the extracted file. Encrypted and multipart archives, automatic execution and unrestricted extraction are not supported. Hypervisor escapes and a compromised host remain outside this boundary.\
+Archive Airlock isolates archive parsing in the offline KVM guest, validates bounded listings and file streams, and hands selected files to their isolated viewers. Unpacking does not sanitize the extracted file. Password-protected ZIP entries can be unlocked inside the guest; encrypted RAR/7z, multipart archives, automatic execution and unrestricted extraction are not supported. Hypervisor escapes and a compromised host remain outside this boundary.\
 Media viewers isolate selected local files with offline namespaces, a private display and bounded resources. This limits the viewer's access. It still depends on the host kernel and does not sanitize the original media file. Exporting or opening a file outside its wrapper crosses a separate boundary.  
 RAM seeding supplies synthetic noise, not encryption or concealment of genuine secrets. Memory scrub and file overwrite remain best effort.
 
@@ -90,7 +90,7 @@ Supply-chain interception: Compromised machines or components modified before de
 Physical hardware injection: Malicious cables or rogue USB devices connected directly to the host.  
 Zero-day exploits: Unpatched or unknown vulnerabilities in the kernel, firmware, browser, or hardware architecture.  
 Compromised runtime: A root or kernel compromise can disable, bypass, or falsify PH4NTXM controls and status reports.  
-Live operator privilege: The `ph4ntxm` account has full passwordless sudo access. Compromise of the live user gives administrative control for the active session.  
+Live operator privilege: The `ph4ntxm` account has password-authenticated administrative sudo access. Passwordless access is limited to explicitly listed status and control helpers. General sudo authorization is not cached; the process and radio backends retain authorization within their parent session. A compromised live user can abuse these helpers or an authorized backend session, while obtaining the session password permits full root access.\
 Global correlation: A global observer may correlate Tor or direct traffic using timing and volume.  
 Advanced side-channel analysis: Acoustic, thermal, electromagnetic, DMA, or power-consumption profiling outside the managed runtime.  
 Operator OpSec failure: Real-world identities, credential reuse, account login, unsafe documents, or other human errors during a session.  

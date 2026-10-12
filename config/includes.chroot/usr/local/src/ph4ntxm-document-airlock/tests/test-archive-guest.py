@@ -3,6 +3,8 @@
 # Licensed under the GNU General Public License v3.0.
 
 from contextlib import contextmanager
+import base64
+from ctypes import memmove
 import gzip
 import io
 import json
@@ -143,19 +145,144 @@ class ArchiveGuestTests(unittest.TestCase):
             archive.Response(output).extract(target, 0)
             self.assertEqual(self.unpack_response(output.getvalue()), b"data")
 
-    def test_encrypted_zip_entry_is_blocked(self):
-        target = self.zip_archive((("secret.txt", b"secret"),))
+    def encrypted_zip(self, name):
+        values = {
+            'crypto': 'UEsDBBQAAQAAABWLS13Nd37VGwAAAA8AAAAKAAAAc2VjcmV0LnR4dBc5eHapPSubE8GGRWyjofwRuzVRC+IuE3RbOFBLAQI/AxQAAQAAABWLS13Nd37VGwAAAA8AAAAKACQAAAAAAAAAIIC0gQAAAABzZWNyZXQudHh0CgAgAAAAAAABABgAbQ2S7cZZ3QEAAAAAAAAAAAAAAAAAAAAAUEsFBgAAAAABAAEAXAAAAEMAAAAAAA==',
+            'aes128': 'UEsDBDMAAQBjABWLS10AAAAAIwAAAA8AAAAKAAsAc2VjcmV0LnR4dAGZBwACAEFFAQAAIN65InQ6DJidQHa//nsuQt2NoRH/jZYx1WOzPwooJkTTp6tQSwECPwMzAAEAYwAVi0tdAAAAACMAAAAPAAAACgAvAAAAAAAAACCAtIEAAAAAc2VjcmV0LnR4dAoAIAAAAAAAAQAYAG0Nku3GWd0BAAAAAAAAAAAAAAAAAAAAAAGZBwACAEFFAQAAUEsFBgAAAAABAAEAZwAAAFYAAAAAAA==',
+            'aes256': 'UEsDBDMAAQBjABWLS10AAAAAKwAAAA8AAAAKAAsAc2VjcmV0LnR4dAGZBwACAEFFAwAAJvs/zkcma/gHD1L+gtTjplmN9FDorCj47b0JYFVLprY9NeBxFeanQrYGFVBLAQI/AzMAAQBjABWLS10AAAAAKwAAAA8AAAAKAC8AAAAAAAAAIIC0gQAAAABzZWNyZXQudHh0CgAgAAAAAAABABgAbQ2S7cZZ3QEAAAAAAAAAAAAAAAAAAAAAAZkHAAIAQUUDAABQSwUGAAAAAAEAAQBnAAAAXgAAAAAA',
+            'large': 'UEsDBDMAAQBjAESLS10AAAAAmwAAAKCGAQAJAAsAbGFyZ2UudHh0AZkHAAIAQUUDCACftktPqk+1CSradE/BecGbzDUXAr7H+XCRl+uG5Ds1ccecOyXEux2I0m7gNAmHCDVsKkMFJAAS4+BIs1mcAQhXmiALq/Geot0TFUELQYezKTLKDEjnNV6iJTEMk2Ehw1+fkPVSiSfjq1XL3Drj/I/PVrO5A2bKJlgY+/1+OB2Dh6nwxmW7BW6AeRAEArZSzIRfaXpTZXZnSHucfFBLAQI/AzMAAQBjAESLS10AAAAAmwAAAKCGAQAJAC8AAAAAAAAAIIC0gQAAAABsYXJnZS50eHQKACAAAAAAAAEAGADsf84gx1ndAQAAAAAAAAAAAAAAAAAAAAABmQcAAgBBRQMIAFBLBQYAAAAAAQABAGYAAADNAAAAAAA=',
+        }
+        target = self.root / (name + ".zip")
+        target.write_bytes(base64.b64decode(values[name]))
+        return target
+
+    def test_zipcrypto_and_winzip_aes_passwords(self):
+        for name in ("crypto", "aes128", "aes256"):
+            with self.subTest(encryption=name):
+                target = self.encrypted_zip(name)
+                row = archive.list_archive(target)["entries"][0]
+                self.assertEqual(row["kind"], "file")
+                self.assertTrue(row["encrypted"])
+                self.assertEqual(row["reason"], "")
+                for password, failure in ((b"", archive.PasswordRequired), (b"wrong", archive.PasswordIncorrect)):
+                    outgoing = io.BytesIO()
+                    with self.assertRaises(failure):
+                        archive.Response(outgoing).extract(target, 0, password)
+                    self.assertEqual(outgoing.getvalue(), b"")
+                outgoing = io.BytesIO()
+                archive.Response(outgoing).extract(target, 0, b"fixture-pass")
+                self.assertEqual(self.unpack_response(outgoing.getvalue()), b"secret payload\n")
+
+    def test_mixed_zip_opens_unencrypted_entry_without_password(self):
+        for name in ("crypto", "aes256"):
+            with self.subTest(encryption=name):
+                target = self.encrypted_zip(name)
+                with zipfile.ZipFile(target, "a") as writer:
+                    writer.writestr("public.txt", b"public")
+                report = archive.list_archive(target)
+                self.assertEqual([entry["encrypted"] for entry in report["entries"]], [True, False])
+                outgoing = io.BytesIO()
+                archive.Response(outgoing).extract(target, 1)
+                self.assertEqual(self.unpack_response(outgoing.getvalue()), b"public")
+
+    def test_zipcrypto_corruption_is_not_accepted_or_misreported(self):
+        target = self.encrypted_zip("crypto")
         data = bytearray(target.read_bytes())
-        for signature, offset in ((b"PK\x03\x04", 6), (b"PK\x01\x02", 8)):
-            position = data.index(signature) + offset
-            flags = struct.unpack_from("<H", data, position)[0]
-            struct.pack_into("<H", data, position, flags | 1)
+        data[data.index(b"PK\x01\x02") - 1] ^= 1
         target.write_bytes(data)
-        row = archive.list_archive(target)["entries"][0]
-        self.assertEqual(row["kind"], "blocked")
-        self.assertIn("Encrypted", row["reason"])
+        outgoing = io.BytesIO()
+        with self.assertRaises(archive.ArchiveRejected) as failure:
+            archive.Response(outgoing).extract(target, 0, b"fixture-pass")
+        self.assertEqual(failure.exception.code, "archive")
+        self.assertFalse(outgoing.getvalue().endswith(struct.pack("!I", 0)))
+
+    def test_password_errors_preserve_protocol_and_hide_passwords(self):
+        source = self.encrypted_zip("aes256").read_bytes()
+        for password, code in ((b"", "password_required"), (b"wrong-secret", "password_incorrect")):
+            incoming = io.BytesIO(struct.pack("!IIH", len(source), 0, len(password)) + password + source + protocol.ACK_MAGIC)
+            outgoing = io.BytesIO()
+            with patch.object(archive, "ARCHIVE_PATH", self.root / ("received-" + code)), patch.object(archive.sys, "stdin", SimpleNamespace(buffer=incoming)), patch.object(archive.sys, "stdout", SimpleNamespace(buffer=outgoing)):
+                archive.main()
+            stream = io.BytesIO(outgoing.getvalue())
+            self.assertEqual(stream.read(8), protocol.ERROR_MAGIC)
+            size = struct.unpack("!I", stream.read(4))[0]
+            value = json.loads(stream.read(size))
+            self.assertEqual(set(value), {"code", "error"})
+            self.assertEqual(value["code"], code)
+            self.assertEqual(stream.read(), protocol.END_MAGIC)
+            self.assertEqual(incoming.read(), b"")
+            if password:
+                self.assertNotIn(password, outgoing.getvalue())
+
+    def test_tampered_aes_authentication_never_completes(self):
+        target = self.encrypted_zip("large")
+        data = bytearray(target.read_bytes())
+        data[data.index(b"PK\x01\x02") - 1] ^= 1
+        target.write_bytes(data)
+        outgoing = io.BytesIO()
+        response = archive.Response(outgoing)
         with self.assertRaises(archive.ArchiveRejected):
-            archive.Response(io.BytesIO()).extract(target, 0)
+            response.extract(target, 0, b"fixture-pass")
+        self.assertFalse(outgoing.getvalue().endswith(struct.pack("!I", 0)))
+        password = b"fixture-pass"
+        incoming = io.BytesIO(struct.pack("!IIH", len(data), 0, len(password)) + password + data + protocol.ACK_MAGIC)
+        outgoing = io.BytesIO()
+        with patch.object(archive, "ARCHIVE_PATH", self.root / "received-corrupt"), patch.object(archive.sys, "stdin", SimpleNamespace(buffer=incoming)), patch.object(archive.sys, "stdout", SimpleNamespace(buffer=outgoing)):
+            archive.main()
+        stream = io.BytesIO(outgoing.getvalue())
+        self.assertEqual(stream.read(8), protocol.ERROR_MAGIC)
+        size = struct.unpack("!I", stream.read(4))[0]
+        self.assertEqual(json.loads(stream.read(size))["code"], "archive")
+        self.assertEqual(stream.read(), protocol.END_MAGIC)
+        self.assertEqual(incoming.read(), b"")
+
+    def test_strict_data_reader_rejects_authentication_warning(self):
+        reads = iter((4, archive.ffi.ARCHIVE_WARN))
+
+        def read_data(pointer, buffer, size):
+            result = next(reads)
+            if result > 0:
+                memmove(buffer, b"data", result)
+            return result
+
+        with patch.object(archive.ffi, "read_data", read_data), patch.object(archive.ffi, "archive_error", return_value=archive.ArchiveError("ZIP bad Authentication code")):
+            blocks = archive.ArchiveReader(None, self.root / "unused").blocks()
+            self.assertEqual(next(blocks), b"data")
+            with self.assertRaises(archive.ArchiveError):
+                next(blocks)
+
+    def test_late_authentication_failure_aborts_started_response(self):
+        target = self.encrypted_zip("aes256")
+        source = target.read_bytes()
+        password = b"fixture-pass"
+        incoming = io.BytesIO(struct.pack("!IIH", len(source), 0, len(password)) + password + source + protocol.ACK_MAGIC)
+        outgoing = io.BytesIO()
+
+        def blocks(reader):
+            yield b"data"
+            raise archive.ArchiveError("ZIP bad Authentication code")
+
+        with patch.object(archive.ArchiveReader, "blocks", blocks), patch.object(archive, "ARCHIVE_PATH", self.root / "received-late"), patch.object(archive.sys, "stdin", SimpleNamespace(buffer=incoming)), patch.object(archive.sys, "stdout", SimpleNamespace(buffer=outgoing)):
+            archive.main()
+        self.assertEqual(outgoing.getvalue(), protocol.DATA_MAGIC + struct.pack("!I", 4) + b"data")
+        self.assertEqual(incoming.read(), protocol.ACK_MAGIC)
+
+    def test_encryption_does_not_bypass_entry_restrictions(self):
+        values = {"pathname": "../secret.txt", "size": 1, "_entry_p": 1, "islnk": False, "issym": False, "isdir": False, "isreg": True}
+        with patch.object(archive, "entry_is_encrypted", return_value=1):
+            self.assertEqual(archive.entry_record(SimpleNamespace(**values), 0)["kind"], "blocked")
+            values.update(pathname="link.txt", issym=True)
+            self.assertEqual(archive.entry_record(SimpleNamespace(**values), 0)["reason"], "Links are not opened")
+            values.update(issym=False, size=protocol.MAX_OUTPUT + 1)
+            self.assertEqual(archive.entry_record(SimpleNamespace(**values), 0)["reason"], "File exceeds the output limit")
+            values["size"] = 1
+            for family in ("RAR", "7z"):
+                record = archive.entry_record(SimpleNamespace(**values), 0, family)
+                self.assertEqual(record["kind"], "blocked")
+                self.assertTrue(record["encrypted"])
+                self.assertIn("not supported", record["reason"])
+        self.assertEqual(archive.library_error(archive.ArchiveError("RAR encryption support unavailable."), b"anything").code, "unsupported")
+        self.assertEqual(archive.library_error(archive.ArchiveError("ZIP bad Authentication code"), b"anything").code, "archive")
 
     def test_empty_archive_and_unsupported_input(self):
         target = self.zip_archive(())
@@ -246,7 +373,7 @@ class ArchiveGuestTests(unittest.TestCase):
 
     def test_multipart_error_response_preserves_protocol_handshake(self):
         source = self.rar_archive(4, 1)
-        incoming = io.BytesIO(struct.pack("!II", len(source), protocol.LIST_INDEX) + source + protocol.ACK_MAGIC)
+        incoming = io.BytesIO(struct.pack("!IIH", len(source), protocol.LIST_INDEX, 0) + source + protocol.ACK_MAGIC)
         outgoing = io.BytesIO()
         with patch.object(archive, "ARCHIVE_PATH", self.root / "received"), patch.object(archive.sys, "stdin", SimpleNamespace(buffer=incoming)), patch.object(archive.sys, "stdout", SimpleNamespace(buffer=outgoing)):
             archive.main()
@@ -285,8 +412,11 @@ class ArchiveGuestTests(unittest.TestCase):
             def format_label(self):
                 return "ZIP"
 
+            def blocks(self):
+                return entry.get_blocks(block_size=archive.CHUNK_SIZE)
+
         @contextmanager
-        def reader(path):
+        def reader(path, password=b""):
             yield FakeArchive()
 
         output = io.BytesIO()
@@ -299,7 +429,7 @@ class ArchiveGuestTests(unittest.TestCase):
         for size, index in ((protocol.MAX_INPUT + 1, protocol.LIST_INDEX), (1, protocol.MAX_ENTRIES), (0, protocol.LIST_INDEX)):
             target = self.root / "received"
             with patch.object(archive, "ARCHIVE_PATH", target), self.assertRaises(archive.ArchiveRejected):
-                archive.receive_source(io.BytesIO(struct.pack("!II", size, index)))
+                archive.receive_source(io.BytesIO(struct.pack("!IIH", size, index, 0)))
             self.assertFalse(target.exists())
         source = b"x" * (protocol.CHUNK_SIZE + 1)
         target = self.root / "received"
@@ -311,15 +441,28 @@ class ArchiveGuestTests(unittest.TestCase):
                 return super().read(size)
 
         with patch.object(archive, "ARCHIVE_PATH", target):
-            index = archive.receive_source(Input(struct.pack("!II", len(source), 0) + source))
-        self.assertEqual(index, 0)
+            index, password = archive.receive_source(Input(struct.pack("!IIH", len(source), 0, 0) + source))
+        self.assertEqual((index, password), (0, b""))
         self.assertEqual(target.read_bytes(), source)
         self.assertLessEqual(max(requests), protocol.CHUNK_SIZE)
+
+    def test_password_request_limits_reject_before_writing_source(self):
+        for size, password in ((archive.MAX_PASSWORD_BYTES + 1, b""), (2, b"a\0"), (1, b"\xff")):
+            target = self.root / "received-password"
+            incoming = io.BytesIO(struct.pack("!IIH", 1, 0, size) + password + b"x")
+            with patch.object(archive, "ARCHIVE_PATH", target), self.assertRaises(archive.ArchiveRejected):
+                archive.receive_source(incoming)
+            self.assertFalse(target.exists())
+        password = "κωδικός".encode("utf-8")
+        target = self.root / "received-unicode"
+        with patch.object(archive, "ARCHIVE_PATH", target):
+            self.assertEqual(archive.receive_source(io.BytesIO(struct.pack("!IIH", 1, 0, len(password)) + password + b"x")), (0, password))
+        self.assertEqual(target.read_bytes(), b"x")
 
     def test_main_listing_ack_and_fixed_error(self):
         target = self.zip_archive((("file.txt", b"hello"),))
         source = target.read_bytes()
-        incoming = io.BytesIO(struct.pack("!II", len(source), protocol.LIST_INDEX) + source + protocol.ACK_MAGIC)
+        incoming = io.BytesIO(struct.pack("!IIH", len(source), protocol.LIST_INDEX, 0) + source + protocol.ACK_MAGIC)
         outgoing = io.BytesIO()
         with patch.object(archive, "ARCHIVE_PATH", self.root / "received"), patch.object(archive.sys, "stdin", SimpleNamespace(buffer=incoming)), patch.object(archive.sys, "stdout", SimpleNamespace(buffer=outgoing)):
             archive.main()
@@ -330,16 +473,16 @@ class ArchiveGuestTests(unittest.TestCase):
         self.assertEqual(report["entries"][0]["name"], "file.txt")
         self.assertEqual(stream.read(), protocol.END_MAGIC)
         self.assertEqual(incoming.read(), b"")
-        incoming = io.BytesIO(struct.pack("!II", 0, protocol.LIST_INDEX) + protocol.ACK_MAGIC)
+        incoming = io.BytesIO(struct.pack("!IIH", 0, protocol.LIST_INDEX, 0) + protocol.ACK_MAGIC)
         outgoing = io.BytesIO()
         with patch.object(archive.sys, "stdin", SimpleNamespace(buffer=incoming)), patch.object(archive.sys, "stdout", SimpleNamespace(buffer=outgoing)):
             archive.main()
         self.assertTrue(outgoing.getvalue().startswith(protocol.ERROR_MAGIC))
         self.assertTrue(outgoing.getvalue().endswith(protocol.END_MAGIC))
 
-    def test_document_dispatcher_keeps_original_wire_protocol(self):
+    def test_document_dispatcher_uses_document_wire_protocol(self):
         source = b"%PDF-1.4 fixture"
-        incoming = io.BytesIO(struct.pack("!8sI16s", INPUT_MAGIC, len(source), b".pdf") + source + ACK_MAGIC)
+        incoming = io.BytesIO(struct.pack("!8sI16sH", INPUT_MAGIC, len(source), b".pdf", 0) + source + ACK_MAGIC)
         outgoing = io.BytesIO()
         real_path = Path
 
@@ -353,7 +496,7 @@ class ArchiveGuestTests(unittest.TestCase):
                 return b"P6\n1 1\n255\n\x01\x02\x03"
             self.fail("Unexpected document renderer command")
 
-        with patch.object(guest, "Path", mapped_path), patch.object(guest.os, "chdir"), patch.object(guest.os, "umask"), patch.object(guest, "run", renderer), patch.object(guest.sys, "stdin", SimpleNamespace(buffer=incoming)), patch.object(guest.sys, "stdout", SimpleNamespace(buffer=outgoing)):
+        with patch.object(guest, "Path", mapped_path), patch.object(guest.os, "chdir"), patch.object(guest.os, "umask"), patch.object(guest, "run", renderer), patch.object(guest, "prepare_pdf", side_effect=lambda source, password: source), patch.object(guest.sys, "stdin", SimpleNamespace(buffer=incoming)), patch.object(guest.sys, "stdout", SimpleNamespace(buffer=outgoing)):
             guest.main()
         self.assertEqual(outgoing.getvalue(), OUTPUT_MAGIC + struct.pack("!III", 1, 1, 1) + b"\x01\x02\x03" + END_MAGIC)
         self.assertEqual((real_path(self.root) / "job/document.pdf").read_bytes(), source)

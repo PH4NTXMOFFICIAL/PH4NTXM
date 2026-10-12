@@ -3,7 +3,7 @@
 # Licensed under the GNU General Public License v3.0.
 
 from contextlib import contextmanager
-from ctypes import c_int
+from ctypes import c_int, create_string_buffer
 import io
 import json
 import logging
@@ -16,7 +16,7 @@ from libarchive import ffi
 from libarchive.entry import ArchiveEntry
 from libarchive.exception import ArchiveError
 
-from airlock import AirlockError, read_exact
+from airlock import AirlockError, MAX_PASSWORD_BYTES, read_exact
 from archive_protocol import (
     ACK_MAGIC,
     CHUNK_SIZE,
@@ -43,7 +43,30 @@ logging.getLogger("libarchive").disabled = True
 
 
 class ArchiveRejected(ValueError):
-    pass
+    code = "archive"
+
+
+class PasswordRequired(ArchiveRejected):
+    code = "password_required"
+
+
+class PasswordIncorrect(ArchiveRejected):
+    code = "password_incorrect"
+
+
+class EncryptionUnsupported(ArchiveRejected):
+    code = "unsupported"
+
+
+def library_error(error, password):
+    message = error.msg
+    if message == "Passphrase required for this entry":
+        return PasswordRequired("Enter the password to open this ZIP entry.") if not password else ArchiveRejected("The encrypted ZIP entry could not be decrypted.")
+    if message in {"Incorrect passphrase", "Too many incorrect passphrases"}:
+        return PasswordIncorrect("The ZIP password is incorrect. Try again.")
+    if isinstance(message, str) and ("encryption support unavailable" in message or "encryption is not supported" in message.lower() or "encryption not supported" in message.lower() or "encrypted, but currently not supported" in message):
+        return EncryptionUnsupported("Encryption for this archive format is not supported.")
+    return ArchiveRejected("The archive is damaged or unsupported.")
 
 
 def read_rar_bytes(source, size):
@@ -140,6 +163,16 @@ class ArchiveReader:
                 return
             yield entry
 
+    def blocks(self):
+        buffer = create_string_buffer(CHUNK_SIZE)
+        while True:
+            size = ffi.read_data(self.pointer, buffer, CHUNK_SIZE)
+            if size < 0:
+                raise ffi.archive_error(self.pointer, size)
+            if size == 0:
+                return
+            yield buffer.raw[:size]
+
     def format_label(self):
         family = archive_format(self.pointer) & 0xFF0000
         if family not in FORMAT_LABELS:
@@ -148,7 +181,7 @@ class ArchiveReader:
 
 
 @contextmanager
-def archive_reader(path):
+def archive_reader(path, password=b""):
     pointer = ffi.read_new()
     try:
         for name in FORMAT_READERS:
@@ -157,14 +190,18 @@ def archive_reader(path):
         for name in FILTER_READERS:
             if ffi.get_read_filter_function(name)(pointer) != ffi.ARCHIVE_OK:
                 raise ArchiveRejected("The archive reader is unavailable.")
+        if password and ffi.read_add_passphrase(pointer, password) != ffi.ARCHIVE_OK:
+            raise EncryptionUnsupported("ZIP decryption is unavailable.")
         if ffi.read_open_filename_w(pointer, str(path), CHUNK_SIZE) != ffi.ARCHIVE_OK:
             raise ArchiveRejected("The archive is damaged or unsupported.")
         yield ArchiveReader(pointer, path)
+    except ArchiveError as error:
+        raise library_error(error, password) from error
     finally:
         ffi.read_free(pointer)
 
 
-def entry_record(entry, index):
+def entry_record(entry, index, format_label="ZIP"):
     name = entry.pathname
     name_valid = isinstance(name, str) and len(name) <= MAX_NAME
     if name_valid:
@@ -183,11 +220,10 @@ def entry_record(entry, index):
         "size": size,
         "kind": "blocked",
         "reason": "",
+        "encrypted": bool(entry._entry_p and entry_is_encrypted(entry._entry_p)),
     }
     if not name_valid:
         record["reason"] = "Unsafe or unreadable file name"
-    elif entry_is_encrypted(entry._entry_p):
-        record["reason"] = "Encrypted files are not supported"
     elif entry.islnk or entry.issym:
         record["reason"] = "Links are not opened"
     elif entry.isdir:
@@ -196,33 +232,41 @@ def entry_record(entry, index):
         record["reason"] = "Special files are not opened"
     elif size is not None and size > MAX_OUTPUT:
         record["reason"] = "File exceeds the output limit"
+    elif record["encrypted"] and format_label != "ZIP":
+        record["reason"] = "Encryption for this archive format is not supported"
     else:
         record["kind"] = "file"
     return record
 
 
 def receive_source(incoming):
-    size, index = struct.unpack("!II", read_exact(incoming, 8))
-    if not 0 < size <= MAX_INPUT or (index != LIST_INDEX and index >= MAX_ENTRIES):
+    size, index, password_size = struct.unpack("!IIH", read_exact(incoming, 10))
+    if not 0 < size <= MAX_INPUT or (index != LIST_INDEX and index >= MAX_ENTRIES) or password_size > MAX_PASSWORD_BYTES:
         raise ArchiveRejected("The archive request exceeds the supported limits.")
+    password = read_exact(incoming, password_size)
+    if b"\0" in password:
+        raise ArchiveRejected("The archive password is invalid.")
+    try:
+        password.decode("utf-8")
+    except UnicodeError as error:
+        raise ArchiveRejected("The archive password is invalid.") from error
     with ARCHIVE_PATH.open("xb") as target:
         remaining = size
         while remaining:
             block = read_exact(incoming, min(CHUNK_SIZE, remaining))
             target.write(block)
             remaining -= len(block)
-    return index
+    return index, password
 
 
-def list_archive(path):
+def list_archive(path, password=b""):
     entries = []
     metadata_size = 0
-    with archive_reader(path) as archive:
+    with archive_reader(path, password) as archive:
         for index, entry in enumerate(archive):
             if index >= MAX_ENTRIES:
                 raise ArchiveRejected("The archive contains too many entries.")
-            archive.format_label()
-            record = entry_record(entry, index)
+            record = entry_record(entry, index, archive.format_label())
             metadata_size += len(json.dumps(record, ensure_ascii=False).encode("utf-8")) + 1
             if metadata_size > MAX_METADATA - 128:
                 raise ArchiveRejected("The archive listing exceeds the supported limits.")
@@ -242,19 +286,23 @@ class Response:
         self.started = True
         self.outgoing.write(magic + struct.pack("!I", len(data)) + data)
 
-    def extract(self, path, selection):
-        with archive_reader(path) as archive:
+    def extract(self, path, selection, password=b""):
+        with archive_reader(path, password) as archive:
             for index, entry in enumerate(archive):
                 if index >= MAX_ENTRIES:
                     raise ArchiveRejected("The archive contains too many entries.")
-                archive.format_label()
+                format_label = archive.format_label()
                 if index != selection:
                     continue
-                record = entry_record(entry, index)
+                record = entry_record(entry, index, format_label)
                 if record["kind"] != "file":
+                    if record["encrypted"] and format_label != "ZIP":
+                        raise EncryptionUnsupported("Encryption for this archive format is not supported.")
                     raise ArchiveRejected("The selected entry cannot be opened.")
+                if record["encrypted"] and not password:
+                    raise PasswordRequired("Enter the password to open this ZIP entry.")
                 total = 0
-                for block in entry.get_blocks(block_size=CHUNK_SIZE):
+                for block in archive.blocks():
                     if not 0 < len(block) <= CHUNK_SIZE:
                         raise ArchiveRejected("The archive returned invalid file data.")
                     total += len(block)
@@ -283,19 +331,19 @@ def main():
     incoming = sys.stdin.buffer
     response = Response(sys.stdout.buffer)
     try:
-        selection = receive_source(incoming)
+        selection, password = receive_source(incoming)
         if selection == LIST_INDEX:
-            response.metadata(LIST_MAGIC, list_archive(ARCHIVE_PATH))
+            response.metadata(LIST_MAGIC, list_archive(ARCHIVE_PATH, password))
         else:
-            response.extract(ARCHIVE_PATH, selection)
+            response.extract(ARCHIVE_PATH, selection, password)
     except ArchiveRejected as error:
         if response.started:
             return
-        response.metadata(ERROR_MAGIC, {"error": str(error)})
-    except (ArchiveError, OSError, ValueError, UnicodeError, MemoryError, OverflowError):
+        response.metadata(ERROR_MAGIC, {"code": error.code, "error": str(error)})
+    except (AirlockError, ArchiveError, OSError, ValueError, UnicodeError, MemoryError, OverflowError):
         if response.started:
             return
-        response.metadata(ERROR_MAGIC, {"error": "The archive is damaged, encrypted or unsupported."})
+        response.metadata(ERROR_MAGIC, {"code": "archive", "error": "The archive is damaged or unsupported."})
     response.finish(incoming)
 
 

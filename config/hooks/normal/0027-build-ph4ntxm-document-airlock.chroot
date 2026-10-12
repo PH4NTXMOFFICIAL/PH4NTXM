@@ -8,7 +8,7 @@ SOURCE=/usr/local/src/ph4ntxm-document-airlock
 python3 "$SOURCE/tests/test-airlock.py"
 python3 "$SOURCE/tests/test-archives.py"
 install -d -m 0755 /usr/local/lib/ph4ntxm-document-airlock
-install -m 0644 "$SOURCE/airlock.py" "$SOURCE/archives.py" "$SOURCE/archive_protocol.py" \
+install -m 0644 "$SOURCE/airlock.py" "$SOURCE/archives.py" "$SOURCE/archive_protocol.py" "$SOURCE/password_dialog.py" \
     /usr/local/lib/ph4ntxm-document-airlock/
 install -D -m 0755 /usr/bin/bwrap \
     /usr/local/libexec/ph4ntxm-document-airlock/bwrap

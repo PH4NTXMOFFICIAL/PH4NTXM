@@ -52,7 +52,7 @@ Boot Pilot shows protection status, helps you connect to Wi-Fi and opens the bro
 
 Open documents and media separately from your desktop files:
 
-Document Airlock converts supported documents in a temporary environment without network access. Preview the pages, then export a new PDF made from those page images. Archive Airlock inspects local ZIP, RAR, 7z and TAR archives offline and passes selected files to isolated viewers. Image and media viewers also use isolated offline environments to open the files you select.
+Document Airlock converts supported documents in a temporary environment without network access. Preview the pages, then export a new PDF made from those page images. Archive Airlock inspects local ZIP, RAR, 7z and TAR archives offline and passes selected files to isolated viewers. Password-protected ZIP entries and supported encrypted PDF/Office documents are unlocked inside the disposable Airlock guest. Image and media viewers also use isolated offline environments to open the files you select.
 
 Block networking or start an emergency shutdown:
 

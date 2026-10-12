@@ -3,6 +3,7 @@
 # Licensed under the GNU General Public License v3.0.
 
 import argparse
+import getpass
 import os
 import signal
 import subprocess
@@ -12,7 +13,7 @@ import zlib
 from pathlib import Path
 
 sys.path.insert(0, "/usr/local/lib/ph4ntxm-document-airlock")
-from airlock import AirlockError, AirlockSession, check_ready, read_input
+from airlock import AirlockError, AirlockSession, PasswordIncorrect, PasswordRequired, check_ready, read_input
 
 CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
 ICON_FILE = "/usr/share/icons/Lyra-blue-dark/apps/scalable/ph4ntxm-document-airlock.svg"
@@ -23,6 +24,7 @@ def desktop(document=None):
 
     gi.require_version("Gtk", "3.0")
     from gi.repository import Gtk, Gdk, GdkPixbuf, GLib
+    from password_dialog import ask_password
 
     def add_class(widget, name):
         widget.get_style_context().add_class(name)
@@ -47,6 +49,7 @@ def desktop(document=None):
             self.session = None
             self.busy = False
             self.closing = False
+            self.password_dialog = None
             self.page = 0
             self.cancelled = threading.Event()
             root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -126,8 +129,8 @@ def desktop(document=None):
             self.next.set_sensitive(enabled and self.page + 1 < len(self.session.pages))
             self.export_button.set_sensitive(enabled)
 
-        def on_convert(self, _, filename=None):
-            if self.busy:
+        def on_convert(self, _, filename=None, password=None):
+            if self.busy or self.closing:
                 return
             if filename is None:
                 filename = self.chooser.get_filename()
@@ -158,22 +161,22 @@ def desktop(document=None):
                     session.cancelled = self.cancelled
                     if self.cancelled.is_set():
                         raise AirlockError("Conversion cancelled.")
-                    session.convert(suffix, data)
+                    session.convert(suffix, data, password=password)
                 except (
                     AirlockError,
                     OSError,
                     ValueError,
                     subprocess.SubprocessError,
                 ) as exc:
-                    error = str(exc)
+                    error = exc
                     if session:
-                        session.close()
+                        session.close(cancel=False)
                     session = None
-                GLib.idle_add(self.finished, session, error)
+                GLib.idle_add(self.finished, session, error, filename)
 
             threading.Thread(target=worker, daemon=False).start()
 
-        def finished(self, session, error):
+        def finished(self, session, error, filename):
             self.busy = False
             self.session = session
             self.spinner.stop()
@@ -185,8 +188,24 @@ def desktop(document=None):
                     self.session.close()
                 self.destroy()
                 return False
-            if error:
-                self.status.set_text(error)
+            if self.cancelled.is_set():
+                if self.session:
+                    self.session.close()
+                    self.session = None
+                self.status.set_text("Conversion cancelled.")
+                self.set_result_enabled(False)
+                return False
+            if isinstance(error, (PasswordRequired, PasswordIncorrect)):
+                self.status.set_text(str(error))
+                password = ask_password(self, "Unlock Document", str(error))
+                if self.closing:
+                    self.destroy()
+                elif password is not None:
+                    self.on_convert(None, filename, password)
+                else:
+                    self.status.set_text("Conversion cancelled.")
+            elif error:
+                self.status.set_text(str(error))
             else:
                 self.status.set_text(
                     "Conversion complete. The isolated session has closed. Review and export your PDF."
@@ -239,6 +258,11 @@ def desktop(document=None):
             dialog.destroy()
 
         def on_close(self, *_):
+            if self.password_dialog is not None:
+                self.closing = True
+                self.cancelled.set()
+                self.password_dialog.response(Gtk.ResponseType.CANCEL)
+                return True
             if self.busy:
                 self.closing = True
                 self.cancelled.set()
@@ -280,7 +304,17 @@ def main():
         elif arguments.document and arguments.output:
             suffix, data = read_input(arguments.document)
             session = AirlockSession(check_ready(suffix))
-            session.convert(suffix, data)
+            password = None
+            while True:
+                try:
+                    session.convert(suffix, data, password=password)
+                    break
+                except (PasswordRequired, PasswordIncorrect) as error:
+                    if not sys.stdin.isatty():
+                        raise AirlockError("This document requires a password. Open Document Airlock or use an interactive terminal.") from None
+                    print(str(error), file=sys.stderr)
+                    password = getpass.getpass("Document password: ")
+            password = None
             session.export(arguments.output)
             print("Converted PDF exported.")
         elif arguments.output:
