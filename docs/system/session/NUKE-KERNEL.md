@@ -6,7 +6,7 @@ Coordinates session containment and best-effort RAM scrubbing for normal termina
 
 ## [ STARTUP ]
 
-The build hook packages two small initramfs stages around the installed kernel. [Arm Crashkernel](ARM-CRASHKERNEL.md) loads the first stage early and locks later loading in the running session.
+The build hook packages two small initramfs stages around the installed kernel. It requires the selected kernel configuration to confirm `CONFIG_MEMTEST=y`; missing or unverified support stops the build. [Arm Crashkernel](ARM-CRASHKERNEL.md) loads the first stage early and locks later loading in the running session.
 
 The common `ph4ntxm-nuke.sh` helper prepares the current system for termination. It requires root and is shared with the emergency flow.
 
@@ -18,7 +18,7 @@ It then stops RAM seeding, disables swap, synchronizes, requests cache dropping 
 
 After a crash transition, the first initramfs reconstructs an exact memory map from the ranges passed during arming. It attempts to load the next kernel using the file syscall, then the legacy loading path if necessary.
 
-The second kernel is started with `memtest=17` and the reconstructed map. Its init runs the RAM scrub helper, reports whether the allocatable pass completed and attempts poweroff. Both stages have fallback shutdown/reboot requests if the preferred path returns.
+The second kernel is started with `memtest=17` and the reconstructed map. Its init reads the kernel-reported `EarlyMemtestBad` value from `/proc/meminfo`: zero reports no detected errors, a positive value reports detected bad memory, and a missing, unreadable or malformed result reports unavailable. This reports the kernel test result, not proof of complete physical-memory erasure. Every result continues into the RAM scrub helper, which reports whether the allocatable pass completed, and the poweroff attempts. Both stages have fallback shutdown/reboot requests if the preferred path returns.
 
 Missing map data or failure to load the second kernel leads to the failure/poweroff branch, not a success report. The stages use the RAM map collected during arming and the following allocatable-memory pass.
 

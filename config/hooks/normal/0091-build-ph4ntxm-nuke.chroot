@@ -7,6 +7,10 @@ set -eu
 KVER=$(find /boot -maxdepth 1 -type f -name 'vmlinuz-*' -printf '%f\n' \
     | sed 's/^vmlinuz-//' | sort -V | tail -n 1)
 [ -n "$KVER" ]
+if ! grep -qx 'CONFIG_MEMTEST=y' "/boot/config-$KVER" 2>/dev/null; then
+    printf 'PH4NTXM: Kernel %s requires verified CONFIG_MEMTEST=y support for Nuke\n' "$KVER" >&2
+    exit 1
+fi
 
 WORK_DIR=$(mktemp -d /tmp/ph4ntxm-crash-initramfs.XXXXXX)
 SCRUB_DIR=$(mktemp -d /tmp/ph4ntxm-scrub-initramfs.XXXXXX)
@@ -48,7 +52,24 @@ mount -t proc proc /proc 2>/dev/null || true
 mount -t sysfs sysfs /sys 2>/dev/null || true
 mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
 
-echo "PH4NTXM: USABLE RAM MEMTEST COMPLETE"
+memtest_bad=$(awk '
+    $1 == "EarlyMemtestBad:" {
+        count++
+        if (NF == 3 && $2 ~ /^[0-9]+$/ && $3 == "kB")
+            bad = $2
+        else
+            invalid = 1
+    }
+    END {
+        if (count == 1 && !invalid)
+            print bad
+    }
+' /proc/meminfo 2>/dev/null) || memtest_bad=
+case "$memtest_bad" in
+    '') echo "PH4NTXM: KERNEL MEMTEST: RESULT UNAVAILABLE" ;;
+    *[!0]*) printf 'PH4NTXM: KERNEL MEMTEST: BAD MEMORY DETECTED (%s kB)\n' "$memtest_bad" ;;
+    *) echo "PH4NTXM: KERNEL MEMTEST: NO ERRORS DETECTED" ;;
+esac
 sync
 if /bin/ph4ntxm-ram-scrub; then
     echo "PH4NTXM: ALLOCATABLE RAM SCRUB COMPLETE"
