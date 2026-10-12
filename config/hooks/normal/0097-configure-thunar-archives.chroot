@@ -1,0 +1,15 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+plugin=$(dpkg-query -L thunar-archive-plugin | awk '/\/thunarx-3\/thunar-archive-plugin\.so$/ {print}')
+[ -n "$plugin" ]
+disabled="$plugin.ph4ntxm-disabled"
+if [ "$(dpkg-divert --truename "$plugin")" = "$plugin" ]; then
+    dpkg-divert --local --rename --add --divert "$disabled" "$plugin"
+fi
+[ "$(dpkg-divert --truename "$plugin")" = "$disabled" ]
+[ ! -e "$plugin" ]
+[ -f "$disabled" ]

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<actions>
+  <action>
+    <icon>utilities-terminal</icon>
+    <name>Open Terminal Here</name>
+    <unique-id>ph4ntxm-open-terminal</unique-id>
+    <command>exo-open --working-directory %f --launch TerminalEmulator</command>
+    <description>Open a terminal in this folder</description>
+    <patterns>*</patterns>
+    <startup-notify/>
+    <directories/>
+  </action>
+  <action>
+    <icon>xarchiver</icon>
+    <name>Create Archive...</name>
+    <unique-id>ph4ntxm-create-archive</unique-id>
+    <command>/usr/lib/thunar-archive-plugin/xarchiver.tap create %d %F</command>
+    <description>Create an archive from the selected files</description>
+    <patterns>*</patterns>
+    <startup-notify/>
+    <directories/>
+    <audio-files/>
+    <image-files/>
+    <other-files/>
+    <text-files/>
+    <video-files/>
+  </action>
+</actions>
