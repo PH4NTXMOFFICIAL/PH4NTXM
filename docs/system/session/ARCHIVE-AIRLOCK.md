@@ -8,7 +8,7 @@ Lists local archives offline and opens one selected file through its supported i
 
 Open Archive Airlock from PH4NTXM Apps or open an associated archive in the file manager. ZIP, RAR/RAR5, 7z and TAR are supported, including gzip, bzip2, xz and zstd compressed TAR. Password-protected ZIP entries using traditional ZipCrypto or WinZip AES are supported. Encrypted RAR/7z and multipart archives are not supported.
 
-Thunar opens associated archives through Archive Airlock. Its native archive-plugin extraction actions, including drag-and-drop extraction, are disabled. A custom Create Archive action preserves compression of selected files; it does not open or extract existing archives.
+Thunar opens associated archives through Archive Airlock. Its native archive-plugin extraction actions, including drag-and-drop extraction, are disabled. Xarchiver is hidden from application menus and Open With handlers. A custom Create Archive action invokes its compression helper directly to preserve compression of selected files; it does not open or extract existing archives.
 
 Run from the desktop account. KVM access, private namespaces, trusted guest artifacts, disabled swap and a private tmpfs runtime directory are required. Checks read actual available RAM and reject managed hardware-view environments. Missing isolation does not fall back to host extraction.
 
