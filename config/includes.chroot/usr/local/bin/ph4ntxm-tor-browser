@@ -52,6 +52,13 @@ fail() {
     exit 1
 }
 
+LAUNCH_READY_FD=
+if [[ "${1:-}" == --pilot-ready-fd=* ]]; then
+    LAUNCH_READY_FD=${1#*=}
+    [[ "$LAUNCH_READY_FD" =~ ^[1-9][0-9]+$ && -p "/proc/self/fd/$LAUNCH_READY_FD" ]] || fail 'INVALID LAUNCH ACKNOWLEDGEMENT PIPE'
+    shift
+fi
+
 USER_ID=$(id -u)
 ((USER_ID > 0)) || fail 'REFUSING TO RUN AS ROOT'
 RUNTIME_BASE=/run/user/$USER_ID
@@ -205,12 +212,21 @@ trap 'SIGNAL_STATUS=130' INT
 trap 'SIGNAL_STATUS=143' TERM
 trap 'SIGNAL_STATUS=129' HUP
 set +m
-env -i "${ENVIRONMENT[@]}" /usr/bin/setsid "$START_BROWSER" "$@" &
+(
+    if [[ -n "$LAUNCH_READY_FD" ]]; then
+        exec {LAUNCH_READY_FD}>&-
+    fi
+    exec env -i "${ENVIRONMENT[@]}" /usr/bin/setsid "$START_BROWSER" "$@"
+) &
 BROWSER_PID=$!
 trap 'exit 130' INT
 trap 'exit 143' TERM
 trap 'exit 129' HUP
 ((SIGNAL_STATUS == 0)) || exit "$SIGNAL_STATUS"
+if [[ -n "$LAUNCH_READY_FD" ]]; then
+    printf 'accepted\n' >&"$LAUNCH_READY_FD" || fail 'LAUNCH ACKNOWLEDGEMENT FAILED'
+    exec {LAUNCH_READY_FD}>&-
+fi
 
 set +e
 wait "$BROWSER_PID"

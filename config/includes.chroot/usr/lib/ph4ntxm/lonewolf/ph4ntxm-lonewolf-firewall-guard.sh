@@ -29,6 +29,9 @@ FIREWALL_MANIFEST="/etc/firewall/rules.sha256"
 SLEEP_INTERVAL=2
 LOCK_FILE=/run/ph4ntxm/firewall.lock
 READY_FILE=/run/ph4ntxm/firewall-ready
+ACTIVE_PROFILE=unavailable
+ACTIVE_SOURCE_HASH=""
+EXPECTED_HASH=""
 exec 9>"$LOCK_FILE"
 
 safe() { "$@" >/dev/null 2>&1 || true; }
@@ -39,19 +42,23 @@ clear_ready() {
 
 publish_ready() {
     local ready_tmp uptime_seconds
-    uptime_seconds=$(cut -d. -f1 /proc/uptime)
-    ready_tmp=$(mktemp /run/ph4ntxm/.firewall-ready.XXXXXX)
-    printf 'PROFILE=%s\nSOURCE_SHA256=%s\nRULESET_SHA256=%s\nUPTIME_SECONDS=%s\n' \
-        "$ACTIVE_PROFILE" "$ACTIVE_SOURCE_HASH" "$EXPECTED_HASH" "$uptime_seconds" >"$ready_tmp"
-    chmod 0644 "$ready_tmp"
-    mv -f "$ready_tmp" "$READY_FILE"
+    uptime_seconds=$(cut -d. -f1 /proc/uptime) || return 1
+    [[ "$uptime_seconds" =~ ^[0-9]+$ ]] || return 1
+    ready_tmp=$(mktemp /run/ph4ntxm/.firewall-ready.XXXXXX) || return 1
+    if ! printf 'PROFILE=%s\nSOURCE_SHA256=%s\nRULESET_SHA256=%s\nUPTIME_SECONDS=%s\n' \
+        "$ACTIVE_PROFILE" "$ACTIVE_SOURCE_HASH" "$EXPECTED_HASH" "$uptime_seconds" >"$ready_tmp" \
+        || ! chmod 0644 "$ready_tmp" \
+        || ! mv -f "$ready_tmp" "$READY_FILE"; then
+        rm -f "$ready_tmp"
+        return 1
+    fi
 }
 
 file_is_protected() {
     local path=$1 owner mode
     [[ -f "$path" && ! -L "$path" ]] || return 1
-    owner=$(stat -c '%u' "$path")
-    mode=$(stat -c '%a' "$path")
+    owner=$(stat -c '%u' "$path") || return 1
+    mode=$(stat -c '%a' "$path") || return 1
     [[ "$owner" == 0 && "$mode" =~ ^[0-7]{3,4}$ ]] || return 1
     (((8#$mode & 0022) == 0))
 }
@@ -61,11 +68,11 @@ manifest_hash() {
     case "$profile" in
         lonewolf)
             file_is_protected "$LONEWOLF_MANIFEST" || return 1
-            value=$(tr -d '\n' <"$LONEWOLF_MANIFEST")
+            value=$(tr -d '\n' <"$LONEWOLF_MANIFEST") || return 1
             ;;
         lockdown)
             file_is_protected "$FIREWALL_MANIFEST" || return 1
-            value=$(awk '$2 == "/etc/firewall/lockdown.nft" {print $1}' "$FIREWALL_MANIFEST")
+            value=$(awk '$2 == "/etc/firewall/lockdown.nft" {print $1}' "$FIREWALL_MANIFEST") || return 1
             ;;
         *)
             return 1
@@ -100,7 +107,7 @@ validate_profile() {
     local expected actual
     file_is_protected "$DESIRED_RULES" || return 1
     expected=$(manifest_hash "$DESIRED_PROFILE") || return 1
-    actual=$($SHA256 "$DESIRED_RULES" | awk '{print $1}')
+    actual=$($SHA256 "$DESIRED_RULES" | awk '{print $1}') || return 1
     [[ "$actual" == "$expected" ]] || return 1
     $NFT -c -f "$DESIRED_RULES"
 }
@@ -108,17 +115,26 @@ validate_profile() {
 apply_lockdown() {
     DESIRED_PROFILE=lockdown
     DESIRED_RULES=$LOCKDOWN_FILE
-    clear_ready
-    if validate_profile; then
-        $NFT -f "$LOCKDOWN_FILE"
-        ACTIVE_SOURCE_HASH=$(manifest_hash lockdown)
-        ACTIVE_PROFILE=lockdown
+    ACTIVE_PROFILE=unavailable
+    ACTIVE_SOURCE_HASH=""
+    EXPECTED_HASH=""
+    clear_ready || return 1
+    if validate_profile && $NFT -f "$LOCKDOWN_FILE"; then
         safe $CONNTRACK -F
-        EXPECTED_HASH="$($NFT -s list ruleset | $SHA256 | awk '{print $1}')"
-        publish_ready
-        return 0
-    else
-        $NFT -f - <<'EOF'
+        if ACTIVE_SOURCE_HASH=$(manifest_hash lockdown) \
+            && EXPECTED_HASH="$($NFT -s list ruleset | $SHA256 | awk '{print $1}')" \
+            && [[ "$EXPECTED_HASH" =~ ^[0-9a-f]{64}$ ]]; then
+            ACTIVE_PROFILE=lockdown
+            if publish_ready; then
+                return 0
+            fi
+        fi
+    fi
+    clear_ready || return 1
+    ACTIVE_PROFILE=unavailable
+    ACTIVE_SOURCE_HASH=""
+    EXPECTED_HASH=""
+    $NFT -f - <<'EOF' || return 1
 flush ruleset
 table inet ph4ntxm_emergency {
     chain input {
@@ -132,23 +148,23 @@ table inet ph4ntxm_emergency {
     }
 }
 EOF
-        ACTIVE_SOURCE_HASH=emergency
-    fi
-    safe $CONNTRACK -F
-    EXPECTED_HASH="$($NFT -s list ruleset | $SHA256 | awk '{print $1}')"
     ACTIVE_PROFILE=emergency
-    clear_ready
+    ACTIVE_SOURCE_HASH=emergency
+    safe $CONNTRACK -F
+    EXPECTED_HASH="$($NFT -s list ruleset | $SHA256 | awk '{print $1}')" || return 1
+    [[ "$EXPECTED_HASH" =~ ^[0-9a-f]{64}$ ]] || return 1
     return 1
 }
 
 apply_profile() {
+    clear_ready || return 1
     validate_profile || return 1
     $NFT -f "$DESIRED_RULES" || return 1
     safe $CONNTRACK -F
-    EXPECTED_HASH="$($NFT -s list ruleset | $SHA256 | awk '{print $1}')"
+    EXPECTED_HASH="$($NFT -s list ruleset | $SHA256 | awk '{print $1}')" || return 1
     [[ "$EXPECTED_HASH" =~ ^[0-9a-f]{64}$ ]] || return 1
     ACTIVE_PROFILE="$DESIRED_PROFILE"
-    ACTIVE_SOURCE_HASH=$(manifest_hash "$ACTIVE_PROFILE")
+    ACTIVE_SOURCE_HASH=$(manifest_hash "$ACTIVE_PROFILE") || return 1
     publish_ready
 }
 
@@ -170,17 +186,17 @@ while true; do
     sleep "$SLEEP_INTERVAL"
     flock -x 9
     select_profile
-    CURRENT="$($NFT -s list ruleset 2>/dev/null | $SHA256 | awk '{print $1}' || echo "")"
+    CURRENT="$($NFT -s list ruleset 2>/dev/null | $SHA256 | awk '{print $1}')" || CURRENT=""
     CURRENT_SOURCE=""
     ACTUAL_SOURCE=""
     case "$ACTIVE_PROFILE" in
         lonewolf)
-            CURRENT_SOURCE=$(manifest_hash lonewolf 2>/dev/null || true)
-            ACTUAL_SOURCE=$($SHA256 "$LONEWOLF_FILE" 2>/dev/null | awk '{print $1}' || true)
+            CURRENT_SOURCE=$(manifest_hash lonewolf 2>/dev/null) || CURRENT_SOURCE=""
+            ACTUAL_SOURCE=$($SHA256 "$LONEWOLF_FILE" 2>/dev/null | awk '{print $1}') || ACTUAL_SOURCE=""
             ;;
         lockdown)
-            CURRENT_SOURCE=$(manifest_hash lockdown 2>/dev/null || true)
-            ACTUAL_SOURCE=$($SHA256 "$LOCKDOWN_FILE" 2>/dev/null | awk '{print $1}' || true)
+            CURRENT_SOURCE=$(manifest_hash lockdown 2>/dev/null) || CURRENT_SOURCE=""
+            ACTUAL_SOURCE=$($SHA256 "$LOCKDOWN_FILE" 2>/dev/null | awk '{print $1}') || ACTUAL_SOURCE=""
             ;;
     esac
 

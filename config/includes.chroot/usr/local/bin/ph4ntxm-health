@@ -292,13 +292,35 @@ separator
 section "Identity & Hardware Persona"
 
 if [[ -d "$DMI_DIR" ]]; then
-    DMI_VENDOR=$(sudo -n /usr/local/sbin/ph4ntxm-session-status read "$DMI_DIR/sys_vendor" 2>/dev/null || echo N/A)
-    DMI_PRODUCT=$(sudo -n /usr/local/sbin/ph4ntxm-session-status read "$DMI_DIR/product_name" 2>/dev/null || echo N/A)
-    DMI_UUID=$(sudo -n /usr/local/sbin/ph4ntxm-session-status read "$DMI_DIR/product_uuid" 2>/dev/null || echo N/A)
-    print_line "DMI Profile:" "Active" "$GREEN"
-    print_line "System Vendor:" "$DMI_VENDOR" "$GREEN"
-    print_line "Product Name:" "$DMI_PRODUCT" "$GREEN"
-    print_line "Product UUID:" "$DMI_UUID" "$GREEN"
+    DMI_FIELDS=(sys_vendor product_name product_uuid)
+    DMI_LABELS=("System Vendor:" "Product Name:" "Product UUID:")
+    DMI_VALUES=()
+    DMI_COLORS=()
+    DMI_READ_COUNT=0
+    for DMI_FIELD in "${DMI_FIELDS[@]}"; do
+        if DMI_VALUE=$(sudo -n /usr/local/sbin/ph4ntxm-session-status read "$DMI_DIR/$DMI_FIELD" 2>/dev/null) \
+            && [[ -n "$DMI_VALUE" ]]; then
+            DMI_VALUES+=("$DMI_VALUE")
+            DMI_COLORS+=("$GREEN")
+            ((++DMI_READ_COUNT))
+        else
+            DMI_VALUES+=(UNAVAILABLE)
+            DMI_COLORS+=("$AMBER")
+        fi
+    done
+    if ((DMI_READ_COUNT == ${#DMI_FIELDS[@]})); then
+        print_line "DMI Profile:" "Active" "$GREEN"
+    else
+        warning
+        if ((DMI_READ_COUNT == 0)); then
+            print_line "DMI Profile:" "UNAVAILABLE" "$AMBER"
+        else
+            print_line "DMI Profile:" "Incomplete" "$AMBER"
+        fi
+    fi
+    for DMI_INDEX in "${!DMI_FIELDS[@]}"; do
+        print_line "${DMI_LABELS[$DMI_INDEX]}" "${DMI_VALUES[$DMI_INDEX]}" "${DMI_COLORS[$DMI_INDEX]}"
+    done
 else
     warning
     print_line "DMI Profile:" "Missing" "$AMBER"
@@ -546,24 +568,21 @@ separator
 
 section "Service Health"
 
-FAILED=$(systemctl --failed --no-legend --plain 2>/dev/null || true)
-
-if [[ -z "$FAILED" ]]; then
-
-    print_line "systemd:" "No failed services" "$GREEN"
-
+if FAILED=$(systemctl --failed --no-legend --plain 2>/dev/null); then
+    if [[ -z "$FAILED" ]]; then
+        print_line "systemd:" "No failed services" "$GREEN"
+    else
+        critical_error
+        print_line "systemd:" "Failed services detected" "$RED"
+        printf "\n"
+        while read -r UNIT LOAD ACTIVE SUB REST; do
+            [[ -z "$UNIT" ]] && continue
+            print_line "$UNIT" "$ACTIVE/$SUB" "$RED"
+        done <<<"$FAILED"
+    fi
 else
-
-    critical_error
-
-    print_line "systemd:" "Failed services detected" "$RED"
-    printf "\n"
-
-    while read -r UNIT LOAD ACTIVE SUB REST; do
-        [[ -z "$UNIT" ]] && continue
-        print_line "$UNIT" "$ACTIVE/$SUB" "$RED"
-    done <<<"$FAILED"
-
+    warning
+    print_line "systemd:" "UNAVAILABLE" "$AMBER"
 fi
 
 separator

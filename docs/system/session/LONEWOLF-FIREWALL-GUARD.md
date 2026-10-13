@@ -18,7 +18,7 @@ Successful application publishes `/run/ph4ntxm/firewall-ready` atomically. Its f
 
 Every two seconds, the loop checks requested profile, live rules and the source/manifest relationship. Unexpected changes remove readiness and enter restrictive recovery before another validated profile is applied.
 
-If a trusted Lockdown policy cannot be loaded, an inline emergency ruleset defaults to dropping traffic. That emergency path deliberately leaves readiness absent. Later iterations can recover when a valid source and profile become available.
+If a trusted Lockdown policy cannot be loaded, an inline emergency ruleset defaults to dropping traffic. That emergency path deliberately leaves readiness absent. If emergency installation also fails, the guardian reports the active profile as unavailable and keeps readiness absent. Later iterations can recover when a valid source and profile become available.
 
 The process sends systemd its startup notification even if initial enforcement fell back to emergency mode. Therefore, an active guardian process is not the same as a ready Lone Wolf network policy.
 

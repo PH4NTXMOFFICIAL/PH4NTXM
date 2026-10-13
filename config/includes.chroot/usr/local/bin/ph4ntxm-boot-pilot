@@ -3,9 +3,11 @@
 # Licensed under the GNU General Public License v3.0.
 
 import ctypes
+import fcntl
 import json
 import hashlib
 import os
+import pwd
 import re
 import resource
 import subprocess
@@ -235,17 +237,30 @@ def completed(unit):
             SYSTEMCTL,
             "show",
             unit,
+            "--property=ActiveState",
+            "--property=SubState",
             "--property=Result",
+            "--property=ExecMainCode",
             "--property=ExecMainStatus",
             "--property=ExecMainStartTimestampMonotonic",
+            "--property=ExecMainExitTimestampMonotonic",
         ]
     )
     values = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
+    try:
+        started = int(values.get("ExecMainStartTimestampMonotonic", "0"))
+        exited = int(values.get("ExecMainExitTimestampMonotonic", "0"))
+    except ValueError:
+        return False
     return (
         code == 0
+        and (values.get("ActiveState"), values.get("SubState"))
+        in {("active", "exited"), ("inactive", "dead")}
         and values.get("Result") == "success"
+        and values.get("ExecMainCode") == "1"
         and values.get("ExecMainStatus") == "0"
-        and values.get("ExecMainStartTimestampMonotonic", "0") != "0"
+        and started > 0
+        and exited >= started
     )
 
 
@@ -358,6 +373,71 @@ def browser_feature(mode):
     if policies.get("DisableTelemetry") is not True:
         return False
     return policies.get("DNSOverHTTPS") == {"Enabled": False}
+
+
+def browser_launch_status(mode):
+    if mode in {"linux", "windows"}:
+        if os.access("/usr/bin/firefox-esr", os.X_OK):
+            return True, ""
+        return False, "Firefox ESR is unavailable."
+    if mode != "lonewolf":
+        return False, "A supported browser mode is unavailable."
+    firewall = state_values(
+        f"{STATE_DIR}/firewall-ready",
+        ("PROFILE", "SOURCE_SHA256", "RULESET_SHA256", "UPTIME_SECONDS"),
+    )
+    if not firewall or firewall["PROFILE"] != "lonewolf":
+        return False, "Tor Browser requires the Lone Wolf firewall profile."
+    if not protected_file(f"{STATE_DIR}/mode"):
+        return False, "Tor Browser requires trusted mode state."
+    if not active("ph4ntxm-browser-mode.service"):
+        return False, "Tor Browser requires the active browser mode gate."
+    marker = state_values(
+        f"{STATE_DIR}/tor-browser-verified",
+        ("MODE", "MANIFEST_SHA256", "UPTIME_SECONDS"),
+    )
+    try:
+        recorded = int(marker["UPTIME_SECONDS"])
+        current = int(read("/proc/uptime").split(".", 1)[0])
+    except (IndexError, KeyError, TypeError, ValueError):
+        return False, "Tor Browser verification time is unavailable."
+    if recorded < 0 or recorded > current:
+        return False, "Tor Browser verification time is invalid."
+    user_id = os.getuid()
+    runtime = f"/run/user/{user_id}"
+    try:
+        info = os.lstat(runtime)
+        runtime_ready = (
+            user_id > 0
+            and os.path.isdir(runtime)
+            and not os.path.islink(runtime)
+            and info.st_uid == user_id
+            and not info.st_mode & 0o022
+        )
+    except OSError:
+        runtime_ready = False
+    if not runtime_ready:
+        return False, "Tor Browser requires a private user runtime directory."
+    try:
+        account = pwd.getpwuid(user_id)
+    except KeyError:
+        return False, "Tor Browser requires a resolved local user account."
+    authority = os.environ.get("XAUTHORITY") or f"{account.pw_dir}/.Xauthority"
+    if (
+        not account.pw_name
+        or not os.environ.get("DISPLAY")
+        or not os.access(authority, os.R_OK)
+    ):
+        return False, "Tor Browser requires the graphical session authority."
+    if not all(
+        os.access(path, os.X_OK)
+        for path in (
+            "/usr/local/bin/ph4ntxm-tor-browser",
+            "/opt/ph4ntxm/tor-browser/Browser/start-tor-browser",
+        )
+    ):
+        return False, "The verified Tor Browser launcher is unavailable."
+    return True, ""
 
 
 def identity_features(mode):
@@ -939,6 +1019,13 @@ class BootPilot(Gtk.Window):
         self.set_resizable(True)
         self.settle_deadline = time.monotonic() + 30
         self.boot_settled = False
+        self.browser_ready = False
+        self.browser_gate_error = ""
+        self.browser_launch_error = ""
+        self.browser_launching = False
+        self.browser_launch_process = None
+        self.browser_launch_pipe = None
+        self.browser_launch_data = b""
         self.boot_refresh_active = False
         self.boot_refresh_pending = False
         self.boot_refresh_callback = None
@@ -1080,6 +1167,17 @@ class BootPilot(Gtk.Window):
         viewport.add(content)
         scroll.add(viewport)
         root.pack_start(scroll, True, True, 0)
+        self.browser_status_label = Gtk.Label()
+        self.browser_status_label.set_halign(Gtk.Align.FILL)
+        self.browser_status_label.set_xalign(0)
+        self.browser_status_label.set_line_wrap(True)
+        self.browser_status_label.set_margin_start(18)
+        self.browser_status_label.set_margin_end(18)
+        self.browser_status_label.get_style_context().add_class("text-fail")
+        self.browser_status_label.show()
+        self.browser_status_label.set_no_show_all(True)
+        self.browser_status_label.hide()
+        root.pack_start(self.browser_status_label, False, False, 0)
         controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         controls.get_style_context().add_class("footer")
         refresh = Gtk.Button(label="Check Again")
@@ -1278,7 +1376,26 @@ class BootPilot(Gtk.Window):
     def open_browser(self, _):
         self.refresh(callback=self.launch_browser)
 
+    def update_browser_controls(self):
+        self.browser_button.set_sensitive(
+            self.boot_settled and self.browser_ready and not self.browser_launching
+        )
+        self.continue_button.set_sensitive(
+            self.boot_settled and not self.browser_launching
+        )
+        message = self.browser_launch_error
+        if self.browser_launching:
+            message = "Starting browser…"
+        elif not message and self.boot_settled:
+            message = self.browser_gate_error
+        self.browser_status_label.set_text(message)
+        self.browser_status_label.set_visible(bool(message))
+        self.browser_button.set_tooltip_text(self.browser_gate_error or None)
+
     def launch_browser(self):
+        if not self.browser_ready or self.browser_launching:
+            self.update_browser_controls()
+            return
         mode = read(f"{STATE_DIR}/mode", "unknown")
         if mode == "lonewolf":
             command = ["/usr/local/bin/ph4ntxm-tor-browser"]
@@ -1286,13 +1403,91 @@ class BootPilot(Gtk.Window):
             command = ["/usr/bin/firefox-esr"]
         else:
             return
+        self.browser_launch_error = ""
+        ready_fd = None
+        signal_fd = None
         try:
-            subprocess.Popen(command)
+            if mode == "lonewolf":
+                ready_fd, signal_fd = os.pipe2(os.O_CLOEXEC | os.O_NONBLOCK)
+                inherited_fd = fcntl.fcntl(signal_fd, fcntl.F_DUPFD_CLOEXEC, 10)
+                os.close(signal_fd)
+                signal_fd = inherited_fd
+                command.append(f"--pilot-ready-fd={signal_fd}")
+            process = subprocess.Popen(
+                command, pass_fds=() if signal_fd is None else (signal_fd,)
+            )
         except OSError:
+            if ready_fd is not None:
+                os.close(ready_fd)
+            self.browser_launch_error = "Unable to start the browser launcher."
+            self.update_browser_controls()
             return
-        self.destroy()
+        finally:
+            if signal_fd is not None:
+                os.close(signal_fd)
+        self.browser_launch_process = process
+        self.browser_launch_pipe = ready_fd
+        self.browser_launch_data = b""
+        self.browser_launching = True
+        self.update_browser_controls()
+        GLib.timeout_add(
+            100, self.check_browser_launch, process,
+            time.monotonic() + (15 if mode == "lonewolf" else 2),
+        )
+
+    def clear_browser_launch(self, cancel=False):
+        process = self.browser_launch_process
+        if self.browser_launch_pipe is not None:
+            os.close(self.browser_launch_pipe)
+        self.browser_launch_process = None
+        self.browser_launch_pipe = None
+        self.browser_launch_data = b""
+        self.browser_launching = False
+        if cancel and process is not None and process.poll() is None:
+            try:
+                process.terminate()
+            except OSError:
+                pass
+
+    def check_browser_launch(self, process, deadline):
+        if self.closed:
+            return False
+        status = process.poll()
+        error = ""
+        if self.browser_launch_pipe is not None:
+            try:
+                data = os.read(self.browser_launch_pipe, 32)
+            except BlockingIOError:
+                data = None
+            except OSError:
+                data = b""
+            if data == b"" or status not in {None, 0}:
+                error = "Tor Browser refused to launch. Check Again before retrying."
+            elif data is not None:
+                self.browser_launch_data += data
+                if self.browser_launch_data == b"accepted\n":
+                    self.clear_browser_launch()
+                    self.destroy()
+                    return False
+                if not b"accepted\n".startswith(self.browser_launch_data):
+                    error = "Tor Browser returned an invalid launch acknowledgement."
+            if not error and time.monotonic() >= deadline:
+                error = "Tor Browser launch verification timed out. Check Again before retrying."
+        elif status not in {None, 0}:
+            error = "Firefox ESR refused to launch. Check Again before retrying."
+        elif status == 0 or time.monotonic() >= deadline:
+            self.clear_browser_launch()
+            self.destroy()
+            return False
+        if not error:
+            return True
+        self.clear_browser_launch(cancel=True)
+        self.browser_launch_error = error
+        self.update_browser_controls()
+        return False
 
     def on_destroy(self, _window):
+        self.clear_browser_launch(cancel=True)
         self.closed = True
         self.boot_refresh_callback = None
 
@@ -1318,17 +1513,21 @@ class BootPilot(Gtk.Window):
         def worker():
             try:
                 groups = collect()
+                browser_status = browser_launch_status(
+                    read(f"{STATE_DIR}/mode", "unknown")
+                )
             except Exception:
                 check = feature("Protection Status", False)
                 check["detail"] = "Unavailable"
                 groups = [{"name": "Boot Verification", "checks": [check]}]
-            GLib.idle_add(self.apply_boot_state, groups)
+                browser_status = False, "Browser readiness is unavailable."
+            GLib.idle_add(self.apply_boot_state, groups, browser_status)
 
         threading.Thread(
             target=worker, name="ph4ntxm-boot-state", daemon=True
         ).start()
 
-    def apply_boot_state(self, groups):
+    def apply_boot_state(self, groups, browser_status):
         self.boot_refresh_active = False
         if self.closed:
             return False
@@ -1371,8 +1570,8 @@ class BootPilot(Gtk.Window):
             self.connection_spinner.start()
         else:
             self.connection_spinner.stop()
-        self.browser_button.set_sensitive(self.boot_settled)
-        self.continue_button.set_sensitive(self.boot_settled)
+        self.browser_ready, self.browser_gate_error = browser_status
+        self.update_browser_controls()
         context = self.header_dot.get_style_context()
         for css_class in ("dot-ready", "dot-warn", "dot-unsafe"):
             context.remove_class(css_class)
