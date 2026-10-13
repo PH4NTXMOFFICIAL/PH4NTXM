@@ -6,7 +6,7 @@ Runs the local dnsmasq bridge for Lone Wolf and supervises Tor DNS readiness.
 
 ## [ STARTUP ]
 
-The `ph4ntxm-lonewolf-dns.service` unit follows network-online, Lone Wolf setup and `tor@default`. It requires setup and Tor and runs a notifying, restarting wrapper around dnsmasq.
+The `ph4ntxm-lonewolf-dns.service` unit follows network-online, Lone Wolf setup and `tor@default`. It requires setup and Tor and runs a notifying, restarting wrapper around dnsmasq. The Tor instance also wants this bridge, so every Tor start requests its activation, including a manual stop followed by start. Existing lifetime dependencies stop or restart the bridge with Tor. The reverse start dependency is optional: Tor starts before bridge readiness, and a bridge failure does not stop Tor.
 
 The wrapper launches dnsmasq in the foreground using the dedicated configuration. dnsmasq binds local port 53, ignores system resolver files and forwards to Tor at `127.0.0.1:5353`. Positive and negative caching are disabled.
 
