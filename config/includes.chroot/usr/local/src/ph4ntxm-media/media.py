@@ -30,6 +30,7 @@ KINDS = {'image': 'ristretto', 'video': 'parole'}
 TITLES = {'image': 'PH4NTXM Image Viewer', 'video': 'PH4NTXM Media Player'}
 MAX_FILES = 32
 MAX_IMAGE_BYTES = 128 * 1024 * 1024
+MAX_AIRLOCK_BYTES = 128 * 1024 * 1024
 RESERVE = 192 * 1024 * 1024
 AIRLOCK_SUFFIXES = {
     'image': {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tif', '.tiff', '.webp', '.svg',
@@ -118,10 +119,46 @@ def open_files(values, kind, allow_airlock=False):
                 raise MediaError('Choose a non-empty regular media file.')
             if kind == 'image' and info.st_size > MAX_IMAGE_BYTES:
                 raise MediaError('Images must be smaller than 128 MiB.')
+            if allow_airlock and info.st_size > MAX_AIRLOCK_BYTES:
+                raise MediaError('Archive Airlock files must not exceed 128 MiB.')
         return opened
     except BaseException:
         for _, fd in opened:
             os.close(fd)
+        raise
+
+
+def airlock_snapshot(source):
+    before = os.fstat(source)
+    if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= MAX_AIRLOCK_BYTES:
+        raise MediaError('The Archive Airlock file exceeds its storage limit.')
+    result = os.memfd_create('ph4ntxm-media-input', os.MFD_CLOEXEC | os.MFD_ALLOW_SEALING)
+    try:
+        os.fchmod(result, 0o600)
+        os.lseek(source, 0, os.SEEK_SET)
+        total = 0
+        while True:
+            data = os.read(source, min(1024 * 1024, before.st_size - total + 1))
+            if not data:
+                break
+            total += len(data)
+            if total > before.st_size:
+                raise MediaError('The Archive Airlock file changed while opening.')
+            remaining = memoryview(data)
+            while remaining:
+                written = os.write(result, remaining)
+                if written <= 0:
+                    raise MediaError('The Archive Airlock file could not be copied.')
+                remaining = remaining[written:]
+        after = os.fstat(source)
+        if total != before.st_size or after.st_size != before.st_size or after.st_mtime_ns != before.st_mtime_ns:
+            raise MediaError('The Archive Airlock file changed while opening.')
+        os.lseek(result, 0, os.SEEK_SET)
+        fcntl.fcntl(result, fcntl.F_ADD_SEALS,
+                    fcntl.F_SEAL_WRITE | fcntl.F_SEAL_GROW | fcntl.F_SEAL_SHRINK | fcntl.F_SEAL_SEAL)
+        return result
+    except BaseException:
+        os.close(result)
         raise
 
 
@@ -365,7 +402,6 @@ def session(kind, directory, values=None, allow_airlock=False):
     if (cgroup / 'memory.max').read_text().strip() == 'max' or (cgroup / 'memory.swap.max').read_text().strip() != '0':
         raise MediaError('The media memory limits are not active.')
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-    resource.setrlimit(resource.RLIMIT_FSIZE, (8 * 1024 * 1024, 8 * 1024 * 1024))
     directory = Path(directory)
     if values is None:
         values, allow_airlock = read_request(directory)
@@ -390,7 +426,7 @@ def session(kind, directory, values=None, allow_airlock=False):
     sockets.mkdir(mode=0o700)
     audio = directory / 'audio'
     audio.mkdir(mode=0o700)
-    opened = open_files(values, kind, allow_airlock)
+    opened = []
     fd = filter_fd()
     log = (directory / 'session.log').open('wb')
     children = []
@@ -442,6 +478,15 @@ def session(kind, directory, values=None, allow_airlock=False):
     window.show_all()
     canvas.get_display().sync()
     try:
+        opened = open_files(values, kind, allow_airlock)
+        if allow_airlock:
+            path, source = opened.pop()
+            try:
+                snapshot = airlock_snapshot(source)
+            finally:
+                os.close(source)
+            opened.append((path, snapshot))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (8 * 1024 * 1024, 8 * 1024 * 1024))
         parent = GdkX11.X11Window.get_xid(canvas.get_window())
         display_args = configured(sandbox(fd), config)
         display_args += ['--bind', str(sockets), '/tmp/.X11-unix',

@@ -110,9 +110,7 @@ done
 exec 9>"$RUNTIME_BASE/ph4ntxm-tor-browser.lock"
 flock -n 9 || fail 'ANOTHER TOR BROWSER SESSION IS ALREADY ACTIVE'
 umask 077
-SESSION_DIR=$(mktemp -d "$RUNTIME_BASE/ph4ntxm-tor-browser.XXXXXX")
-SESSION_HOME=$SESSION_DIR/home
-mkdir -m 0700 "$SESSION_HOME"
+SESSION_DIR=
 BROWSER_PID=0
 
 browser_running() {
@@ -180,6 +178,10 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 trap 'exit 129' HUP
+
+SESSION_DIR=$(mktemp -d "$RUNTIME_BASE/ph4ntxm-tor-browser.XXXXXX")
+SESSION_HOME=$SESSION_DIR/home
+mkdir -m 0700 "$SESSION_HOME"
 
 IFS=: read -r USER_NAME _ PASSWD_UID _ _ USER_HOME _ < <(getent passwd "$USER_ID")
 [[ "$PASSWD_UID" == "$USER_ID" && -n "$USER_NAME" ]] || fail 'UNABLE TO RESOLVE LOCAL USER'

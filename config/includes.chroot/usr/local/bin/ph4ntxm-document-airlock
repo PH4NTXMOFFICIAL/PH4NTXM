@@ -50,6 +50,7 @@ def desktop(document=None):
             self.busy = False
             self.closing = False
             self.password_dialog = None
+            self.export_dialog = None
             self.page = 0
             self.cancelled = threading.Event()
             root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -162,19 +163,20 @@ def desktop(document=None):
                     if self.cancelled.is_set():
                         raise AirlockError("Conversion cancelled.")
                     session.convert(suffix, data, password=password)
-                except (
-                    AirlockError,
-                    OSError,
-                    ValueError,
-                    subprocess.SubprocessError,
-                ) as exc:
-                    error = exc
+                except Exception as exc:
+                    error = exc if isinstance(exc, (AirlockError, OSError, ValueError, subprocess.SubprocessError)) else AirlockError("Document conversion failed.")
                     if session:
-                        session.close(cancel=False)
+                        try:
+                            session.close(cancel=False)
+                        except Exception:
+                            pass
                     session = None
                 GLib.idle_add(self.finished, session, error, filename)
 
-            threading.Thread(target=worker, daemon=False).start()
+            try:
+                threading.Thread(target=worker, daemon=False).start()
+            except Exception:
+                self.finished(None, AirlockError("Document conversion could not start."), filename)
 
         def finished(self, session, error, filename):
             self.busy = False
@@ -183,10 +185,7 @@ def desktop(document=None):
             self.chooser.set_sensitive(True)
             self.convert_button.set_sensitive(True)
             self.cancel_button.set_sensitive(False)
-            if self.closing:
-                if self.session:
-                    self.session.close()
-                self.destroy()
+            if self.finish_closing():
                 return False
             if self.cancelled.is_set():
                 if self.session:
@@ -198,9 +197,9 @@ def desktop(document=None):
             if isinstance(error, (PasswordRequired, PasswordIncorrect)):
                 self.status.set_text(str(error))
                 password = ask_password(self, "Unlock Document", str(error))
-                if self.closing:
-                    self.destroy()
-                elif password is not None:
+                if self.finish_closing():
+                    return False
+                if password is not None:
                     self.on_convert(None, filename, password)
                 else:
                     self.status.set_text("Conversion cancelled.")
@@ -235,9 +234,12 @@ def desktop(document=None):
             self.set_result_enabled(True)
 
         def on_export(self, _):
+            if self.busy or self.closing or not self.session or self.export_dialog is not None:
+                return
             dialog = Gtk.FileChooserDialog(
                 title="Export converted PDF",
                 transient_for=self,
+                destroy_with_parent=True,
                 action=Gtk.FileChooserAction.SAVE,
             )
             dialog.add_buttons(
@@ -245,31 +247,45 @@ def desktop(document=None):
             )
             dialog.set_local_only(True)
             dialog.set_current_name("airlock.pdf")
-            if dialog.run() == Gtk.ResponseType.ACCEPT:
-                try:
-                    self.session.export(dialog.get_filename())
-                    self.status.set_text("Converted PDF exported.")
-                except FileExistsError:
-                    self.status.set_text(
-                        "That filename already exists. Choose a new filename."
-                    )
-                except (AirlockError, OSError) as exc:
-                    self.status.set_text(str(exc))
-            dialog.destroy()
+            self.export_dialog = dialog
+            try:
+                if dialog.run() == Gtk.ResponseType.ACCEPT and not self.closing:
+                    try:
+                        self.session.export(dialog.get_filename())
+                        self.status.set_text("Converted PDF exported.")
+                    except FileExistsError:
+                        self.status.set_text(
+                            "That filename already exists. Choose a new filename."
+                        )
+                    except (AirlockError, OSError) as exc:
+                        self.status.set_text(str(exc))
+            finally:
+                self.export_dialog = None
+                dialog.destroy()
+                self.finish_closing()
+
+        def finish_closing(self):
+            if not self.closing or self.busy or self.password_dialog is not None or self.export_dialog is not None:
+                return False
+            if self.session:
+                self.session.close()
+                self.session = None
+            self.destroy()
+            return True
 
         def on_close(self, *_):
-            if self.password_dialog is not None:
-                self.closing = True
-                self.cancelled.set()
-                self.password_dialog.response(Gtk.ResponseType.CANCEL)
-                return True
-            if self.busy:
-                self.closing = True
-                self.cancelled.set()
+            self.closing = True
+            self.cancelled.set()
+            if self.busy or self.password_dialog is not None or self.export_dialog is not None:
                 self.status.set_text("Closing the isolated session…")
+                if self.password_dialog is not None:
+                    self.password_dialog.response(Gtk.ResponseType.CANCEL)
+                if self.export_dialog is not None:
+                    self.export_dialog.response(Gtk.ResponseType.CANCEL)
                 return True
             if self.session:
                 self.session.close()
+                self.session = None
             return False
 
     window = AirlockWindow()

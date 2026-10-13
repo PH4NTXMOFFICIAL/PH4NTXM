@@ -18,10 +18,13 @@ NM_IFACE = "org.freedesktop.NetworkManager"
 NM_DEVICE_IFACE = "org.freedesktop.NetworkManager.Device"
 NM_WIRELESS_IFACE = "org.freedesktop.NetworkManager.Device.Wireless"
 NM_AP_IFACE = "org.freedesktop.NetworkManager.AccessPoint"
+NM_ACTIVE_CONNECTION_IFACE = "org.freedesktop.NetworkManager.Connection.Active"
 PROPERTIES_IFACE = "org.freedesktop.DBus.Properties"
 DEVICE_WIFI = 2
 DEVICE_STATE_ACTIVATED = 100
 DEVICE_STATE_FAILED = 120
+ACTIVE_CONNECTION_STATE_ACTIVATED = 2
+ACTIVE_CONNECTION_STATE_DEACTIVATING = 3
 AP_PRIVACY = 0x1
 SEC_KEY_MGMT_PSK = 0x100
 SEC_KEY_MGMT_802_1X = 0x200
@@ -309,6 +312,7 @@ def connect_network(bus, request):
         )
     if (
         record["ssid_id"] != expected_ssid
+        or ssid_bytes.hex() != expected_ssid
         or record["bssid"] != expected_bssid
         or record["key_mgmt"] != expected_key_mgmt
     ):
@@ -347,7 +351,10 @@ def connect_network(bus, request):
         settings["802-11-wireless-security"] = {"key-mgmt": dbus.String("owe")}
     options = dbus.Dictionary({"persist": dbus.String("volatile")}, signature="sv")
     try:
-        manager(bus).AddAndActivateConnection2(settings, device, access_point, options)
+        activation = manager(bus).AddAndActivateConnection2(
+            settings, device, access_point, options
+        )
+        active_connection = str(activation[1])
     except dbus.DBusException as error:
         name = error.get_dbus_name()
         if name.endswith(".PermissionDenied") or name.endswith(".NotAuthorized"):
@@ -356,15 +363,38 @@ def connect_network(bus, request):
     deadline = time.monotonic() + 35
     while time.monotonic() < deadline:
         try:
+            active_state = int(
+                prop(bus, active_connection, NM_ACTIVE_CONNECTION_IFACE, "State")
+            )
             state = int(prop(bus, device, NM_DEVICE_IFACE, "State"))
-            if state == DEVICE_STATE_ACTIVATED:
-                connected = current_network(bus, [device])
-                if connected and connected["ssid"] == record["ssid"]:
-                    emit({"ok": True, "connected": connected})
-            if state == DEVICE_STATE_FAILED:
+            device_connection = str(
+                prop(bus, device, NM_DEVICE_IFACE, "ActiveConnection")
+            )
+            if state == DEVICE_STATE_FAILED and device_connection == active_connection:
                 fail("Wi-Fi authentication or association failed")
+            if active_state >= ACTIVE_CONNECTION_STATE_DEACTIVATING:
+                fail("Wi-Fi connection was interrupted or superseded")
+            if (
+                active_state == ACTIVE_CONNECTION_STATE_ACTIVATED
+                and state == DEVICE_STATE_ACTIVATED
+                and device_connection == active_connection
+            ):
+                connected = current_network(bus, [device])
+                if (
+                    connected
+                    and connected["ssid_id"] == expected_ssid
+                    and connected["bssid"] == expected_bssid
+                    and connected["key_mgmt"] == expected_key_mgmt
+                    and str(prop(bus, device, NM_DEVICE_IFACE, "ActiveConnection"))
+                    == active_connection
+                    and int(
+                        prop(bus, active_connection, NM_ACTIVE_CONNECTION_IFACE, "State")
+                    )
+                    == ACTIVE_CONNECTION_STATE_ACTIVATED
+                ):
+                    emit({"ok": True, "connected": connected})
         except dbus.DBusException:
-            fail("Wireless device disappeared during connection")
+            fail("Wireless device or connection disappeared during connection")
         time.sleep(0.5)
     fail("Wi-Fi connection timed out")
 

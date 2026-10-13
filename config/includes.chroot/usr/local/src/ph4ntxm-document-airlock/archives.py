@@ -24,6 +24,8 @@ from archive_protocol import (
 RESERVE_MIB = 192
 QEMU_RESERVE_MIB = 96
 TEXT_LIMIT = 1024 * 1024
+VIEWER_TERM_TIMEOUT = 15
+VIEWER_KILL_TIMEOUT = 5
 
 
 class ArchiveError(Exception):
@@ -116,6 +118,64 @@ def viewer_limit(name):
     return MAX_OUTPUT
 
 
+def process_status(pid):
+    value = (Path("/proc") / str(pid) / "stat").read_text(encoding="ascii", errors="replace")
+    fields = value[value.rfind(")") + 2:].split()
+    return fields[0], int(fields[2]), int(fields[3]), int(fields[19])
+
+
+def viewer_processes(group):
+    identifier, started = group
+    try:
+        state, process_group, session_id, process_started = process_status(identifier)
+        if started is not None and process_started != started:
+            return []
+        if started is None and process_group == identifier and session_id == identifier and state not in {"Z", "X"}:
+            return [(identifier, process_started)]
+    except FileNotFoundError:
+        pass
+    members = []
+    for entry in Path("/proc").iterdir():
+        if not entry.name.isdecimal():
+            continue
+        try:
+            if entry.stat().st_uid != os.getuid():
+                continue
+            pid = int(entry.name)
+            state, process_group, session_id, process_started = process_status(pid)
+        except FileNotFoundError:
+            continue
+        if process_group == identifier and session_id == identifier and state not in {"Z", "X"}:
+            members.append((pid, process_started))
+    try:
+        state, process_group, session_id, process_started = process_status(identifier)
+        if started is not None and process_started != started:
+            return []
+        if started is None and process_group == identifier and session_id == identifier and state not in {"Z", "X"}:
+            return [(identifier, process_started)]
+    except FileNotFoundError:
+        pass
+    return members
+
+
+def signal_viewer_group(group, value):
+    identifier, started = group
+    if started is None:
+        raise ArchiveError("The isolated viewer process group could not be verified.")
+    for pid, started in viewer_processes(group):
+        descriptor = None
+        try:
+            descriptor = os.pidfd_open(pid)
+            state, process_group, session_id, process_started = process_status(pid)
+            if process_started == started and process_group == identifier and session_id == identifier and state not in {"Z", "X"}:
+                signal.pidfd_send_signal(descriptor, value)
+        except (FileNotFoundError, ProcessLookupError):
+            pass
+        finally:
+            if descriptor is not None:
+                os.close(descriptor)
+
+
 class ArchiveSession:
     def __init__(self, runtime):
         self.temporary = tempfile.TemporaryDirectory(prefix="ph4ntxm-archive-", dir=runtime)
@@ -124,6 +184,8 @@ class ArchiveSession:
         self.entries = []
         self.cancelled = threading.Event()
         self.view = None
+        self.viewer_group = None
+        self.viewer_process = None
         self.password = bytearray()
 
     def close(self):
@@ -145,9 +207,42 @@ class ArchiveSession:
         self.password.extend(encoded)
 
     def clear_view(self):
+        if not self.stop_viewer():
+            self.temporary._finalizer.detach()
+            if self.view is not None:
+                self.view._finalizer.detach()
+            raise ArchiveError("The isolated viewer could not be stopped. Private files were retained at %s." % self.directory)
         if self.view is not None:
             self.view.cleanup()
             self.view = None
+
+    def wait_viewer(self, timeout):
+        deadline = time.monotonic() + timeout
+        while viewer_processes(self.viewer_group):
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.1)
+        return True
+
+    def stop_viewer(self):
+        stopped = False
+        try:
+            if self.viewer_group is not None and viewer_processes(self.viewer_group):
+                if self.viewer_group[1] is None:
+                    return False
+                signal_viewer_group(self.viewer_group, signal.SIGTERM)
+                if not self.wait_viewer(VIEWER_TERM_TIMEOUT):
+                    signal_viewer_group(self.viewer_group, signal.SIGKILL)
+                    if not self.wait_viewer(VIEWER_KILL_TIMEOUT):
+                        return False
+            self.viewer_group = None
+            stopped = True
+        except (ArchiveError, OSError, ValueError, IndexError, AttributeError):
+            pass
+        finally:
+            if self.viewer_process is not None and self.viewer_process.poll() is not None:
+                self.viewer_process = None
+        return stopped
 
     def snapshot(self, filename):
         if not str(filename).lower().endswith(ARCHIVE_SUFFIXES):
@@ -334,11 +429,16 @@ class ArchiveSession:
                 except OSError:
                     pass
 
-        watcher = threading.Thread(target=watch, daemon=True)
-        sender = threading.Thread(target=send, daemon=True)
-        watcher.start()
-        sender.start()
+        watcher = None
+        sender = None
+        started_threads = []
         try:
+            watcher = threading.Thread(target=watch, daemon=True)
+            sender = threading.Thread(target=send, daemon=True)
+            watcher.start()
+            started_threads.append(watcher)
+            sender.start()
+            started_threads.append(sender)
             magic = read_exact(process.stdout, 8)
             if magic == ERROR_MAGIC:
                 length = struct.unpack("!I", read_exact(process.stdout, 4))[0]
@@ -378,7 +478,7 @@ class ArchiveSession:
             if failure or process.returncode != 0 or self.cancelled.is_set():
                 raise ArchiveError(failure[0] if failure else "The isolated archive reader stopped unexpectedly.")
             return result
-        except (OSError, ValueError, UnicodeError, subprocess.SubprocessError, ArchiveError) as exc:
+        except (OSError, ValueError, UnicodeError, RuntimeError, subprocess.SubprocessError, ArchiveError) as exc:
             if failure:
                 raise ArchiveError(failure[0]) from None
             if isinstance(exc, ArchiveError):
@@ -386,12 +486,18 @@ class ArchiveSession:
             raise ArchiveError("The archive could not be read. It may be damaged, encrypted, unsupported or exceed the resource limits.") from exc
         finally:
             done.set()
-            watcher.join()
+            if watcher in started_threads:
+                watcher.join()
             if process.poll() is None:
                 stop()
             process.wait()
-            sender.join()
-            process.stdout.close()
+            if sender in started_threads:
+                sender.join()
+            for stream in (process.stdin, process.stdout):
+                try:
+                    stream.close()
+                except OSError:
+                    pass
 
     def read_text_entry(self, index):
         entry = self.selected_entry(index)
@@ -425,25 +531,15 @@ class ArchiveSession:
             else:
                 command = ["/usr/local/bin/ph4ntxm-media", "--kind", "image" if kind == "image" else "video", "--airlock-input", "--", str(path)]
             process = subprocess.Popen(command, start_new_session=True)
-            try:
-                while process.poll() is None:
-                    if self.cancelled.wait(0.2):
-                        process.terminate()
-                        try:
-                            process.wait(timeout=15)
-                        except subprocess.TimeoutExpired:
-                            process.kill()
-                            process.wait()
-                        raise ArchiveError("Opening the archive file was cancelled.")
-                if process.returncode:
-                    raise ArchiveError("The isolated viewer could not open this file.")
-            finally:
-                if process.poll() is None:
-                    process.terminate()
-                    try:
-                        process.wait(timeout=15)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
-                        process.wait()
+            self.viewer_process = process
+            self.viewer_group = (process.pid, None)
+            self.viewer_group = (process.pid, process_status(process.pid)[3])
+            while process.poll() is None:
+                if self.cancelled.wait(0.2):
+                    raise ArchiveError("Opening the archive file was cancelled.")
+            if process.returncode:
+                raise ArchiveError("The isolated viewer could not open this file.")
+            if viewer_processes(self.viewer_group):
+                raise ArchiveError("The isolated viewer left processes running.")
         finally:
             self.clear_view()

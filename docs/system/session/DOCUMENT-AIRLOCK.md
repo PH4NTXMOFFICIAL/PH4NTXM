@@ -20,7 +20,7 @@ Output is limited to 100 pages, 2400 pixels per dimension, 512 MiB total RGB and
 
 After conversion, the isolated process has closed. The UI lets you review pages before exporting a newly constructed raster PDF. The PDF contains rendered page images without the original macros, embedded objects or metadata. Raster output replaces editable text and document structure.
 
-Export requires a new `.pdf` filename and refuses an existing destination. Closing removes temporary pages. The command-line form supports `--check` for prerequisites and `document --output new.pdf` for direct conversion/export.
+Export requires a new `.pdf` filename and refuses an existing destination. Closing cancels open password and export dialogs, stops an active conversion and removes temporary pages. Worker startup or conversion errors restore the operation controls and allow closing; failed helper startup also terminates and reaps the isolated converter. An uncatchable kill cannot run host cleanup. The command-line form supports `--check` for prerequisites and `document --output new.pdf` for direct conversion/export.
 
 ## [ PASSWORDS ]
 

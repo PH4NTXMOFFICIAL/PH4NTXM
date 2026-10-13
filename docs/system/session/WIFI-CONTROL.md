@@ -20,7 +20,7 @@ Before connecting, the helper rereads the selected device and access point. SSID
 
 The new NetworkManager connection is volatile, has autoconnect disabled, preserves the already prepared MAC, uses automatic IPv4 and disables IPv6. It is bound to the selected BSSID and created through `AddAndActivateConnection2`.
 
-The helper waits up to 35 seconds for activation, reporting authentication/association failure, disappearance or timeout as JSON errors. NetworkManager authorization errors are also returned explicitly. A password is passed through the request and D-Bus settings, not placed on a command line or saved as a persistent connection by this helper.
+The helper waits up to 35 seconds for the returned activation object to own the device and become active. Success requires the requested SSID bytes, BSSID and key-management type, with the activation identity checked again after reading the connected network. An older or concurrent connection cannot satisfy the request. Authentication/association failure, interruption, disappearance or timeout is reported as a JSON error. NetworkManager authorization errors are also returned explicitly. A password is passed through the request and D-Bus settings, not placed on a command line or saved as a persistent connection by this helper.
 
 ## [ CHECKS ]
 

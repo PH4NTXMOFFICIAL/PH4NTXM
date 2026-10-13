@@ -14,7 +14,7 @@ The root helper accepts exactly `enable` or `disable`, validates protected mode/
 
 Enable works without a password prompt for immediate isolation. Disable requires the session password through a graphical prompt and restores the Linux/Windows or Lone Wolf policy. It does not remove filtering. Cancelling authentication leaves the current policy in place.
 
-To enable Lockdown, the helper cancels an outstanding normal-engine transition, validates the Lockdown source and clears readiness. It writes `enabled: true` to the status file, then seals the normal packet path. If sealing fails, it attempts to lower physical links. It checks and loads the Lockdown rules and attempts conntrack cleanup. A failed seal remains an error even if rule loading succeeds.
+To enable Lockdown, the helper validates the Lockdown source, attempts to cancel an outstanding normal-engine transition and clears readiness. It writes `enabled: true` to the status file, then attempts to seal the normal packet path even if cancellation failed. If cancellation or sealing fails, it attempts to lower physical links. It checks and loads the Lockdown rules and attempts conntrack cleanup. Failed cancellation or sealing remains an error even if rule loading succeeds.
 
 To disable Lockdown, the helper selects and validates the current mode's rules, clears readiness and protects the transition before loading them. Success writes `enabled: false`. Normal modes then request the packet path to be unsealed. Conntrack cleanup can interrupt existing connections. A failed transition can leave the system restrictive while a guard recovers.
 

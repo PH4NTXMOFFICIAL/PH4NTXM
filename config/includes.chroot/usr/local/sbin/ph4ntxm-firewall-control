@@ -84,21 +84,23 @@ case "$1" in
             windows) [ "$mode_size" -eq 8 ] || exit 1 ;;
             *) exit 1 ;;
         esac
-        if [ "$mode" != lonewolf ]; then
-            "$PACKET_TRANSFORMATION_ENGINE_GUARD" cancel
-        fi
         validate_rules lockdown /etc/firewall/lockdown.nft
+        packet_transformation_engine_transition_ok=1
+        if [ "$mode" != lonewolf ] && ! "$PACKET_TRANSFORMATION_ENGINE_GUARD" cancel; then
+            packet_transformation_engine_transition_ok=0
+        fi
         rm -f "$READY_FILE"
         write_status true
-        packet_transformation_engine_sealed=1
         if [ "$mode" != lonewolf ] && ! "$PACKET_TRANSFORMATION_ENGINE_GUARD" seal; then
-            packet_transformation_engine_sealed=0
+            packet_transformation_engine_transition_ok=0
+        fi
+        if [ "$packet_transformation_engine_transition_ok" -ne 1 ]; then
             force_physical_links_down
         fi
         nft -c -f /etc/firewall/lockdown.nft
         nft -f /etc/firewall/lockdown.nft
         conntrack -F >/dev/null 2>&1 || true
-        [ "$packet_transformation_engine_sealed" -eq 1 ] || exit 1
+        [ "$packet_transformation_engine_transition_ok" -eq 1 ] || exit 1
         ;;
     disable)
         mode_size=$(stat -c '%s' "$MODE_FILE") || exit 1

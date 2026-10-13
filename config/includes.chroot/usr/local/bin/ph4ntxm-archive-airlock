@@ -328,9 +328,11 @@ def desktop(archive=None):
                 session = None
                 report = None
                 error = None
+                previous_closed = False
                 try:
                     if previous:
                         previous.close()
+                    previous_closed = True
                     session = ArchiveSession(check_ready())
                     session.cancelled = cancelled
                     if cancelled.is_set():
@@ -338,15 +340,29 @@ def desktop(archive=None):
                     report = session.inspect(filename)
                 except Exception as exc:
                     error = str(exc) if isinstance(exc, (ArchiveError, OSError, ValueError)) else "Archive inspection failed."
-                    if session:
+                    if not previous_closed:
+                        session = previous
+                    elif session:
                         try:
                             session.close()
-                        except OSError:
+                        except Exception:
                             pass
-                    session = None
+                        session = None
                 GLib.idle_add(self.inspection_finished, session, report, error)
 
-            threading.Thread(target=worker, daemon=False).start()
+            try:
+                threading.Thread(target=worker, daemon=False).start()
+            except Exception:
+                session = None
+                error = "Archive inspection could not start."
+                if previous:
+                    try:
+                        previous.close()
+                    except Exception as exc:
+                        session = previous
+                        if isinstance(exc, (ArchiveError, OSError, ValueError)):
+                            error = str(exc)
+                self.inspection_finished(session, None, error)
             return False
 
         def inspection_finished(self, session, report, error):
@@ -408,7 +424,10 @@ def desktop(archive=None):
                     error = exc if isinstance(exc, (ArchiveError, OSError, ValueError)) else ArchiveError("The selected file could not be opened.")
                 GLib.idle_add(self.open_finished, entry, text, error)
 
-            threading.Thread(target=worker, daemon=False).start()
+            try:
+                threading.Thread(target=worker, daemon=False).start()
+            except Exception:
+                self.open_finished(entry, None, ArchiveError("The selected file could not be opened."))
 
         def open_finished(self, entry, text, error):
             self.busy = False
@@ -459,7 +478,13 @@ def desktop(archive=None):
             if not self.closing or self.busy or self.chooser_dialog is not None or self.password_dialog is not None:
                 return False
             if self.session:
-                self.session.close()
+                try:
+                    self.session.close()
+                except (ArchiveError, OSError) as error:
+                    self.closing = False
+                    self.status.set_text(display_text(error))
+                    self.update_controls()
+                    return True
                 self.session = None
             self.destroy()
             return True
@@ -476,7 +501,13 @@ def desktop(archive=None):
                     self.password_dialog.response(Gtk.ResponseType.CANCEL)
                 return True
             if self.session:
-                self.session.close()
+                try:
+                    self.session.close()
+                except (ArchiveError, OSError) as error:
+                    self.closing = False
+                    self.status.set_text(display_text(error))
+                    self.update_controls()
+                    return True
                 self.session = None
             return False
 

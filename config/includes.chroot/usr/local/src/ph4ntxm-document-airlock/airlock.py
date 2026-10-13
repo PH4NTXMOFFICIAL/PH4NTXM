@@ -576,10 +576,9 @@ class AirlockSession:
                 except OSError:
                     pass
 
-        watcher = threading.Thread(target=watch, daemon=True)
-        sender = threading.Thread(target=send, daemon=True)
-        watcher.start()
-        sender.start()
+        watcher = None
+        sender = None
+        started_threads = []
 
         def acknowledge():
             if not sent.wait(5):
@@ -588,6 +587,12 @@ class AirlockSession:
             process.stdin.flush()
 
         try:
+            watcher = threading.Thread(target=watch, daemon=True)
+            sender = threading.Thread(target=send, daemon=True)
+            watcher.start()
+            started_threads.append(watcher)
+            sender.start()
+            started_threads.append(sender)
             with process.stdout:
                 pages = receive_pages(process.stdout, self.directory, acknowledge)
             done.set()
@@ -596,7 +601,7 @@ class AirlockSession:
             if status != 0 or self.cancelled.is_set() or timed_out.is_set() or memory_failure:
                 raise AirlockError("Conversion was cancelled, timed out, or failed.")
             self.pages = pages
-        except (AirlockError, OSError, subprocess.TimeoutExpired) as error:
+        except (AirlockError, OSError, RuntimeError, subprocess.TimeoutExpired) as error:
             self.pages = []
             for path in self.directory.glob("page-*.rgbz"):
                 path.unlink(missing_ok=True)
@@ -616,11 +621,20 @@ class AirlockSession:
             ) from None
         finally:
             done.set()
-            watcher.join()
-            if process.returncode is None:
-                stop()
-            process.wait()
-            sender.join()
+            try:
+                if watcher in started_threads:
+                    watcher.join()
+                if process.returncode is None:
+                    stop()
+                process.wait()
+                if sender in started_threads:
+                    sender.join()
+            finally:
+                for stream in (process.stdin, process.stdout):
+                    try:
+                        stream.close()
+                    except OSError:
+                        pass
 
     def export(self, destination):
         if not self.pages:
