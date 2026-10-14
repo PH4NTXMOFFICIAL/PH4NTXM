@@ -21,7 +21,11 @@ def trigger_panic(_):
         return
     panic_active = True
     status_icon.set_tooltip_text("Panic Confirmation Open")
-    process = subprocess.Popen(["/usr/local/bin/ph4ntxm-panic-button"])
+    try:
+        process = subprocess.Popen(["/usr/local/bin/ph4ntxm-panic-button"])
+    except OSError:
+        panic_dialog_closed(0, 0)
+        return
     GObject.child_watch_add(process.pid, panic_dialog_closed)
 
 

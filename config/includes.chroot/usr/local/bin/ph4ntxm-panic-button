@@ -103,17 +103,17 @@ class PanicProgress(Gtk.Window):
         dot.get_style_context().add_class("dot-danger")
         panel.pack_start(dot, False, False, 0)
         message = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
-        title = add_class(Gtk.Label(label="System in Panic"), "danger-title")
+        title = add_class(Gtk.Label(label="Panic Requested"), "danger-title")
         title.set_halign(Gtk.Align.START)
         text = add_class(
             Gtk.Label(
-                label="Emergency containment is active. The mandatory nuke sequence is running."
+                label="Emergency containment requested. Starting the mandatory nuke sequence."
             ),
             "danger-text",
         )
         text.set_halign(Gtk.Align.START)
         text.set_line_wrap(True)
-        state = add_class(Gtk.Label(label="Nuke Sequence Active"), "status-pill")
+        state = add_class(Gtk.Label(label="Starting Nuke Sequence"), "status-pill")
         state.get_style_context().add_class("status-danger")
         state.set_halign(Gtk.Align.START)
         message.pack_start(title, False, False, 0)

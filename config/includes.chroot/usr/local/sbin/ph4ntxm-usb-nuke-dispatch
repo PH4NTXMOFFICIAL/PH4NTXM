@@ -1,0 +1,44 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -u
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
+[ "$(id -u)" -eq 0 ] || exit 1
+if [ "$#" -eq 1 ]; then
+    USB_NUKE_TOKEN=$1
+    dispatch_action=start
+elif [ "$#" -eq 2 ] && [ "$1" = --restore ]; then
+    USB_NUKE_TOKEN=$2
+    dispatch_action=restore
+else
+    exit 2
+fi
+
+. /usr/lib/ph4ntxm/ph4ntxm-usb-nuke-state.sh
+usb_nuke_token_valid "$USB_NUKE_TOKEN" || exit 2
+
+restore_arm() {
+    if ! usb_nuke_restore "$USB_NUKE_TOKEN"; then
+        printf 'PH4NTXM: USB Nuke arm restoration failed.\n' >&2
+        return 1
+    fi
+}
+
+if [ "$dispatch_action" = restore ]; then
+    restore_arm
+    exit "$?"
+fi
+
+trap 'restore_arm; exit 1' HUP INT TERM
+if /bin/systemctl start ph4ntxm-panic.service; then
+    dispatch_result=0
+else
+    dispatch_result=1
+fi
+if ! restore_arm; then
+    dispatch_result=1
+fi
+trap - HUP INT TERM
+exit "$dispatch_result"

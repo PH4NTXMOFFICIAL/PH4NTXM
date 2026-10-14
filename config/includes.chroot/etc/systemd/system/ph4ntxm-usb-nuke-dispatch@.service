@@ -1,0 +1,9 @@
+[Unit]
+Description=PH4NTXM USB Removal Panic Dispatch
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-usb-nuke-dispatch %i
+ExecStopPost=/usr/local/sbin/ph4ntxm-usb-nuke-dispatch --restore %i
+TimeoutStartSec=infinity

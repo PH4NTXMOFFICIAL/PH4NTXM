@@ -2,17 +2,17 @@
 
 ## [ OVERVIEW ]
 
-Starts emergency containment and termination through the Panic service. The confirmation window and tray provide manual access. An armed [USB Nuke](USB-NUKE.md) event reaches the same backend.
+Starts emergency containment and termination through the Panic service. The confirmation window and tray provide manual access. An armed [USB Nuke](USB-NUKE.md) event reaches the same singleton backend through a token-specific dispatch instance.
 
 ## [ STARTUP ]
 
 The tray offers Nuke PH4NTXM and Quit. Selecting Nuke opens the confirmation application without starting the emergency sequence. Cancel or closing that initial window leaves the session running.
 
-While its tracked confirmation window is open, the tray blocks duplicate launches from that instance. Its tooltip becomes Panic Confirmation Open and a 500 ms timer alternates normal and warning icons. The child-exit callback restores the idle state. Other launchers can still open their own windows.
+While its tracked confirmation window is open, the tray blocks duplicate launches from that instance. Its tooltip becomes Panic Confirmation Open and a 500 ms timer alternates normal and warning icons. The child-exit callback restores the idle state. A failed confirmation-process launch also restores idle and allows another attempt. Other launchers can still open their own windows.
 
 ## [ RUNTIME ]
 
-Activate hides the confirmation view and opens a nondeletable progress window. After processing pending GTK events, the application runs `sudo -n systemctl start ph4ntxm-panic.service`. This exact emergency action remains passwordless. There is no cancel control after activation.
+Activate hides the confirmation view and opens a nondeletable progress window showing that Panic has been requested and the sequence is starting. After processing pending GTK events, the application runs `sudo -n systemctl start ph4ntxm-panic.service`. This exact emergency action remains passwordless. There is no cancel control after activation.
 
 If the command returns failure, the application closes the progress view, restores the confirmation window and shows an error. The root-only service owns the sequence independently of the desktop's lifetime.
 
@@ -22,7 +22,7 @@ If `/sys/kernel/kexec_crash_loaded` reports `1`, the script enables SysRq and re
 
 The fallback submits `systemctl poweroff --no-block`. Acceptance means the shutdown job was queued. Several containment operations tolerate errors to keep the sequence moving, so that result does not verify completion of every cleanup step.
 
-Handled interruption restores a consumed USB arm marker when possible. If execution returns from the poweroff request, Panic also restores `usb-nuke-triggered` to `usb-nuke-armed`, including after an accepted nonblocking request. A rejected poweroff request returns failure.
+Handled interruption returns failure. A rejected poweroff request also returns failure. The Panic backend does not modify USB arm markers. Its calling USB dispatch instance owns conditional restoration of its exact attempt, including after a returned accepted nonblocking poweroff request. A later Arm or Disarm prevents an older dispatch from restoring that state.
 
 Quitting the tray removes only its shortcut. It does not disable the service, disarm USB Nuke or cancel a submitted action. The tray's blinking icon reports an open confirmation window, while actual containment belongs to the service.
 

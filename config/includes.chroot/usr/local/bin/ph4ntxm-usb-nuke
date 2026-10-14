@@ -116,9 +116,9 @@ class UsbNukeWindow(Gtk.Window):
         section.pack_start(status_row, False, False, 0)
         description = Gtk.Label(
             label=(
-                "Emergency containment will activate if the armed USB storage device is removed."
+                "Emergency containment will activate if any USB storage device is removed."
                 if self.enabled
-                else "Arm emergency containment for removal of the current USB storage device."
+                else "Arm emergency containment for removal of any USB storage device."
             )
         )
         description.set_halign(Gtk.Align.START)

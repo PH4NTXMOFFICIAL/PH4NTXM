@@ -182,6 +182,6 @@ Normal termination targets invoke the common Nuke preparation: request Lockdown,
 
 The first emergency initramfs reconstructs the memory map and loads the next kernel with `memtest=17`. The following init performs another allocatable-memory scrub and attempts poweroff, with fallback termination requests if the preferred path returns. Several containment steps are best effort so one failure does not prevent later attempts.
 
-Panic Button requires an explicit activation in its confirmation window. USB Nuke instead consumes an armed marker when udev reports a matching whole USB storage device removal. The marker arms all storage removals matching the installed udev rules. The trigger submits the Panic service, which owns the subsequent containment and termination sequence.
+Panic Button requires confirmation; USB Nuke triggers the same backend on any matching whole USB storage removal, including boot media. A shared lock and per-attempt tokens protect Arm, Disarm and restoration from stale callbacks.
 
-The emergency kernel uses the RAM map collected during arming, followed by the allocatable-memory scrub. See [Nuke Kernel](docs/system/session/NUKE-KERNEL.md), [Panic](docs/system/session/PANIC.md) and [THREAT_MODEL.md](THREAT_MODEL.md).
+The emergency kernel uses the RAM map collected during arming, followed by the allocatable-memory scrub. See [Nuke Kernel](docs/system/session/NUKE-KERNEL.md), [Panic](docs/system/session/PANIC.md), [USB Nuke](docs/system/session/USB-NUKE.md) and [THREAT_MODEL.md](THREAT_MODEL.md).

@@ -3,26 +3,33 @@
 # Licensed under the GNU General Public License v3.0.
 
 set -eu
-
-STATE_DIR=/run/ph4ntxm
-FLAG_FILE=$STATE_DIR/usb-nuke-armed
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
 [ "$(id -u)" -eq 0 ] || exit 1
 [ "$#" -eq 1 ] || exit 2
+case "$1" in
+    enable|disable) ;;
+    *) exit 2 ;;
+esac
 
-install -d -o root -g root -m 0755 "$STATE_DIR"
+. /usr/lib/ph4ntxm/ph4ntxm-usb-nuke-state.sh
+
+usb_nuke_protected_directory /run || exit 1
+if [ -e "$USB_NUKE_STATE_DIR" ] || [ -L "$USB_NUKE_STATE_DIR" ]; then
+    usb_nuke_protected_directory "$USB_NUKE_STATE_DIR" || exit 1
+else
+    install -d -o root -g root -m 0755 "$USB_NUKE_STATE_DIR"
+fi
+usb_nuke_lock || exit 1
 
 case "$1" in
     enable)
-        umask 077
-        rm -f "$STATE_DIR/usb-nuke-triggered"
-        : >"$FLAG_FILE"
-        chmod 0644 "$FLAG_FILE"
+        usb_nuke_new_token
+        rm -f -- "$USB_NUKE_TRIGGER_FILE"
+        usb_nuke_write_arm "$USB_NUKE_NEW_TOKEN"
         ;;
     disable)
-        rm -f "$FLAG_FILE" "$STATE_DIR/usb-nuke-triggered"
-        ;;
-    *)
-        exit 2
+        rm -f -- "$USB_NUKE_ARMED_FILE" "$USB_NUKE_TRIGGER_FILE"
         ;;
 esac
+usb_nuke_unlock
