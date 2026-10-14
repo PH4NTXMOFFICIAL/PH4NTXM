@@ -1,0 +1,167 @@
+#!/usr/bin/python3 -I
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+import runpy
+import signal
+import threading
+import time
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib
+
+GUI = "/usr/local/bin/ph4ntxm-usb-guard"
+HelperCall = runpy.run_path(GUI, run_name="ph4ntxm_usb_guard_monitor_backend")["HelperCall"]
+NOTIFICATION_COMMAND = [
+    "/usr/bin/notify-send", "--app-name=PH4NTXM USB Guard",
+    "--icon=ph4ntxm-usb-guard", "--urgency=normal", "--transient",
+    "--expire-time=8000", "--action=open=Open USB Guard", "--wait", "--",
+    "New USB device blocked", "Open USB Guard to review the new device before allowing it.",
+]
+
+
+class NotificationCall(HelperCall):
+    def __init__(self, devices):
+        super().__init__("snapshot")
+        self.devices = set(devices)
+
+    def run(self):
+        try:
+            code, output = self.run_process(NOTIFICATION_COMMAND, 20, maximum=32)
+            action = output.strip()
+            return {"ok": code == 0 and action in {b"", b"open"}, "open": code == 0 and action == b"open"}
+        except Exception:
+            return {"ok": False, "open": False}
+
+
+def blocked_devices(snapshot):
+    if snapshot["enabled"] is not True or not snapshot["generation"]:
+        return set()
+    return {
+        (snapshot["generation"], device["id"], device["identity"])
+        for device in snapshot["devices"]
+        if device["state"] == "block" and device["controller"] is not True
+    }
+
+
+class UsbGuardMonitor:
+    def __init__(self, application):
+        self.application = application
+        self.stopping = False
+        self.quitting = False
+        self.snapshot_job = None
+        self.notification_job = None
+        self.current = None
+        self.notified = set()
+        self.retry_at = 0
+        self.poll_source = GLib.timeout_add_seconds(8, self.poll)
+        GLib.idle_add(self.initial_poll)
+
+    def initial_poll(self):
+        self.poll()
+        return False
+
+    def start(self, job, callback):
+        def worker():
+            try:
+                result = job.run()
+            except Exception:
+                result = {"ok": False}
+            GLib.idle_add(callback, job, result)
+
+        try:
+            threading.Thread(target=worker, daemon=True).start()
+        except Exception:
+            callback(job, {"ok": False})
+
+    def poll(self):
+        if self.stopping:
+            return False
+        if self.snapshot_job is None:
+            self.snapshot_job = HelperCall("snapshot")
+            self.start(self.snapshot_job, self.finish_snapshot)
+        return True
+
+    def finish_snapshot(self, job, result):
+        if self.snapshot_job is not job:
+            return False
+        self.snapshot_job = None
+        if self.stopping:
+            self.maybe_quit()
+            return False
+        if result.get("ok") is not True:
+            self.current = None
+            return False
+        self.current = blocked_devices(result)
+        self.notified.intersection_update(self.current)
+        self.show_notification()
+        return False
+
+    def show_notification(self):
+        if self.stopping or self.current is None or self.notification_job is not None:
+            return
+        pending = self.current - self.notified
+        if pending and time.monotonic() >= self.retry_at:
+            self.notification_job = NotificationCall(pending)
+            self.start(self.notification_job, self.finish_notification)
+
+    def finish_notification(self, job, result):
+        if self.notification_job is not job:
+            return False
+        self.notification_job = None
+        if self.stopping:
+            self.maybe_quit()
+            return False
+        if result.get("ok") is True:
+            self.notified.update(job.devices)
+            if self.current is not None:
+                self.notified.intersection_update(self.current)
+            if result.get("open") is True:
+                try:
+                    pid, _, _, _ = GLib.spawn_async([GUI], flags=GLib.SpawnFlags.DEFAULT)
+                    GLib.spawn_close_pid(pid)
+                except GLib.Error:
+                    pass
+        else:
+            self.retry_at = time.monotonic() + 30
+        self.show_notification()
+        return False
+
+    def close(self, *_):
+        if not self.stopping:
+            self.stopping = True
+            if self.poll_source:
+                GLib.source_remove(self.poll_source)
+                self.poll_source = 0
+            for job in (self.snapshot_job, self.notification_job):
+                if job is not None:
+                    job.cancel()
+        self.maybe_quit()
+
+    def maybe_quit(self):
+        if self.stopping and self.snapshot_job is None and self.notification_job is None and not self.quitting:
+            self.quitting = True
+            self.application.quit()
+
+
+def main():
+    application = Gio.Application(application_id="org.ph4ntxm.UsbGuardMonitor")
+    monitor = None
+
+    def activate(current):
+        nonlocal monitor
+        if monitor is None:
+            current.hold()
+            monitor = UsbGuardMonitor(current)
+            signal.signal(signal.SIGTERM, monitor.close)
+            signal.signal(signal.SIGINT, monitor.close)
+            current.connect("shutdown", monitor.close)
+
+    application.connect("activate", activate)
+    return application.run([])
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

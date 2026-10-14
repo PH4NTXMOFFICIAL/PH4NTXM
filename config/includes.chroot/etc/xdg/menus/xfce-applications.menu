@@ -23,6 +23,7 @@
         <Filename>ph4ntxm-lockdown.desktop</Filename>
         <Filename>ph4ntxm-panic-button.desktop</Filename>
         <Filename>ph4ntxm-usb-nuke.desktop</Filename>
+        <Filename>ph4ntxm-usb-guard.desktop</Filename>
 
         <Separator/>
 

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM USB Guard Monitor
+Comment=Notify when USB Guard blocks a new device
+Exec=/usr/local/bin/ph4ntxm-usb-guard-monitor
+Icon=ph4ntxm-usb-guard
+Terminal=false
+OnlyShowIn=XFCE;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true

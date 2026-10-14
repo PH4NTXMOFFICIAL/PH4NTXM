@@ -1,0 +1,546 @@
+#!/usr/bin/python3 -I
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+import json
+import os
+import re
+import selectors
+import signal
+import subprocess
+import threading
+import time
+import unicodedata
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, GLib, Gtk, Pango
+
+CONTROL = "/usr/local/sbin/ph4ntxm-usb-guard-control"
+CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
+MODE_FILE = "/run/ph4ntxm/mode"
+MAX_OUTPUT = 512 * 1024
+MODE_LABELS = {"linux": "Linux", "windows": "Windows", "lonewolf": "Lone Wolf"}
+STATE_LABELS = {"allow": "Allowed", "block": "Blocked", "reject": "Rejected"}
+STATUS_LABELS = {
+    "off": ("Protection off", "status-disabled"),
+    "ready": ("Protection enabled", "status-active"),
+    "starting": ("Starting protection", "status-warning"),
+    "degraded": ("Protection needs attention", "status-danger"),
+}
+FUNCTION_LABELS = {
+    "00": "Unspecified", "01": "Audio", "02": "Communications / network",
+    "03": "HID", "05": "Physical interface", "06": "Imaging", "07": "Printer",
+    "08": "Storage", "09": "Hub", "0a": "Network / data", "0b": "Smart card",
+    "0d": "Content security", "0e": "Video", "0f": "Personal healthcare",
+    "10": "Audio / video", "11": "Billboard", "12": "USB Type-C bridge",
+    "dc": "Diagnostic", "e0": "Wireless", "ef": "Multiple functions",
+    "fe": "Application-specific", "ff": "Vendor-specific",
+}
+
+
+def display_text(value, limit=512):
+    return "".join(
+        character if unicodedata.category(character) not in {"Cc", "Cf", "Cs"} else "�"
+        for character in str(value)[:limit]
+    )
+
+
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate response field")
+        result[key] = value
+    return result
+
+
+def validate_snapshot(data):
+    if not isinstance(data, dict) or data.get("ok") is not True:
+        raise ValueError("Invalid USB Guard response")
+    state = data.get("state")
+    enabled = data.get("enabled")
+    generation = data.get("generation")
+    devices = data.get("devices")
+    if (
+        not isinstance(state, str) or state not in STATUS_LABELS
+        or type(enabled) is not bool
+        or not isinstance(generation, str)
+        or (generation != "" and re.fullmatch(r"[0-9a-f]{32}", generation) is None)
+        or (state == "ready" and (not enabled or not generation))
+        or not isinstance(data.get("message"), str)
+        or not isinstance(devices, list)
+        or len(devices) > 512
+    ):
+        raise ValueError("Invalid USB Guard snapshot")
+    checked = []
+    identifiers = set()
+    for item in devices:
+        if not isinstance(item, dict):
+            raise ValueError("Invalid USB device")
+        identifier = item.get("id")
+        identity = item.get("identity")
+        interfaces = item.get("interfaces")
+        if (
+            type(identifier) is not int or not 0 < identifier <= 0xfffffffe
+            or identifier in identifiers
+            or not isinstance(identity, str)
+            or re.fullmatch(r"[0-9a-f]{64}", identity) is None
+            or not isinstance(item.get("name"), str)
+            or not isinstance(item.get("vendor_id"), str)
+            or re.fullmatch(r"[0-9a-f]{4}:[0-9a-f]{4}", item["vendor_id"]) is None
+            or not isinstance(item.get("port"), str)
+            or not isinstance(item.get("state"), str) or item["state"] not in STATE_LABELS
+            or type(item.get("can_allow")) is not bool
+            or type(item.get("controller")) is not bool
+            or not isinstance(item.get("restriction"), str)
+            or not isinstance(interfaces, list) or len(interfaces) > 256
+            or any(not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}", value) is None for value in interfaces)
+        ):
+            raise ValueError("Invalid USB device details")
+        identifiers.add(identifier)
+        checked.append({
+            **item,
+            "name": display_text(item["name"], 160) or "Unnamed USB device",
+            "port": display_text(item["port"], 128),
+            "restriction": display_text(item["restriction"]),
+        })
+    return {**data, "message": display_text(data["message"]), "devices": checked}
+
+
+def declared_functions(interfaces):
+    names = []
+    for interface in interfaces:
+        device_class, subclass, protocol = interface.split(":")
+        if device_class == "03" and subclass == "01" and protocol == "01":
+            name = "Keyboard / HID"
+        elif device_class == "03" and subclass == "01" and protocol == "02":
+            name = "Mouse / HID"
+        else:
+            name = FUNCTION_LABELS.get(device_class, "Other USB function")
+        if name not in names:
+            names.append(name)
+    return ", ".join(names) or "Not declared"
+
+
+class HelperCall:
+    def __init__(self, action, payload=None):
+        if action not in {"snapshot", "enable", "disable", "allow"}:
+            raise ValueError("Invalid USB Guard action")
+        self.action = action
+        self.payload = dict(payload) if payload is not None else None
+        self.input = json.dumps(payload, separators=(",", ":")).encode("ascii") + b"\n" if payload is not None else None
+        if self.input is not None and len(self.input) > 4096:
+            raise ValueError("USB Guard request is too large")
+        self.cancelled = threading.Event()
+        self.process = None
+        self.lock = threading.Lock()
+
+    def process_running(self):
+        with self.lock:
+            return self.process is not None and self.process.poll() is None
+
+    def stop_process(self, force=False, nonblocking=False):
+        if not self.lock.acquire(blocking=not nonblocking):
+            return
+        try:
+            process = self.process
+            if process is not None and process.poll() is None:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL if force else signal.SIGTERM)
+                except OSError:
+                    pass
+        finally:
+            self.lock.release()
+
+    def cancel(self):
+        self.cancelled.set()
+        self.stop_process(nonblocking=True)
+
+    def run_process(self, command, timeout, input_data=None, environment=None, maximum=MAX_OUTPUT):
+        process = None
+        try:
+            if self.cancelled.is_set():
+                raise InterruptedError("USB Guard request cancelled")
+            process = subprocess.Popen(
+                command,
+                stdin=subprocess.PIPE if input_data is not None else subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                env=environment, close_fds=True, start_new_session=True,
+            )
+            with self.lock:
+                self.process = process
+            if self.cancelled.is_set():
+                raise InterruptedError("USB Guard request cancelled")
+            if input_data is not None:
+                process.stdin.write(input_data)
+                process.stdin.close()
+            os.set_blocking(process.stdout.fileno(), False)
+            output = bytearray()
+            deadline = time.monotonic() + timeout
+            with selectors.DefaultSelector() as selector:
+                selector.register(process.stdout, selectors.EVENT_READ)
+                while selector.get_map() or self.process_running():
+                    if self.cancelled.is_set():
+                        raise InterruptedError("USB Guard request cancelled")
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise TimeoutError("USB Guard request timed out")
+                    for key, _ in selector.select(min(0.2, remaining)):
+                        chunk = os.read(key.fileobj.fileno(), 8192)
+                        if not chunk:
+                            selector.unregister(key.fileobj)
+                            continue
+                        if len(output) + len(chunk) > maximum:
+                            raise ValueError("USB Guard response is too large")
+                        output.extend(chunk)
+                    if not selector.get_map() and self.process_running():
+                        self.cancelled.wait(min(0.05, remaining))
+            return process.returncode, bytes(output)
+        finally:
+            if process is not None:
+                if self.process_running():
+                    self.stop_process()
+                    try:
+                        with self.lock:
+                            process.wait(timeout=1)
+                    except subprocess.TimeoutExpired:
+                        self.stop_process(True)
+                        try:
+                            with self.lock:
+                                process.wait(timeout=1)
+                        except subprocess.TimeoutExpired:
+                            pass
+                if process.stdin is not None and not process.stdin.closed:
+                    try:
+                        process.stdin.close()
+                    except OSError:
+                        pass
+                if process.stdout is not None:
+                    process.stdout.close()
+            with self.lock:
+                self.process = None
+
+    def run(self):
+        timeout = 10 if self.action == "snapshot" else 120
+        options = ["-n"] if self.action == "snapshot" else ["-A", "-k"]
+        environment = dict(os.environ)
+        environment["SUDO_ASKPASS"] = "/usr/local/bin/ph4ntxm-askpass"
+        try:
+            code, output = self.run_process(
+                ["/usr/bin/sudo", *options, "--", CONTROL, self.action],
+                timeout, self.input, environment,
+            )
+            result = json.loads(output.decode("utf-8"), object_pairs_hook=unique_object)
+            if isinstance(result, dict) and result.get("ok") is False:
+                return {"ok": False, "error": display_text(result.get("error") or "USB Guard request failed")}
+            if code != 0:
+                return {"ok": False, "error": "Authorization cancelled or USB Guard request failed"}
+            return validate_snapshot(result)
+        except InterruptedError:
+            return {"ok": False, "error": "USB Guard request cancelled"}
+        except TimeoutError:
+            return {"ok": False, "error": "USB Guard request timed out"}
+        except (OSError, UnicodeError, ValueError, RecursionError, subprocess.SubprocessError):
+            return {"ok": False, "error": "USB Guard could not read a valid response"}
+
+
+def add_class(widget, name):
+    widget.get_style_context().add_class(name)
+    return widget
+
+
+def label(text, style=None, lines=2):
+    widget = Gtk.Label(label=text, xalign=0)
+    widget.set_line_wrap(True)
+    widget.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+    widget.set_max_width_chars(72)
+    widget.set_lines(lines)
+    widget.set_ellipsize(Pango.EllipsizeMode.END)
+    return add_class(widget, style) if style else widget
+
+
+class UsbGuardWindow(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="PH4NTXM USB Guard")
+        width, height = 780, 560
+        display = Gdk.Display.get_default()
+        if display:
+            monitor = display.get_primary_monitor() or display.get_monitor(0)
+            if monitor:
+                area = monitor.get_workarea()
+                width = min(width, max(480, area.width - 40))
+                height = min(height, max(360, area.height - 40))
+        self.set_default_size(width, height)
+        self.set_size_request(min(640, width), -1)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        self.set_icon_name("ph4ntxm-usb-guard")
+        if os.path.isfile(CSS_FILE):
+            provider = Gtk.CssProvider()
+            provider.load_from_path(CSS_FILE)
+            Gtk.StyleContext.add_provider_for_screen(self.get_screen(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        add_class(self, "ph4ntxm-window")
+        self.snapshot = None
+        self.devices = {}
+        self.job = None
+        self.snapshot_error = False
+        self.action_notice = False
+        self.closing = False
+        self.closed = False
+        self.connect("delete-event", self.on_close)
+        self.connect("destroy", self.on_destroy)
+        self.build()
+        self.poll_source = GLib.timeout_add_seconds(3, self.poll)
+        GLib.idle_add(self.refresh)
+
+    def build(self):
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.add(root)
+        header = add_class(Gtk.Box(spacing=18), "top-panel")
+        headings = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        headings.pack_start(label("PH4NTXM USB Guard", "title", 1), False, False, 0)
+        headings.pack_start(label("New USB device approval", "subtitle", 1), False, False, 0)
+        header.pack_start(headings, True, True, 0)
+        try:
+            with open(MODE_FILE, "r", encoding="ascii") as handle:
+                mode = MODE_LABELS.get(handle.read(32).strip())
+        except (OSError, UnicodeError):
+            mode = None
+        mode_label = add_class(Gtk.Label(label="Mode " + mode if mode else "Mode unavailable"), "status-pill")
+        mode_label.set_valign(Gtk.Align.CENTER)
+        header.pack_end(mode_label, False, False, 0)
+        root.pack_start(header, False, False, 0)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        content.set_border_width(16)
+        root.pack_start(content, True, True, 0)
+        status = add_class(Gtk.Box(spacing=12), "section")
+        status_text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.status_label = label("Checking protection", "section-title", 1)
+        self.status_message = label("Reading USB device status…", "subtitle", 2)
+        status_text.pack_start(self.status_label, False, False, 0)
+        status_text.pack_start(self.status_message, False, False, 0)
+        status.pack_start(status_text, True, True, 0)
+        self.protection_button = Gtk.Button(label="Enable Protection")
+        self.protection_button.connect("clicked", self.on_protection)
+        self.protection_button.set_valign(Gtk.Align.CENTER)
+        status.pack_end(self.protection_button, False, False, 0)
+        content.pack_start(status, False, False, 0)
+        content.pack_start(label("Devices connected before enabling remain available. New connections need approval.", "subtitle", 2), False, False, 0)
+        self.store = Gtk.ListStore(str, str, str, str, str)
+        self.tree = Gtk.TreeView(model=self.store)
+        self.tree.set_enable_search(False)
+        for heading, position, minimum, expand in (("Device", 1, 180, True), ("Declared functions", 2, 170, True), ("USB ID", 3, 90, False), ("State", 4, 80, False)):
+            renderer = Gtk.CellRendererText()
+            renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
+            column = Gtk.TreeViewColumn(heading, renderer, text=position)
+            column.set_min_width(minimum)
+            column.set_expand(expand)
+            column.set_resizable(True)
+            self.tree.append_column(column)
+        self.tree.get_selection().connect("changed", self.on_selection)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_min_content_height(60)
+        scroll.add(self.tree)
+        content.pack_start(scroll, True, True, 0)
+        self.details = label("Select a device to review its declared functions.", "subtitle", 2)
+        self.details.set_selectable(True)
+        content.pack_start(self.details, False, False, 0)
+        actions = Gtk.Box(spacing=10)
+        self.keep_button = Gtk.Button(label="Keep Blocked")
+        self.keep_button.connect("clicked", self.on_keep_blocked)
+        self.allow_button = add_class(Gtk.Button(label="Allow Device"), "primary")
+        self.allow_button.connect("clicked", self.on_allow)
+        actions.pack_end(self.allow_button, False, False, 0)
+        actions.pack_end(self.keep_button, False, False, 0)
+        actions.pack_start(label("Password required for every approval.\nApprovals end on disconnect.", "subtitle", 2), True, True, 0)
+        content.pack_start(actions, False, False, 0)
+        footer = Gtk.Box(spacing=10)
+        self.spinner = Gtk.Spinner()
+        footer.pack_start(self.spinner, False, False, 0)
+        self.notice = label("", "subtitle", 2)
+        footer.pack_start(self.notice, True, True, 0)
+        close = Gtk.Button(label="Close")
+        close.connect("clicked", self.on_close)
+        self.refresh_button = Gtk.Button(label="Refresh")
+        self.refresh_button.connect("clicked", self.refresh)
+        footer.pack_end(close, False, False, 0)
+        footer.pack_end(self.refresh_button, False, False, 0)
+        content.pack_start(footer, False, False, 0)
+        self.update_controls()
+
+    def selected_device(self):
+        model, iterator = self.tree.get_selection().get_selected()
+        return self.devices.get(int(model[iterator][0])) if iterator is not None else None
+
+    def update_controls(self):
+        device = self.selected_device()
+        idle = self.job is None and not self.closing
+        ready = bool(self.snapshot and self.snapshot["state"] == "ready" and self.snapshot["enabled"])
+        self.protection_button.set_sensitive(idle and self.snapshot is not None)
+        self.refresh_button.set_sensitive(idle)
+        self.allow_button.set_sensitive(bool(idle and ready and device and device["state"] == "block" and device["can_allow"]))
+        self.keep_button.set_sensitive(bool(idle and device and device["state"] == "block"))
+
+    def on_selection(self, *_):
+        device = self.selected_device()
+        if device:
+            summary = declared_functions(device["interfaces"])
+            text = f'{device["name"]} · {device["vendor_id"]} · Port {device["port"] or "unknown"}\n{summary}'
+            if device["restriction"]:
+                text += " · " + device["restriction"]
+            self.details.set_text(text)
+            self.details.set_tooltip_text(text)
+        else:
+            self.details.set_text("Select a device to review its declared functions.")
+            self.details.set_tooltip_text(None)
+        self.update_controls()
+
+    def apply_snapshot(self, snapshot):
+        previous = self.selected_device()
+        previous_key = (previous["id"], previous["identity"]) if previous else None
+        self.snapshot = snapshot
+        self.devices = {device["id"]: device for device in snapshot["devices"]}
+        self.store.clear()
+        for device in snapshot["devices"]:
+            iterator = self.store.append((str(device["id"]), device["name"], declared_functions(device["interfaces"]), device["vendor_id"], STATE_LABELS[device["state"]]))
+            if (device["id"], device["identity"]) == previous_key:
+                self.tree.get_selection().select_iter(iterator)
+        text, style = STATUS_LABELS[snapshot["state"]]
+        self.status_label.set_text(text)
+        context = self.status_label.get_style_context()
+        for candidate in ("status-disabled", "status-active", "status-warning", "status-danger"):
+            context.remove_class(candidate)
+        context.add_class(style)
+        self.status_message.set_text(snapshot["message"])
+        self.protection_button.set_label("Disable Protection" if snapshot["enabled"] else "Enable Protection")
+        self.on_selection()
+
+    def request(self, action, payload=None):
+        if self.job is not None or self.closing:
+            return False
+        job = HelperCall(action, payload)
+        self.job = job
+        self.spinner.start()
+        if action != "snapshot":
+            self.snapshot_error = False
+            self.action_notice = True
+            self.notice.set_text("Enter your session password to authorize this action…")
+        self.update_controls()
+
+        def worker():
+            try:
+                result = job.run()
+            except Exception:
+                result = {"ok": False, "error": "USB Guard request could not complete"}
+            GLib.idle_add(self.finish, job, result)
+
+        try:
+            threading.Thread(target=worker, daemon=True).start()
+        except (RuntimeError, OSError):
+            self.finish(job, {"ok": False, "error": "USB Guard request could not start"})
+        return False
+
+    def finish(self, job, result):
+        if self.closed or self.job is not job:
+            return False
+        self.job = None
+        self.spinner.stop()
+        if self.closing:
+            self.destroy()
+            return False
+        if result.get("ok") is True:
+            self.apply_snapshot(result)
+            if job.action == "snapshot":
+                if self.snapshot_error and not self.action_notice:
+                    self.notice.set_text("")
+                self.snapshot_error = False
+            elif job.action == "allow":
+                self.action_notice = True
+                self.snapshot_error = False
+                approved = any(device["id"] == job.payload["id"] and device["identity"] == job.payload["identity"] and device["state"] == "allow" for device in result["devices"])
+                self.notice.set_text("Device approved. Disconnecting ends this approval." if approved else "The device changed or disconnected before approval could be confirmed.")
+            elif job.action in {"enable", "disable"}:
+                self.action_notice = True
+                self.snapshot_error = False
+                self.notice.set_text("Protection status updated.")
+        else:
+            if job.action == "snapshot":
+                if not self.action_notice:
+                    self.snapshot_error = True
+                    self.notice.set_text(display_text(result.get("error") or "USB Guard request failed"))
+                self.snapshot = None
+                self.devices = {}
+                self.store.clear()
+                self.on_selection()
+                self.status_label.set_text("Protection status unavailable")
+                self.status_message.set_text("Refresh to check the current protection and device states.")
+                context = self.status_label.get_style_context()
+                for candidate in ("status-disabled", "status-active", "status-warning", "status-danger"):
+                    context.remove_class(candidate)
+                context.add_class("status-warning")
+            else:
+                self.action_notice = True
+                self.snapshot_error = False
+                self.notice.set_text(display_text(result.get("error") or "USB Guard request failed"))
+                GLib.idle_add(self.refresh)
+        self.update_controls()
+        return False
+
+    def refresh(self, *_):
+        return self.request("snapshot")
+
+    def poll(self):
+        if self.closed or self.closing:
+            return False
+        if self.job is None:
+            self.refresh()
+        return True
+
+    def on_protection(self, *_):
+        if self.snapshot is not None:
+            self.request("disable" if self.snapshot["enabled"] else "enable")
+
+    def on_allow(self, *_):
+        device = self.selected_device()
+        if self.snapshot and self.snapshot["state"] == "ready" and self.snapshot["enabled"] and device and device["state"] == "block" and device["can_allow"]:
+            self.request("allow", {"generation": self.snapshot["generation"], "id": device["id"], "identity": device["identity"]})
+
+    def on_keep_blocked(self, *_):
+        device = self.selected_device()
+        if device and device["state"] == "block":
+            self.action_notice = True
+            self.snapshot_error = False
+            self.notice.set_text("No approval was requested. The device was left blocked.")
+
+    def on_close(self, *_):
+        if self.closing:
+            return True
+        self.closing = True
+        self.hide()
+        if self.job is not None:
+            self.job.cancel()
+        else:
+            self.destroy()
+        return True
+
+    def on_destroy(self, *_):
+        self.closed = True
+        if self.poll_source:
+            GLib.source_remove(self.poll_source)
+            self.poll_source = 0
+        if self.job is not None:
+            self.job.cancel()
+        Gtk.main_quit()
+
+
+def main():
+    window = UsbGuardWindow()
+    window.show_all()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()

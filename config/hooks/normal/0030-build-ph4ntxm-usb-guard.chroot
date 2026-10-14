@@ -1,0 +1,38 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+SOURCE=/usr/local/src/ph4ntxm-usb-guard
+CLIENT=/usr/local/sbin/ph4ntxm-usb-guard-client
+install -d -m 0755 /usr/local/sbin /usr/lib/ph4ntxm
+c++ -std=c++17 -O2 -Wall -Wextra -Werror -Wpedantic \
+    -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fPIE \
+    "$SOURCE/ph4ntxm-usb-guard-client.cpp" \
+    -pie -Wl,-z,relro,-z,now -lusbguard -o "$CLIENT"
+chown root:root "$CLIENT"
+chmod 0755 "$CLIENT"
+sha256sum "$CLIENT" > /usr/lib/ph4ntxm/usb-guard.sha256
+chown root:root /usr/lib/ph4ntxm/usb-guard.sha256 /etc/ph4ntxm-usb-guard.conf
+chmod 0644 /usr/lib/ph4ntxm/usb-guard.sha256
+chmod 0600 /etc/ph4ntxm-usb-guard.conf
+
+for unit in usbguard.service usbguard-dbus.service dbus-org.usbguard.service; do
+    ln -sf /dev/null "/etc/systemd/system/$unit"
+done
+find /etc/systemd/system -mindepth 2 -type l \( -name usbguard.service -o -name usbguard-dbus.service -o -name dbus-org.usbguard.service \) -delete
+rm -f /etc/usbguard/rules.conf \
+    /usr/share/polkit-1/rules.d/org.usbguard1.rules \
+    /usr/share/dbus-1/system-services/org.usbguard1.service
+rm -rf /etc/usbguard/rules.d /etc/usbguard/IPCAccessControl.d
+
+python3 -I - <<'VERIFY'
+import sys
+sys.path.insert(0, '/usr/lib/ph4ntxm')
+from usb_guard import validate_installation
+validate_installation()
+VERIFY
+update-desktop-database
+gtk-update-icon-cache -f /usr/share/icons/Lyra-blue-dark
+rm -rf "$SOURCE"

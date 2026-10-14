@@ -1,0 +1,31 @@
+[Unit]
+Description=PH4NTXM USB Guard
+After=systemd-udevd.service local-fs.target
+Wants=systemd-udevd.service
+
+[Service]
+Type=simple
+ExecStartPre=/usr/local/sbin/ph4ntxm-usb-guard-control prepare
+ExecStart=/usr/sbin/usbguard-daemon -s -c /etc/ph4ntxm-usb-guard.conf
+Restart=no
+RuntimeDirectory=ph4ntxm-usb-guard
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+UMask=0077
+TimeoutStartSec=15s
+TimeoutStopSec=10s
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_CHOWN CAP_FOWNER CAP_AUDIT_WRITE
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+ReadWritePaths=/run /dev/shm

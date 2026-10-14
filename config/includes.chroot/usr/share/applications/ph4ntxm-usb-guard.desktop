@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM USB Guard
+Comment=Review and approve new USB connections
+Exec=/usr/local/bin/ph4ntxm-usb-guard
+Icon=ph4ntxm-usb-guard
+Terminal=false
+Categories=System;X-PH4NTXMApps;
+StartupNotify=false

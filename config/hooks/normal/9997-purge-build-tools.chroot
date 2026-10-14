@@ -45,6 +45,7 @@ apt-mark manual \
     fail2ban \
     cryptsetup \
     secure-delete \
+    usbguard \
     tor \
     dnsmasq-base \
     proxychains4 \
@@ -139,6 +140,8 @@ apt-mark manual \
     || true
 
 PURGE_PACKAGES="
+libusbguard-dev
+libqb-dev
 llvm-18-dev
 llvm-18
 llvm-18-tools
