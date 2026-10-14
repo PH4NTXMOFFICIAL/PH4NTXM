@@ -18,7 +18,9 @@ It then stops RAM seeding, disables swap, synchronizes, requests cache dropping 
 
 After a crash transition, the first initramfs reconstructs an exact memory map from the ranges passed during arming. It attempts to load the next kernel using the file syscall, then the legacy loading path if necessary.
 
-The second kernel is started with `memtest=17` and the reconstructed map. Its init reads the kernel-reported `EarlyMemtestBad` value from `/proc/meminfo`: zero reports `COMPLETE - NO ERRORS DETECTED`, a positive value reports `COMPLETE - BAD MEMORY DETECTED` with the reported size, and a missing, unreadable or malformed result reports `RESULT UNAVAILABLE` without claiming completion. Completion refers to the kernel early test over its eligible memory ranges, not proof of complete physical-memory coverage or erasure. Every result continues into the RAM scrub helper, which reports whether the allocatable pass completed, and the poweroff attempts. Both stages have fallback shutdown/reboot requests if the preferred path returns.
+The second kernel starts with `memtest=17` and the reconstructed map. Its init reads `EarlyMemtestBad` from `/proc/meminfo`: zero reports `COMPLETE - NO ERRORS DETECTED`; a positive value reports `COMPLETE - BAD MEMORY DETECTED` with its size. Missing, unreadable or malformed results report `RESULT UNAVAILABLE` without claiming completion.
+
+Completion covers the kernel's eligible early-test ranges, not guaranteed physical-memory coverage or erasure. Every result continues to the allocatable RAM scrub, its completion report and poweroff attempts. Both stages retain fallback shutdown/reboot requests if the preferred path returns.
 
 Missing map data or failure to load the second kernel leads to the failure/poweroff branch, not a success report. The stages use the RAM map collected during arming and the following allocatable-memory pass.
 
@@ -30,7 +32,7 @@ An accepted Panic request, a loaded crash kernel and a completed scrub are diffe
 
 ## [ SOURCE ]
 
-[ph4ntxm-nuke.sh](../../../config/includes.chroot/usr/local/sbin/ph4ntxm-nuke.sh)  
-[ph4ntxm-ram-scrub.c](../../../config/includes.chroot/usr/local/sbin/ph4ntxm-ram-scrub.c)  
-[ph4ntxm-arm-crashkernel.sh](../../../config/includes.chroot/usr/local/sbin/ph4ntxm-arm-crashkernel.sh)  
+[ph4ntxm-nuke.sh](../../../config/includes.chroot/usr/local/sbin/ph4ntxm-nuke.sh)\
+[ph4ntxm-ram-scrub.c](../../../config/includes.chroot/usr/local/sbin/ph4ntxm-ram-scrub.c)\
+[ph4ntxm-arm-crashkernel.sh](../../../config/includes.chroot/usr/local/sbin/ph4ntxm-arm-crashkernel.sh)\
 [0091-build-ph4ntxm-nuke.chroot](../../../config/hooks/normal/0091-build-ph4ntxm-nuke.chroot)

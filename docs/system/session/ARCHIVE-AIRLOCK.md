@@ -2,43 +2,37 @@
 
 ## [ OVERVIEW ]
 
-Lists local archives offline and opens one selected file through its supported isolated viewer. It uses the Document Airlock guest image without installing an archive parser in the host broker.
+Inspects local archives offline and opens one selected file through its isolated viewer. Parsing uses the Document Airlock guest image, outside the host broker.
 
 ## [ STARTUP ]
 
-Open Archive Airlock from PH4NTXM Apps or open an associated archive in the file manager. ZIP, RAR/RAR5, 7z and TAR are supported, including gzip, bzip2, xz and zstd compressed TAR. Password-protected ZIP entries using traditional ZipCrypto or WinZip AES are supported. Encrypted RAR/7z and multipart archives are not supported.
+Open from PH4NTXM Apps or an associated archive in Thunar. Supported formats are ZIP, RAR/RAR5, 7z and TAR, including gzip/bzip2/xz/zstd TAR. ZIP supports ZipCrypto and WinZip AES; encrypted RAR/7z and multipart archives are unsupported.
 
-Thunar opens associated archives through Archive Airlock. Its native archive-plugin extraction actions, including drag-and-drop extraction, are disabled. Xarchiver is hidden from application menus and Open With handlers. A custom Create Archive action invokes its compression helper directly to preserve compression of selected files; it does not open or extract existing archives.
+Thunar extraction actions are disabled and Xarchiver is hidden from menus and Open With. The separate Create Archive action preserves compression without opening existing archives.
 
-Run from the desktop account. KVM access, private namespaces, trusted guest artifacts, disabled swap and a private tmpfs runtime directory are required. Checks read actual available RAM and reject managed hardware-view environments. Missing isolation does not fall back to host extraction.
+The desktop account needs KVM, private namespaces, trusted guest artifacts, disabled swap and private tmpfs storage. Checks use actual RAM and reject managed hardware views; failed isolation never falls back to host extraction.
 
 ## [ RUNTIME ]
 
-The original archive remains unchanged. The broker copies a nonempty regular file of at most 128 MiB into its private RAM workspace. The guest receives those bytes through the existing offline VM channel and returns a bounded contents listing. There is no shared host home or network adapter.
+The source stays unchanged. A nonempty regular archive of at most 128 MiB is copied into private RAM. The offline guest has no shared home and returns at most 1000 entries, 1024 UTF-8 bytes per name and 2 MiB metadata.
 
-Listings contain at most 1000 entries, names of at most 1024 UTF-8 bytes and at most 2 MiB metadata. Selection uses the entry number, including when names are duplicated. Unsafe paths, links and special files are blocked. Unsupported file types stay visible without an Open action. Archive-created names and permissions are never used to create host filesystem paths.
+Selection uses entry numbers, including duplicate names. Unsafe paths, links and special files are blocked; unsupported types have no Open action. A fresh guest streams the chosen file into a fixed private filename, checking actual bytes against limits and any known listed size.
 
-Opening a supported file starts a fresh archive guest, streams that selected entry into a fixed private filename and closes the guest before launching its viewer. Actual streamed bytes are checked independently of the declared size. Files are limited to 128 MiB, documents to 64 MiB and UTF-8 text previews to 1 MiB. A known listed size is also enforced. There is no recursive extraction or automatic execution.
+Files are capped at 128 MiB, documents at 64 MiB and UTF-8 text previews at 1 MiB. Each operation allows three minutes and uses 512 MiB guest RAM, plus 96 MiB process overhead, 192 MiB host reserve and output capacity. Admission accounts for the archive copy and tmpfs capacity; low actual RAM stops the guest. A shared lock permits one Airlock guest operation at a time.
 
-Archive guests use 512 MiB RAM. Admission also reserves 96 MiB for the virtual-machine process, 192 MiB for the host and the selected output budget after the archive copy has been charged to memory. RAM workspace capacity is checked separately. A low-memory check stops the guest if actual available RAM falls below the host reserve. The shared Airlock lock permits one guest operation at a time. Each archive operation has a three-minute timeout.
+After the guest exits, documents use Document Airlock, images/video/audio use Media Viewers, and small `.txt`, `.csv`, `.log` and `.md` files use read-only previews. Viewers check their own budgets; media handoff uses a sealed RAM snapshot. Unpacking does not sanitize file contents or execute them.
 
-Documents open through Document Airlock, images through Image Viewer, and supported audio/video through Media Player. Small `.txt`, `.csv`, `.log` and `.md` files have a read-only UTF-8 preview. These viewers perform their own resource checks after the archive guest has exited. The media service takes a sealed RAM snapshot of its selected input, capped at 128 MiB inside its existing memory and zero-swap budget, before starting media components. That service owns the snapshot until its descriptors close, even if its launcher exits. Unpacking preserves the original file bytes; it does not sanitize their document or media structure.
-
-Close or Cancel stops the active operation. Viewer cleanup checks the launched process group, including children that outlive its leader, before removing the selected temporary file. Termination uses bounded graceful and forced attempts. If termination cannot be confirmed, the private workspace is retained and its path is shown; Close can retry cleanup. Closing Archive Airlock removes the copied archive and its private workspace after confirmed cleanup. Worker startup or conversion errors resolve the operation state so the window remains usable. An uncatchable kill cannot run host cleanup. `--check` verifies isolation prerequisites.
+Cancel/Close stops the operation. Cleanup checks the viewer process group, including surviving children, before deleting temporary files. If bounded termination fails, the workspace is retained and shown for retry. Worker errors restore usable controls; an uncatchable kill cannot run cleanup.
 
 ## [ PASSWORDS ]
 
-Supported encrypted ZIP entries appear as password protected. Opening one asks for its password through a masked GTK dialog. The password travels to the disposable guest through the bounded private input channel, never through command arguments or environment variables. It is held only for the current archive and cleared when the archive is replaced, cancelled or closed; failed attempts clear it before retry. No password file or log is written.
+Opening an encrypted ZIP entry asks for a masked password. It travels through the private guest channel, never arguments, environment variables, files or logs. It is scoped to the current archive and cleared on replacement, cancellation, closure or failed authentication.
 
-Each extraction uses a fresh guest. Authentication, CRC or reader warnings fail the operation; incomplete extracted data is discarded before any viewer starts. Password protection does not bypass path, link, size, timeout or actual-RAM checks.
-
-An encrypted document inside a ZIP has its own Document Airlock password prompt. Archive passwords are not forwarded to document viewers.
+Authentication, CRC and reader warnings discard incomplete output before any viewer starts. Retries use fresh guests and retain all resource/path limits. An encrypted document inside the ZIP asks separately through Document Airlock; archive passwords are not forwarded.
 
 ## [ CHECKS ]
 
-After an ISO build, open a normal archive, search for an entry and view a document, image and text file. Verify cancellation during inspection and closing with a viewer open. Confirm that blocked links and paths remain unopenable and that unsupported types do not launch another application.
-
-Distinguish missing KVM or namespaces, insufficient real RAM or workspace capacity, unsupported encryption/compression and damaged archives. Solid archives can require substantial decompression even while listing; the guest memory and time limits still apply.
+Use `--check` for prerequisites. After a build, test normal and encrypted archives, viewer handoff, cancellation, cleanup and blocked entries. Separate missing isolation, insufficient RAM/tmpfs, unsupported formats and damaged data. Solid archives remain subject to guest memory and timeout limits even during listing.
 
 ## [ SOURCE ]
 

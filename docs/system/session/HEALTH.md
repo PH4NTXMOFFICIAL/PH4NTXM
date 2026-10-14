@@ -6,50 +6,44 @@ Produces the categorized PH4NTXM runtime health report.
 
 ## [ STARTUP ]
 
-The menu, Boot Pilot and Identity open Health in a GTK window using the shared PH4NTXM interface and the selected Abyss or Ghost edition. The `ph4ntxm-health` terminal command remains available.
+The menu, Boot Pilot and Identity open the shared GTK interface in the selected edition. `ph4ntxm-health` remains available in the terminal; GTK consumes its structured `--json` output.
 
-The report starts from the current mode and local system state. It does not rerun initialization or automatically repair findings. Collection runs in the background; Check Again gathers a new snapshot and Copy Report copies the full collected report.
+Collection runs in the background. Check Again gathers a new snapshot and Copy Report copies it. Opening Health neither reruns initialization nor repairs findings.
 
 ## [ RUNTIME ]
 
-Sections inspect the system foundation, identity records and hardware views, CPU/GPU/display data, memory and resource state, networking and termination prerequisites. Missing data is reported separately from a valid value. Overview groups findings by section. Full Report includes every reported check, with section, search and Review only filters; selecting a row shows its complete value.
+Overview groups findings; Full Report provides section, search and Review only filters with complete row values. Checks cover system foundations, identity/hardware, resources, networking and termination prerequisites. Missing evidence is separate from valid values.
 
-CPU and RAM labels use the session persona. Memory usage is scaled from actual host usage, while memory-pressure warnings still use the actual usage percentage.
+CPU/RAM labels follow the persona and memory usage scales with actual host usage. Pressure warnings use actual usage percentage. Protection checks combine service state with protected records, rejecting unsafe metadata, duplicate fields, future timestamps and expired readiness. Normal and Lone Wolf network checks follow their respective paths.
 
-Protection checks combine service state with protected runtime records. Readiness helpers reject duplicate fields, unsafe ownership/permissions, future timestamps and stale records where a freshness limit applies. Normal packet-engine checks and Lone Wolf Tor/DNS checks follow different paths.
+Termination checks inspect wiring, masked alternate paths, shutdown controls, Nuke artifacts and the loaded/locked crash image. They do not execute a wipe.
 
-The termination section checks target wiring, masked alternate power/swap paths, SysRq and Ctrl+Alt+Del settings, the final shutdown hook, Nuke artifacts, crash reservation, loaded crash image and locked kexec loader. Those are inspections of prerequisites, not an executed wipe test.
-
-Scoring begins at 100. A warning subtracts two, an error six and a critical error fifteen. The score cannot go below zero. Any critical error forces Unsafe / Not Ready and caps the score at 69, regardless of otherwise healthy sections.
-
-Without critical errors, 90 or above is Excellent, 70 or above is Good, and lower scores require attention. The report lists the individual findings and critical gates alongside the score.
-
-Route inspection is local. A route lookup such as `ip route get` does not send a public connectivity probe, and the report is not continuously refreshed. The GTK window and terminal use the same checks and scoring; the GTK frontend reads the structured `ph4ntxm-health --json` output without parsing terminal colors.
+Scoring starts at 100: warnings subtract 2, errors 6 and critical errors 15, with a floor of zero. Any critical error forces Unsafe / Not Ready and caps the score at 69. Otherwise, 90+ is Excellent, 70+ is Good and lower scores require attention.
 
 ## [ BROWSER CHECK ]
 
-Browser Check is an on-demand GTK tab, separate from the Health score. In Linux and Windows modes, Check Firefox opens a local tab through the existing Firefox launcher. It compares JavaScript and HTTP user agents, configured platform values, logical CPU count, languages and disabled WebGL, WebRTC and Web Audio APIs with the selected persona. Timezone, screen dimensions, pixel ratio and a bounded font sample provide additional context.
+This on-demand tab is separate from the Health score. Linux/Windows open a local Firefox tab comparing HTTP/JavaScript user agents, platform, logical CPUs, languages and disabled WebGL/WebRTC/Web Audio against the persona. Timezone, display values and at most 24 font candidates add context.
 
-Screen and viewport values depend on the active display, scaling and window size. Pixel ratio also depends on page zoom; compare at 100%. Firefox's concurrency preference is a cap and can yield fewer threads than the persona. Font checks test at most 24 candidate families by DOM metrics, rather than claiming a complete font inventory.
+Display results depend on scaling, window size and zoom; compare at 100%. Firefox's concurrency cap may report fewer threads than the persona. Font sampling is not a full inventory.
 
-The temporary checker runs as the desktop user on IPv4 loopback with a unique session URL. It uses no external resources, sends no public connectivity requests and changes no browser preferences. Completion, cancellation, timeout or closing Health ends the checker. The browser remains open, and collected results remain in memory until the window closes. Copy Browser Report copies that result; Copy Report includes it alongside the Health report.
+The desktop-user checker uses IPv4 loopback and a unique URL, without external resources or preference changes. Completion, cancellation, timeout or closing Health stops it while leaving Firefox open. Results remain in window memory; Copy Browser Report copies them, and Copy Report includes them.
 
-In Lone Wolf mode, Check Tor Browser collects local installation verification, gate and guardian state, Tor readiness, existing listeners and temporary-session evidence. It inspects the installed Safest default and readable last-saved profile settings where available. Saved preferences do not prove the current in-memory browser setting. Checks requiring a running browser explicitly ask you to open Tor Browser and run the check again when it is closed. A running browser with unreadable session or profile data is reported separately as unavailable. When protected process inspection is denied, the checker can correlate existing launcher and profile locks with the private session files. That evidence is labeled Info and does not claim executable or environment verification. This path opens no probe page, enables no JavaScript and changes no Tor Browser security or remote-control settings.
+Lone Wolf instead checks local installation verification, guardian/Tor readiness, listeners and temporary-session evidence. It opens no page, enables no JavaScript and changes no security or remote-control settings. Installed defaults and last-saved preferences do not prove current in-memory settings.
 
-Neither path verifies a public IP, external DNS routing or anonymity. Missing evidence is displayed as unavailable, rather than treated as a match.
+Closed-browser checks explicitly request opening Tor Browser and checking again. Unreadable running-session evidence remains unavailable. When protected process inspection is denied, launcher/profile locks and private files can supply Info evidence without claiming executable/environment verification.
+
+Neither path proves public IP, external DNS routing or anonymity.
 
 ## [ CHECKS ]
 
-The access check requires a configured session password and rejects unrestricted passwordless sudo. Protected runtime checks use the bounded session-status helper, without opening arbitrary root files or requesting a password on every refresh.
+Health verifies session-password setup and rejects unrestricted passwordless sudo. Protected reads use the bounded status helper without repeated password prompts. Route inspection stays local; `ip route get` sends no connectivity probe.
 
-Start with the failed or critical lines, then inspect their source service or runtime artifact. Rerun the report after a change to obtain a new snapshot.
-
-A readable generated file alone does not prove its corresponding mount, module, listener or guardian is active. Use the paired checks rather than only the final percentage.
+Follow failed/critical checks to their service or runtime artifact, then refresh after changes. Generated files alone do not establish active mounts, modules, listeners or guardians.
 
 ## [ SOURCE ]
 
-[ph4ntxm-health](../../../config/includes.chroot/usr/local/bin/ph4ntxm-health)
-[ph4ntxm-health-gtk](../../../config/includes.chroot/usr/local/bin/ph4ntxm-health-gtk)
-[Browser Check](../../../config/includes.chroot/opt/ph4ntxm/ph4ntxm-opsec-ui/ph4ntxm_opsec_ui/browser_check.py)
-[Tor Browser Check](../../../config/includes.chroot/opt/ph4ntxm/ph4ntxm-opsec-ui/ph4ntxm_opsec_ui/tor_browser_check.py)
+[ph4ntxm-health](../../../config/includes.chroot/usr/local/bin/ph4ntxm-health)\
+[ph4ntxm-health-gtk](../../../config/includes.chroot/usr/local/bin/ph4ntxm-health-gtk)\
+[Browser Check](../../../config/includes.chroot/opt/ph4ntxm/ph4ntxm-opsec-ui/ph4ntxm_opsec_ui/browser_check.py)\
+[Tor Browser Check](../../../config/includes.chroot/opt/ph4ntxm/ph4ntxm-opsec-ui/ph4ntxm_opsec_ui/tor_browser_check.py)\
 [Browser probe assets](../../../config/includes.chroot/opt/ph4ntxm/ph4ntxm-opsec-ui/ph4ntxm_opsec_ui/browser_check_assets)

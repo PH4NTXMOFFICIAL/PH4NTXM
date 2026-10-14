@@ -8,45 +8,26 @@ The shared state is the connection between these layers. A generated file, a com
 
 ## [ SOURCE AND BUILD LAYOUT ]
 
-`config/includes.chroot` contains the files installed into the live system: services, helpers, application launchers, policies and component sources. Build hooks compile or install the components and their wrappers, while package lists supply the required distribution packages.
+`config/includes.chroot` supplies installed services, helpers, launchers, policies and component sources. Build hooks compile or install them; package lists supply distribution packages.
 
-`editions/abyss` and `editions/ghost` supply appearance overlays. `build.sh` validates the selection, prepares an independent tree under `build/<edition>`, runs live-build and keeps the latest ISO/checksum in that workspace. A per-edition lock prevents two builds from modifying the same working tree.
+`build.sh` combines the shared configuration with `editions/abyss` or `editions/ghost` in a locked, independent `build/<edition>` workspace. It runs live-build and retains that edition's latest ISO/checksum.
 
-Both editions share the protection chain and boot modes. XFCE uses Picom's GLX backend, with XFWM compositing disabled. The shared configuration supplies rounded corners and 95 percent opacity for eligible normal windows. Fullscreen windows, Firefox/Tor Browser, image/media viewers and Document Airlock are excluded from this opacity rule. XFCE Terminal keeps its separate background opacity. Background blur uses `dual_kawase` at strength `2`. Menus, dropdown lists and tooltips are excluded from background blur. Vsync, shadows and frame background blur are disabled in the shared Picom configuration.
-
-See [Build Editions](docs/build/BUILD-EDITIONS.md) for the build overlay details.
+Both editions share the protection chain and boot modes. XFCE uses Picom GLX for rounded windows, selective opacity and background blur, with XFWM compositing disabled. [Build Editions](docs/build/BUILD-EDITIONS.md) describes appearance settings and overlays.
 
 ## [ MODE AND BOOT FLOW ]
 
-The boot parameter `ph4ntxm.mode` selects `linux`, `windows` or `lonewolf`. Mode initialization writes `/run/ph4ntxm/mode` and the corresponding normal/Lone Wolf marker used by unit conditions. Missing or invalid boot selection falls back to Linux at this initialization stage. Later components validate the initialized mode rather than freely switching profiles.
+The boot parameter `ph4ntxm.mode` selects `linux`, `windows` or `lonewolf`. Initialization falls back to Linux for a missing or invalid selection, writes `/run/ph4ntxm/mode` and creates the branch marker. Later components validate this recorded mode.
 
-The main ordering is:
+The main dependency stages are:
 
-Select and contain:
+1. Select and contain: lower physical links, disable swap, load the emergency crash kernel and lock further kexec loading.
+2. Prepare identity: validate the boot machine ID, establish the mode's seed, select hardware and apply hostname/MAC state.
+3. Prepare consumers: generate related hardware, GPU, CPU/resource, screen, browser, DHCP and kernel-network data.
+4. Prepare networking: load the normal nftables/packet-worker path or Lone Wolf's dedicated policy and guardian, alongside clock/resolver prerequisites.
+5. Release adapters: verify prerequisites, apply hotplug protection, refresh udev, verify again and raise links before NetworkManager.
+6. Supervise operation: guardians maintain protection while Boot Pilot combines desktop checks. Lone Wolf establishes Tor/DNS readiness after connectivity permits bootstrap.
 
-Initialize mode, lower physical network links and disable swap. Load the emergency crash kernel and lock later kexec loading.
-
-Prepare identity:
-
-Validate the boot machine ID, create or reuse the mode's seed, select the hardware persona and apply hostname/MAC state.
-
-Prepare consumers:
-
-Generate related hardware, GPU, CPU/resource, screen, browser, DHCP and kernel-network data along their service dependencies.
-
-Prepare the network path:
-
-Load normal nftables rules and start the packet worker, or install the dedicated Lone Wolf policy and firewall guardian. Clock and resolver preparation are also part of the release dependencies.
-
-Release prepared adapters:
-
-Verify mode-specific prerequisites, run hotplug protection, refresh udev, verify again and raise physical links before NetworkManager connection setup.
-
-Supervise operation:
-
-Guardians maintain the network contract. In Lone Wolf, connectivity lets Tor bootstrap before its DNS/browser readiness can be established. Boot Pilot presents the combined desktop checks.
-
-These stages form a dependency graph, not one strictly serial script. Tor bootstrap cannot precede the connection it needs, and a successful link release does not mean every desktop feature is already ready. [Boot Flow](docs/system/session/BOOTFLOW.md) describes the component sequence.
+This is a dependency graph, not one serial script. Link release does not establish readiness for every desktop feature. See [Boot Flow](docs/system/session/BOOTFLOW.md).
 
 ## [ RUNTIME STATE AND READINESS ]
 
@@ -148,29 +129,25 @@ Kernel settings and systemd restrictions follow each component's needs. SSH and 
 
 ## [ DOCUMENT, ARCHIVE AND MEDIA ISOLATION ]
 
-Document Airlock validates local input and trusted guest artifacts before starting a disposable offline KVM guest. The guest has no network adapter or shared host home. A bounded protocol returns RGB pages. The host broker checks framing, dimensions and total size before building a new raster PDF.
+Document Airlock uses a trusted disposable KVM guest without networking or a shared home. A bounded protocol returns RGB pages; the host validates framing, dimensions and size before previewing and exporting a new raster PDF without the original active structure or metadata.
 
-The UI previews those pages and exports only to a new filename. The exported PDF contains the rendered page images without the original active document structure or metadata. Cancellation, timeout or invalid output ends conversion. KVM, private tmpfs storage, sufficient memory and disabled swap are prerequisites.
+Archive Airlock reuses the guest infrastructure to list archives and stream one selected regular file into a private RAM workspace. Unsafe paths, links and special files are blocked. After the guest exits, supported files open through isolated viewers or a read-only text preview. Unpacking does not sanitize their contents.
 
-Archive Airlock reuses the same trusted guest artifacts with a separate bounded archive protocol. Archive parsing stays in the guest. The host validates a limited listing and streams one selected regular file into a private RAM workspace under a fixed filename. Links, special files and unsafe names are blocked. Supported files pass to Document Airlock or Media Viewers after the archive guest exits; small UTF-8 text files have a read-only preview. Extracted bytes retain the selected file's original structure and are not sanitized by unpacking.
+Both Airlocks require KVM, private tmpfs storage and disabled swap. Passwords for supported encrypted inputs travel through private channels, outside command arguments, environment variables and logs. Decryption stays in the guest; failed output is discarded and retries use fresh guests. Archive and document passwords remain separate, and exported raster PDFs are unencrypted.
 
-Media Viewers use a different boundary: offline namespaces, read-only selected files, a private bus/home and nested Xephyr display. A separate audio process receives fixed-format PCM. A transient user service applies memory, swap, task and CPU limits, and cleanup stops the session's processes. The selected source files remain read-only throughout playback. Both Airlocks and Media Viewers read actual available RAM for their launch budgets and refuse a managed inventory environment; persona capacity does not increase their allocation limits.
+Media Viewers use offline namespaces, a private bus/home and nested Xephyr display with read-only inputs. A separate process receives fixed-format audio. Transient user services bound memory, swap, tasks and CPU. All three tools budget against actual available RAM and reject managed inventory environments.
 
-Document and Archive Airlock use versioned, bounded private request protocols for optional UTF-8 passwords. The host passes document/archive bytes without decrypting or parsing them. ZIP decryption uses libarchive in the offline guest and rejects reader warnings, including authentication failures. PDF decryption uses guest pikepdf; Office loading uses guest LibreOffice UNO over a private pipe with macros and document updates disabled. Passwords are excluded from command arguments, environment variables, persistent storage and logs. The archive password remains scoped to its current session and is not forwarded to Document Airlock.
-
-Password errors have bounded typed responses. The host verifies response framing and guest exit before requesting a retry. Failed output is discarded, retries use fresh guests, and real-memory admission and runtime guards remain separate from persona hardware reporting. Exported Document Airlock PDFs contain raster pages and have no inherited encryption. Encrypted RAR/7z remain unsupported.
-
-See [Document Airlock](docs/system/session/DOCUMENT-AIRLOCK.md), [Archive Airlock](docs/system/session/ARCHIVE-AIRLOCK.md) and [Media Viewers](docs/system/session/MEDIA-VIEWERS.md) for limits and checks.
+See [Document Airlock](docs/system/session/DOCUMENT-AIRLOCK.md), [Archive Airlock](docs/system/session/ARCHIVE-AIRLOCK.md) and [Media Viewers](docs/system/session/MEDIA-VIEWERS.md) for format support, limits and cleanup.
 
 ## [ OPERATOR VIEWS AND DIAGNOSTICS ]
 
-Boot Pilot refreshes identity, network and system checks, provides Wi-Fi selection and enables Continue/browser actions only after its checks pass. During the first 30 seconds, incomplete checks appear as pending while services settle. Wi-Fi connections use volatile NetworkManager profiles, preserve the prepared MAC and do not enable autoconnect.
+Boot Pilot combines identity, network and system readiness before enabling Continue; browser launch also requires its launcher gates. It provides Wi-Fi controls using volatile NetworkManager profiles that preserve the prepared MAC and disable autoconnect.
 
-Identity is a snapshot of selected identifiers. Health collects a broader local report, including resources, guardian state and termination wiring. Critical findings force its Unsafe / Not Ready result even when other sections pass.
+Identity displays a snapshot of selected identifiers. Health collects resources, guardian state and termination prerequisites; critical findings force Unsafe / Not Ready. Its separate Browser Check uses a local Firefox comparison page in normal modes and local Tor Browser evidence in Lone Wolf, without changing browser policy.
 
-Health also provides an on-demand Browser Check outside its score. Linux and Windows use a temporary loopback page opened through the existing Firefox launcher to compare browser-visible values with the persona. Lone Wolf instead inspects local Tor Browser readiness, temporary-session evidence and last-saved preferences without a JavaScript probe. The checker runs as the desktop user, changes no browser policy and ends on completion, cancellation, timeout or window closure.
+[USB Guard](docs/system/session/USB-GUARD.md) optionally preserves current USB connections and blocks new or reconnected devices pending individual password-authenticated approval. Approval expires on disconnect.
 
-The OpSec Suite includes Network, Kernel, Process, Radio, ConnWatch and Shredder. Each component collects and presents its own evidence and findings, with confirmed remediation actions where supported.
+The OpSec Suite provides Network, Kernel, Process, Radio, ConnWatch and Shredder. Each presents its own evidence, with confirmed actions where supported.
 
 See [Applications](docs/system/session/PH4NTXM-APPLICATIONS.md), [Health](docs/system/session/HEALTH.md) and [OpSec Suite](docs/system/session/PH4NTXM-OPSEC-SUITE.md).
 
@@ -184,4 +161,4 @@ The first emergency initramfs reconstructs the memory map and loads the next ker
 
 Panic Button requires confirmation; USB Nuke triggers the same backend on any matching whole USB storage removal, including boot media. A shared lock and per-attempt tokens protect Arm, Disarm and restoration from stale callbacks.
 
-The emergency kernel uses the RAM map collected during arming, followed by the allocatable-memory scrub. See [Nuke Kernel](docs/system/session/NUKE-KERNEL.md), [Panic](docs/system/session/PANIC.md), [USB Nuke](docs/system/session/USB-NUKE.md) and [THREAT_MODEL.md](THREAT_MODEL.md).
+See [Nuke Kernel](docs/system/session/NUKE-KERNEL.md), [Panic](docs/system/session/PANIC.md), [USB Nuke](docs/system/session/USB-NUKE.md) and [THREAT_MODEL.md](THREAT_MODEL.md).

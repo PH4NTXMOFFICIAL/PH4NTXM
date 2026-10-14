@@ -20,11 +20,11 @@ PH4NTXM is a Debian-based Linux operating system that runs live from USB. Once t
 
 ## [ DISPOSABLE SESSIONS ]
 
-Every boot creates a new, disposable session based on your selected mode. The Adaptive Identity Engine first checks the boot machine ID and creates a random seed, the starting value used to build the session identity. From there, the setup stages generate the computer name and MAC addresses and prepare the reported hardware details, including processor, memory, graphics and screen information. Browser and network settings use the relevant session values and mode to keep the resulting profile consistent.
+Every boot creates a disposable session for your selected mode. The Adaptive Identity Engine checks the boot machine ID and creates a seed linking the hostname, MAC addresses and reported hardware. Browser and network settings use the relevant session values to keep the profile consistent.
 
-The session is used once and is not saved for reuse. At shutdown, Nuke blocks networking, ends the live user's programs and starts best-effort available RAM scrub before powering off. The temporary session is discarded. Your next boot creates a new one.
+At shutdown, Nuke blocks networking, ends the live user's programs and attempts RAM scrubbing before powering off. The session is discarded; the next boot creates a new one.
 
-At boot, the PH4NTXM setup screen asks you to choose and confirm a password for this session. Select Start PH4NTXM to open the desktop. Use it to unlock the screen and authorize administrator actions. Emergency protection stays available without a password prompt. The next boot asks you to choose a password again.
+The setup screen asks you to choose and confirm a session password before opening the desktop. Use it for screen unlock and administrator actions. Emergency protection remains available without a password prompt. The password is set again on the next boot.
 
 ## [ BOOT MODES ]
 
@@ -48,17 +48,21 @@ Tor Browser opens after the protection and Tor readiness checks pass. If Tor bec
 
 Check your system:
 
-Boot Pilot shows protection status, helps you connect to Wi-Fi and opens the browser for your mode. Identity displays the current identifiers, and Health explains the checks in more detail. Health also includes a Browser Check for local Firefox persona comparisons or Tor Browser readiness in Lone Wolf mode. The OpSec Suite includes Network, Kernel, Process, Radio, ConnWatch and Shredder for inspection, monitoring and confirmed remediation actions where supported.
+Boot Pilot shows readiness, connects to Wi-Fi and opens your mode's browser. Identity displays current identifiers; Health provides detailed reports and a mode-aware Browser Check. The OpSec Suite adds network, kernel, process and radio inspection, connection monitoring and file shredding.
 
-Open documents and media separately from your desktop files:
+Open documents, archives and media:
 
-Document Airlock converts supported documents in a temporary environment without network access. Preview the pages, then export a new PDF made from those page images. Archive Airlock inspects local ZIP, RAR, 7z and TAR archives offline and passes selected files to isolated viewers. Password-protected ZIP entries and supported encrypted PDF/Office documents are unlocked inside the disposable Airlock guest. Image and media viewers also use isolated offline environments to open the files you select.
+Document Airlock converts supported documents into a previewable raster PDF. Archive Airlock inspects archives and opens selected files through isolated viewers. Supported encrypted documents and ZIP entries unlock inside the offline guest. Image and media viewers provide separate offline sandboxes.
 
-Block networking or start an emergency shutdown:
+Review new USB devices:
 
-Enable Lockdown to block network traffic, then disable it to restore your mode's network rules. Panic Button starts emergency termination after confirmation. USB Nuke lets a matching storage-device removal trigger the same sequence when armed.
+USB Guard optionally preserves current USB connections and blocks new or reconnected devices for review. Each approval requires the session password and lasts only for that connection.
 
-Each tool has a dedicated [component page](docs/README.md) when you want to understand its behavior or follow a reported issue.
+Block networking or end the session:
+
+Lockdown blocks network traffic; disabling it restores your mode's rules. Panic Button requests emergency termination after confirmation. Armed USB Nuke triggers the same sequence when matching storage is removed.
+
+See the [component pages](docs/README.md) for supported formats, controls, limits and troubleshooting.
 
 ## [ EDITIONS ]
 
@@ -103,16 +107,11 @@ Want to see how the pieces connect? Start with [ARCHITECTURE.md](ARCHITECTURE.md
 
 ## [ CONTRIBUTING ]
 
-Contributions are welcome.  
-Auditing, testing, validation work, and patches are always appreciated.  
-Thanks for the contributions, we’ll review them, and if they fit the model, we’ll add them.  
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution details and policy.
+Audits, testing, validation and patches are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution details and policy.
 
 ## [ SUPPORT ]
 
-PH4NTXM is an independent project.  
-Donations are optional and never required, and it is fully understood that many may not be able to contribute.  
-If you choose to support the project, it is genuinely appreciated and directly helps ongoing development and research.  
+PH4NTXM is an independent project. Optional donations support ongoing development and research.
 
 Monero (XMR):
 

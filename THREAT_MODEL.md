@@ -50,6 +50,11 @@ Hardware:
 Threat: Tracking through user-facing DMI, CPU, GPU, screen, and system information.  
 Mitigation: Seed-based persona values in selected protected command/reporting views. Direct kernel, firmware, driver and physical side channels are not universally virtualized.
 
+USB devices:
+
+Threat: Newly attached devices exposing unexpected input, storage or network functions.\
+Mitigation: Optional USB Guard blocks new connections until individual password-authenticated approval. Already connected devices form the activation baseline; declared descriptors do not prove authenticity, and kernel/firmware attacks remain outside this control.
+
 Network:
 
 Threat: Traffic timing leaks, DNS hijacking, ISP profiling, or accidental firewall bypass.  
@@ -75,19 +80,20 @@ PH4NTXM Health and Boot Pilot expose failed runtime chains instead of treating m
 
 ## [ COMPONENT BOUNDARIES ]
 
-Hardware, CPU, GPU, and display personas cover selected reporting surfaces, not complete hardware emulation.  
-Browser wrappers configure participating launches. Accounts, extensions, and direct executable access remain operator-controlled.  
-Packet transformation covers supported packet layouts, while TLS, HTTP, traffic correlation, and application identifiers require separate assessment.  
-Document Airlock isolates its selected document parsing in an offline KVM guest and exports validated pixels through a bounded broker. Visible sensitive content, direct host opening, hypervisor escapes and a compromised host remain outside its guarantees.  
-Archive Airlock isolates archive parsing in the offline KVM guest, validates bounded listings and file streams, and hands selected files to their isolated viewers. Unpacking does not sanitize the extracted file. Password-protected ZIP entries can be unlocked inside the guest; encrypted RAR/7z, multipart archives, automatic execution and unrestricted extraction are not supported. Hypervisor escapes and a compromised host remain outside this boundary.\
-Media viewers isolate selected local files with offline namespaces, a private display and bounded resources. This limits the viewer's access. It still depends on the host kernel and does not sanitize the original media file. Exporting or opening a file outside its wrapper crosses a separate boundary.  
-RAM seeding supplies synthetic noise, not encryption or concealment of genuine secrets. Memory scrub and file overwrite remain best effort.
+- Hardware personas cover selected reporting surfaces, not complete hardware emulation.
+- Browser wrappers configure participating launches; accounts, extensions and direct executable access remain operator-controlled.
+- Packet transformation covers supported layouts. TLS, HTTP, traffic correlation and application identifiers require separate assessment.
+- Document Airlock parses in an offline KVM guest and exports validated pixels. Visible sensitive content, direct host opening, hypervisor escapes and host compromise remain outside its guarantees.
+- Archive Airlock isolates parsing and bounds listings/file streams before handing selected files to viewers. Unpacking does not sanitize content; unrestricted extraction and automatic execution are unsupported. Hypervisor escapes and host compromise remain outside this boundary.
+- Media viewers use offline namespaces, a private display and resource limits while sharing the host kernel. Originals remain unsanitized; opening outside the wrapper crosses another boundary.
+- USB Guard requires explicit activation. Approvals are temporary, the kernel still parses descriptors, and root/kernel compromise can bypass enforcement.
+- RAM seeding supplies synthetic noise, not encryption or concealment of secrets. Memory scrub and file overwrite remain best effort.
 
 ## [ OUT OF SCOPE ]
 
 Tampered hardware: Malicious BIOS/UEFI implants or hardware-level keyloggers installed through physical access.  
 Supply-chain interception: Compromised machines or components modified before deployment.  
-Physical hardware injection: Malicious cables or rogue USB devices connected directly to the host.  
+Physical hardware injection: Malicious cables, electrical attacks, DMA and USB attacks against the kernel or firmware.\
 Zero-day exploits: Unpatched or unknown vulnerabilities in the kernel, firmware, browser, or hardware architecture.  
 Compromised runtime: A root or kernel compromise can disable, bypass, or falsify PH4NTXM controls and status reports.  
 Live operator privilege: The `ph4ntxm` account has password-authenticated administrative sudo access. Passwordless access is limited to explicitly listed status and control helpers. General sudo authorization is not cached; the process and radio backends retain authorization within their parent session. A compromised live user can abuse these helpers or an authorized backend session, while obtaining the session password permits full root access.\

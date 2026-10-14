@@ -18,7 +18,7 @@ Unreadable or empty scalar values fall back to Unknown. Missing interface inform
 
 `ph4ntxm-identity --print` or `-p` prints the hostname, machine ID, MAC list and clock description. This terminal form does not include the graphical mode badge.
 
-Detailed Report opens [Health](HEALTH.md) in a separate held terminal for broader checks. Closing Identity does not stop that report or any randomization service. Reopening gathers a new snapshot.
+Detailed Report opens [Health](HEALTH.md) in a separate GTK window for broader checks. Closing Identity does not stop that report or any randomization service. Reopening gathers a new snapshot.
 
 Each Show Identity selection can launch another viewer. The tray has no duplicate-window guard, does not poll `identity-ready` and does not change its icon when a MAC or service state changes. Existing viewer windows keep their earlier snapshots.
 
@@ -32,6 +32,5 @@ If a virtual interface appears, compare it with [Ghost Stack](NET-GHOST-STACK.md
 
 ## [ SOURCE ]
 
-[ph4ntxm-identity](../../../config/includes.chroot/usr/local/bin/ph4ntxm-identity)
-
+[ph4ntxm-identity](../../../config/includes.chroot/usr/local/bin/ph4ntxm-identity)\
 [ph4ntxm-identity-tray](../../../config/includes.chroot/usr/local/bin/ph4ntxm-identity-tray)

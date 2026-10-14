@@ -89,6 +89,7 @@ Run session checks in the live environment. For one-shot services, inspect the c
 [MEDIA VIEWERS](system/session/MEDIA-VIEWERS.md)  
 [WIFI CONTROL](system/session/WIFI-CONTROL.md)  
 [OPERATIONAL TOOLS](system/session/OPERATIONAL-TOOLS.md)  
+[USB GUARD](system/session/USB-GUARD.md)\
 [PH4NTXM OPSEC SUITE](system/session/PH4NTXM-OPSEC-SUITE.md)  
 
 ## [ CONTAINMENT AND TERMINATION ]
@@ -98,4 +99,4 @@ Run session checks in the live environment. For one-shot services, inspect the c
 [NUKE KERNEL](system/session/NUKE-KERNEL.md)  
 [RAM SCRUB](system/session/RAM-SCRUB.md)  
 [PANIC](system/session/PANIC.md)  
-[USB NUKE](system/session/USB-NUKE.md)  
+[USB NUKE](system/session/USB-NUKE.md)

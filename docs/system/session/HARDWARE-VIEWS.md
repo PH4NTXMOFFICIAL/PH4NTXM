@@ -6,38 +6,32 @@ Runs native CPU, RAM and DMI inventory tools with session values. Wrappers cover
 
 ## [ STARTUP ]
 
-Build hooks divert installed inventory executables to their `-real` paths and place the shared wrapper at the normal command paths. The wrapper preserves direct help/version requests and requires `cores_env` for ordinary inventory execution.
+Build hooks divert installed tools to `-real` paths and install the shared wrapper. Help/version requests pass through; ordinary inventory requires `cores_env`.
 
-A command-line invocation prepares a temporary hardware snapshot and starts the compiled supervisor. Nested wrapped commands can reuse the existing view's environment instead of creating an unrelated profile.
+CLI launches prepare a temporary hardware snapshot and compiled supervisor. Nested wrappers can reuse the existing environment instead of creating another view.
 
 ## [ RUNTIME ]
 
-The shared catalog supplies CPU topology, cache information, memory layouts and DMI/SMBIOS records. Active and total CPU fields report the full model topology. Installed and usable RAM fields report the sum of its modules. These capacities can exceed the host's resources.
+The catalog supplies CPU topology/caches, memory layouts and DMI/SMBIOS records. Active/total CPUs report the full model; installed/usable RAM reports its module sum. These capacities may exceed the host.
 
-`inventory.py` prepares files for a private view, requires the query library and supervisor, and passes the native command and arguments to that supervisor. The native tool still formats its own output. `lscpu` receives the generated sysroot. `lshw` disables its separate CPUID scan. Hwloc tools disable the x86 component so their inputs follow the managed view.
+`inventory.py` requires the query library and supervisor while native tools retain output formatting. `lscpu` receives a generated sysroot; `lshw` disables separate CPUID scanning and hwloc disables its x86 component.
 
-Private mounts supply read-only reporting files. The query library and seccomp supervisor cover supported hardware-query behavior in the launched process and descendants, including static executables through the supervised syscall path. Resource counters can refresh while commands continue reading.
+Read-only private mounts, the query library and seccomp supervisor handle supported queries in the launched process and descendants, including static executables. Resource counters can refresh during execution. Missing profile data or runtime components stops setup; the supervisor owns the view until participating processes end.
 
-XFCE Task Manager uses the query library without private mounts or the seccomp supervisor. Its CPU and memory totals follow the same persona, and process memory figures are scaled to that capacity. Native process identities and controls remain available. Another application can be launched explicitly:
+XFCE Task Manager uses the query library without private mounts or the supervisor. It retains native process controls while reporting persona totals and proportionally scaled memory. Explicit supervised launches use:
 
 ```bash
 ph4ntxm-hardware-run /usr/bin/python3 -c 'import os
 print(os.cpu_count())'
 ```
 
-The supervisor owns the temporary view until participating processes end. Missing profile data, library or supervisor stops setup rather than producing an independent fallback identity.
+CPU counters preserve aggregate host activity; memory usage scales proportionally. The supervisor maps reported CPU IDs onto allowed host CPUs. When several reported IDs share a host CPU, affinity changes must select the complete group; partial selections return `EOPNOTSUPP`.
 
-CPU counters preserve aggregate host activity across the reported logical CPUs. Memory usage is scaled in proportion to host usage.
-
-The supervisor maps reported CPU IDs to allowed host CPUs. On a smaller host, several reported IDs can share one host CPU. Affinity changes must select the complete group; selecting only part returns `EOPNOTSUPP`.
-
-The reporting view does not add physical CPU or RAM capacity. Document Airlock and Media Viewers use actual available RAM for their launch budgets and refuse a managed inventory environment.
+Reporting adds no physical capacity. Airlocks and Media Viewers budget against actual RAM and reject managed inventory environments.
 
 ## [ CHECKS ]
 
-Compare native inventory output with `hardware_profile` and `cores_env`, then test a direct query through `ph4ntxm-hardware-run`. File-based reports and direct-query handling exercise different parts of the implementation.
-
-Include the exact command, arguments and native diagnostics in a report. Active/total CPU counts and usable/installed RAM capacities should agree with the selected persona. Its capacity and scaled usage figures describe the reporting view, not extra physical resources.
+Compare native output with `hardware_profile` and `cores_env`, then exercise direct queries through `ph4ntxm-hardware-run`. Include exact commands, arguments and native diagnostics in reports. Check both file-based and direct-query behavior, keeping reported capacities separate from physical resources.
 
 ## [ SOURCE ]
 
