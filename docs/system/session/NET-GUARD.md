@@ -2,7 +2,7 @@
 
 ## [ OVERVIEW ]
 
-Optional outbound IP approval for processes running as the live user. Protection is off at boot; opening the GTK window leaves it off. Enable, Allow and Disable each require a fresh session password.
+Optional outbound IP approval for processes running as the live user. Protection is off at boot. Opening the GTK window leaves it off. Enable, Allow and Disable each require a fresh session password.
 
 ## [ STARTUP ]
 
@@ -12,13 +12,13 @@ The guard applies in every boot mode, including loopback DNS and Tor SOCKS conne
 
 ## [ RUNTIME ]
 
-Each approval belongs to one process execution, identified by kernel PID, start time and execution generation. Exit or exec ends its permission; reopening the same executable needs a new approval. Browser/helper processes may require separate approvals. Requests show the latest attempted destination; approval covers that execution's outbound IP traffic, rather than one site.
+Each approval belongs to one process execution, identified by kernel PID, start time and execution generation. Exit or exec ends its permission. Reopening the same executable needs a new approval. Browser/helper processes may require separate approvals. Requests show the latest attempted destination. Approval covers that execution's outbound IP traffic, rather than one site.
 
-Attempts fail while awaiting approval; they are not suspended during password entry. Keep Blocked acknowledges the displayed request locally. Closing the window leaves enforcement running, and an authenticated action already in progress may finish. Generic notifications open the review window without approving anything.
+Attempts fail while awaiting approval. They are not suspended during password entry. Keep Blocked acknowledges the displayed request locally. Closing the window leaves enforcement running, and an authenticated action already in progress may finish. Generic notifications open the review window without approving anything.
 
-Approvals, pending requests and pinned kernel objects live in RAM. Disable clears approvals. Restarting an active daemon preserves enforcement but invalidates grants and request tokens. Daemon exit blocks approved traffic; a hang expires its three-second kernel heartbeat. Overflow or unknown socket attribution never grants access.
+Approvals, pending requests and pinned kernel objects live in RAM. Disable clears approvals. Restarting an active daemon preserves enforcement but invalidates grants and request tokens. Daemon exit blocks approved traffic. A hang expires its three-second kernel heartbeat. Overflow or unknown socket attribution never grants access.
 
-This is an outbound client-socket control, not application sandboxing. Accepted sockets without tracked ownership cannot send while protection is on. Inherited or transferred sockets cannot be used by a different execution; open a new socket instead. Raw packet/XDP creation and sends are refused while enabled; pre-existing privileged packet rings, kernel-generated traffic and hardware/DMA are outside this policy. An approved application can still act on another process's IPC requests; browser extensions share their process's permission. Root/kernel compromise can bypass the guard.
+This is an outbound client-socket control, not application sandboxing. Accepted sockets without tracked ownership cannot send while protection is on. Inherited or transferred sockets cannot be used by a different execution. Open a new socket instead. Raw packet/XDP creation and sends are refused while enabled. Pre-existing privileged packet rings, kernel-generated traffic and hardware/DMA are outside this policy. An approved application can still act on another process's IPC requests. Browser extensions share their process's permission. Root/kernel compromise can bypass the guard.
 
 ## [ CHECKS ]
 

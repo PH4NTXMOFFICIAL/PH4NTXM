@@ -53,7 +53,7 @@ Mitigation: Seed-based persona values in selected protected command/reporting vi
 USB devices:
 
 Threat: Newly attached devices exposing unexpected input, storage or network functions.\
-Mitigation: Optional USB Guard blocks new connections until individual password-authenticated approval. Already connected devices form the activation baseline; declared descriptors do not prove authenticity, and kernel/firmware attacks remain outside this control.
+Mitigation: Optional USB Guard blocks new connections until individual password-authenticated approval. Already connected devices form the activation baseline. Declared descriptors do not prove authenticity, and kernel/firmware attacks remain outside this control.
 
 Network:
 
@@ -81,13 +81,13 @@ PH4NTXM Health and Boot Pilot expose failed runtime chains instead of treating m
 ## [ COMPONENT BOUNDARIES ]
 
 - Hardware personas cover selected reporting surfaces, not complete hardware emulation.
-- Browser wrappers configure participating launches; accounts, extensions and direct executable access remain operator-controlled.
+- Browser wrappers configure participating launches. Accounts, extensions and direct executable access remain operator-controlled.
 - Packet transformation covers supported layouts. TLS, HTTP, traffic correlation and application identifiers require separate assessment.
 - Document Airlock parses in an offline KVM guest and exports validated pixels. Visible sensitive content, direct host opening, hypervisor escapes and host compromise remain outside its guarantees.
-- Archive Airlock isolates parsing and bounds listings/file streams before handing selected files to viewers. Unpacking does not sanitize content; unrestricted extraction and automatic execution are unsupported. Hypervisor escapes and host compromise remain outside this boundary.
-- Media viewers use offline namespaces, a private display and resource limits while sharing the host kernel. Originals remain unsanitized; opening outside the wrapper crosses another boundary.
+- Archive Airlock isolates parsing and bounds listings/file streams before handing selected files to viewers. Unpacking does not sanitize content. Unrestricted extraction and automatic execution are unsupported. Hypervisor escapes and host compromise remain outside this boundary.
+- Media viewers use offline namespaces, a private display and resource limits while sharing the host kernel. Originals remain unsanitized. Opening outside the wrapper crosses another boundary.
 - USB Guard requires explicit activation. Approvals are temporary, the kernel still parses descriptors, and root/kernel compromise can bypass enforcement.
-- Net Guard requires explicit activation and covers outbound live-user IP sockets. Other UIDs, approved IPC proxies and pre-existing privileged packet rings remain outside its process-approval boundary; approval preserves the existing firewall/Tor policy.
+- Net Guard requires explicit activation and covers outbound live-user IP sockets. Other UIDs, approved IPC proxies and pre-existing privileged packet rings remain outside its process-approval boundary. Approval preserves the existing firewall/Tor policy.
 - RAM seeding supplies synthetic noise, not encryption or concealment of secrets. Memory scrub and file overwrite remain best effort.
 
 ## [ OUT OF SCOPE ]
@@ -97,7 +97,7 @@ Supply-chain interception: Compromised machines or components modified before de
 Physical hardware injection: Malicious cables, electrical attacks, DMA and USB attacks against the kernel or firmware.\
 Zero-day exploits: Unpatched or unknown vulnerabilities in the kernel, firmware, browser, or hardware architecture.  
 Compromised runtime: A root or kernel compromise can disable, bypass, or falsify PH4NTXM controls and status reports.  
-Live operator privilege: The `ph4ntxm` account has password-authenticated administrative sudo access. Passwordless access is limited to explicitly listed status and control helpers. General sudo authorization is not cached; the process and radio backends retain authorization within their parent session. A compromised live user can abuse these helpers or an authorized backend session, while obtaining the session password permits full root access.\
+Live operator privilege: The `ph4ntxm` account has password-authenticated administrative sudo access. Passwordless access is limited to explicitly listed status and control helpers. General sudo authorization is not cached. The process and radio backends retain authorization within their parent session. A compromised live user can abuse these helpers or an authorized backend session, while obtaining the session password permits full root access.\
 Global correlation: A global observer may correlate Tor or direct traffic using timing and volume.  
 Advanced side-channel analysis: Acoustic, thermal, electromagnetic, DMA, or power-consumption profiling outside the managed runtime.  
 Operator OpSec failure: Real-world identities, credential reuse, account login, unsafe documents, or other human errors during a session.  

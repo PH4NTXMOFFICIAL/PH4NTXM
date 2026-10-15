@@ -18,11 +18,11 @@ The viewer receives a private home, temporary directories, D-Bus session and nes
 
 Video audio uses a fixed raw PCM channel to a separate playback process. The decoder does not receive the host audio socket directly. Image sessions do not need that playback path.
 
-A transient user service limits memory, swap, tasks and CPU. Memory is capped at 512 MiB for images or 768 MiB for video, reduced when actual available RAM requires it, while preserving a 192 MiB host reserve. Requests below the minimum budget are rejected. Swap allowance is zero, tasks are capped at 128 and CPU quota at 200 percent. The budget reads native `MemAvailable`; a managed hardware-view environment is rejected.
+A transient user service limits memory, swap, tasks and CPU. Memory is capped at 512 MiB for images or 768 MiB for video, reduced when actual available RAM requires it, while preserving a 192 MiB host reserve. Requests below the minimum budget are rejected. Swap allowance is zero, tasks are capped at 128 and CPU quota at 200 percent. The budget reads native `MemAvailable`. A managed hardware-view environment is rejected.
 
 Closing the window stops child processes and the transient unit, then removes temporary state. Component failure or resource exhaustion closes the isolated view and reports an error. Source media remains read-only throughout the viewer session.
 
-Archive Airlock can hand off one extracted media file. The launcher revalidates its private runtime path without following symlinks; ordinary requests still reject arbitrary `/run/user` inputs. Before decoding, the transient service creates a sealed RAM snapshot capped at 128 MiB within its memory and zero-swap budget. It retains that read-only snapshot until descriptors close, so Archive cleanup cannot invalidate detached playback.
+Archive Airlock can hand off one extracted media file. The launcher revalidates its private runtime path without following symlinks. Ordinary requests still reject arbitrary `/run/user` inputs. Before decoding, the transient service creates a sealed RAM snapshot capped at 128 MiB within its memory and zero-swap budget. It retains that read-only snapshot until descriptors close, so Archive cleanup cannot invalidate detached playback.
 
 ## [ CHECKS ]
 

@@ -10,15 +10,15 @@ The root one-shot follows local filesystems and mode selection, before the displ
 
 ## [ RUNTIME ]
 
-Masking bind-mounts an empty directory and verifies `ro,nosuid,nodev,noexec`. Linux/Windows expose `/usr/lib/firefox-esr`; Lone Wolf exposes `/opt/ph4ntxm/tor-browser`.
+Masking bind-mounts an empty directory and verifies `ro,nosuid,nodev,noexec`. Linux/Windows expose `/usr/lib/firefox-esr`. Lone Wolf exposes `/opt/ph4ntxm/tor-browser`.
 
 Lone Wolf checks launchers, executables, metadata and icon. The tree must be root-owned with expected permissions and no symlinks, special files or writable entries. A sorted SHA256 inventory must match the protected manifest, including unexpected-file detection.
 
-Success replaces system/skeleton panel templates through temporary files and publishes `tor-browser-verified` with mode, manifest digest and uptime. Failure removes readiness and attempts remasking; mount failures can limit cleanup.
+Success replaces system/skeleton panel templates through temporary files and publishes `tor-browser-verified` with mode, manifest digest and uptime. Failure removes readiness and attempts remasking. Mount failures can limit cleanup.
 
-User setup reads the protected mode and selects its template; Lone Wolf also requires the verification marker. Full tree verification belongs to the preceding service.
+User setup reads the protected mode and selects its template. Lone Wolf also requires the verification marker. Full tree verification belongs to the preceding service.
 
-The panel destination remains `/home/ph4ntxm/.config/panel/launcher-9/firefox-esr.desktop` even for Tor. Account lookup must identify `ph4ntxm` with positive UID, numeric GID and exactly that home. Existing directories must not be symlinks; the helper verifies the resolved destination and installs a protected regular template through a temporary `0644` copy with live-user ownership.
+The panel destination remains `/home/ph4ntxm/.config/panel/launcher-9/firefox-esr.desktop` even for Tor. Account lookup must identify `ph4ntxm` with positive UID, numeric GID and exactly that home. Existing directories must not be symlinks. The helper verifies the resolved destination and installs a protected regular template through a temporary `0644` copy with live-user ownership.
 
 Account/path/template failure stops installation. Copying does not launch the browser or refresh a running panel. [Tor Browser](TOR-BROWSER.md) checks current firewall/bootstrap readiness separately at launch.
 

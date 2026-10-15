@@ -22,7 +22,7 @@ Each launch creates a temporary session directory and private home under `/run/u
 
 The browser and children run in a separate process group. The wrapper retains the temporary home and lock across browser restarts, waits for parent browser processes to end and returns the initial launcher's status.
 
-Exit or handled signals request group termination, wait up to five seconds, then request forced termination if needed. Cleanup removes the owned directory only after confirming no live browser processes remain; otherwise it retains the directory and reports an error. An uncatchable kill cannot run cleanup.
+Exit or handled signals request group termination, wait up to five seconds, then request forced termination if needed. Cleanup removes the owned directory only after confirming no live browser processes remain. Otherwise it retains the directory and reports an error. An uncatchable kill cannot run cleanup.
 
 ## [ CHECKS ]
 

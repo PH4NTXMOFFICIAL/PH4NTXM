@@ -10,19 +10,19 @@ Applications share the PH4NTXM interface and call underlying services or helpers
 
 ## [ RUNTIME ]
 
-[Boot Pilot](BOOT-PILOT.md) refreshes protection checks, offers Wi-Fi controls and gates Continue/browser launch. [Identity](IDENTITY.md) snapshots current identifiers; its tray is a launcher, not an audit indicator.
+[Boot Pilot](BOOT-PILOT.md) refreshes protection checks, offers Wi-Fi controls and gates Continue/browser launch. [Identity](IDENTITY.md) snapshots current identifiers. Its tray is a launcher, not an audit indicator.
 
-[Health](HEALTH.md) provides grouped findings, a searchable full report and mode-aware Browser Check. The menu, Pilot and Identity open GTK; the terminal report remains available.
+[Health](HEALTH.md) provides grouped findings, a searchable full report and mode-aware Browser Check. The menu, Pilot and Identity open GTK. The terminal report remains available.
 
-[Lockdown](LOCKDOWN.md) requests restrictive networking or restores the selected mode. Its status icon records control state; guardian readiness verifies enforcement.
+[Lockdown](LOCKDOWN.md) requests restrictive networking or restores the selected mode. Its status icon records control state. Guardian readiness verifies enforcement.
 
 [USB Nuke](USB-NUKE.md) arms matching storage-removal triggers without selecting a drive serial. [Panic](PANIC.md) requests the same emergency backend after confirmation.
 
-[USB Guard](USB-GUARD.md) optionally preserves existing USB connections and blocks new ones pending review. [Net Guard](NET-GUARD.md) optionally blocks outbound IP access until the exact running process is approved. Enable, Allow and Disable require fresh passwords; closing either window leaves enforcement running.
+[USB Guard](USB-GUARD.md) optionally preserves existing USB connections and blocks new ones pending review. [Net Guard](NET-GUARD.md) optionally blocks outbound IP access until the exact running process is approved. Enable, Allow and Disable require fresh passwords. Closing either window leaves enforcement running.
 
 [Document Airlock](DOCUMENT-AIRLOCK.md) previews and exports raster PDFs from an offline guest. [Archive Airlock](ARCHIVE-AIRLOCK.md) lists archives and opens selected files through isolated viewers. [Media Viewers](MEDIA-VIEWERS.md) play original files read-only in offline sandboxes.
 
-The [OpSec Suite](PH4NTXM-OPSEC-SUITE.md) supplies Network, Kernel, Process, Radio, ConnWatch and Shredder. GTK reports support inspection and confirmed actions where available; terminal workflows remain accessible.
+The [OpSec Suite](PH4NTXM-OPSEC-SUITE.md) supplies Network, Kernel, Process, Radio, ConnWatch and Shredder. GTK reports support inspection and confirmed actions where available. Terminal workflows remain accessible.
 
 ## [ CHECKS ]
 

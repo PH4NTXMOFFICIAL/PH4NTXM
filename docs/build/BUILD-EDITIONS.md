@@ -31,7 +31,7 @@ Omitting `--edition` selects Abyss. Repository-root `sudo lb config` followed by
 
 The wrapper runs `lb config` and `lb build` in the selected workspace. Rebuilds clean that edition's previous build while retaining its package cache. Checks reject unsafe workspaces, leftover mounts and concurrent builds of the same edition.
 
-Successful builds keep `ph4ntxm-<edition>-amd64.hybrid.iso`, manifests and `SHA256SUMS` directly in `build/<edition>/`. The next build replaces that edition's previous image; save it elsewhere first if you need it. No second ISO copy or timestamped export is created. The other edition's build is preserved. See [INSTALLATION](../../INSTALLATION.md#-cleanup-and-outputs-) for cleanup details and [DISTRIBUTION](../../DISTRIBUTION.md) for source verification and distribution policy.
+Successful builds keep `ph4ntxm-<edition>-amd64.hybrid.iso`, manifests and `SHA256SUMS` directly in `build/<edition>/`. The next build replaces that edition's previous image. Save it elsewhere first if you need it. No second ISO copy or timestamped export is created. The other edition's build is preserved. See [INSTALLATION](../../INSTALLATION.md#-cleanup-and-outputs-) for cleanup details and [DISTRIBUTION](../../DISTRIBUTION.md) for source verification and distribution policy.
 
 ## [ APPEARANCE ]
 
@@ -39,9 +39,9 @@ Abyss pairs deep navy surfaces and pale text with blue glass ribbons. Ghost pair
 
 Each edition supplies matching desktop, login and bootloader artwork. Both keep Lyra-blue-dark (modified for PH4NTXM) and custom icons, LyraB cursors and terminal backgrounds at 85% opacity. Selecting another XFCE theme manually does not switch the complete edition. Build the desired edition to apply all appearance settings together.
 
-[Picom](../../config/includes.chroot/usr/local/bin/ph4ntxm-picom) starts with XFCE; XFWM compositing stays disabled. Both editions use GLX, 16-pixel corners and 95% opacity for eligible normal windows and Whisker Menu. Terminal background opacity remains 85%; fullscreen, browsers, image/media viewers and Document Airlock are excluded from the normal-window opacity rule.
+[Picom](../../config/includes.chroot/usr/local/bin/ph4ntxm-picom) starts with XFCE. XFWM compositing stays disabled. Both editions use GLX, 16-pixel corners and 95% opacity for eligible normal windows and Whisker Menu. Terminal background opacity remains 85%. Fullscreen, browsers, image/media viewers and Document Airlock are excluded from the normal-window opacity rule.
 
-Background blur uses `dual_kawase` at strength `2`. Context/dropdown menus, tooltips, combo popups and panel action-confirmation dialogs are excluded; Whisker retains blur. VSync, shadows and frame blur are disabled. The shared [picom.conf](../../config/includes.chroot/etc/skel/.config/picom/picom.conf) defines the exact opacity, blur and corner exclusions.
+Background blur uses `dual_kawase` at strength `2`. Context/dropdown menus, tooltips, combo popups and panel action-confirmation dialogs are excluded. Whisker retains blur. VSync, shadows and frame blur are disabled. The shared [picom.conf](../../config/includes.chroot/etc/skel/.config/picom/picom.conf) defines the exact opacity, blur and corner exclusions.
 
 The shared icon palette uses cyan `#00ABFF` and magenta `#FF3DFB`. Connection icons use magenta for active states and cyan for inactive states. Batteries use a cyan shell with magenta charge bars. Keep the custom artwork in `Lyra-blue-dark/apps/scalable/` intact when updating the rest of the icon theme.
 

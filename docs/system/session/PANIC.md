@@ -6,7 +6,7 @@ Requests emergency containment and termination through the singleton Panic servi
 
 ## [ STARTUP ]
 
-The tray's Nuke PH4NTXM action opens confirmation. Cancel or closing that window leaves the session running. The tray blocks duplicate launches from its own instance and blinks while confirmation is open; child exit or launch failure restores its idle state.
+The tray's Nuke PH4NTXM action opens confirmation. Cancel or closing that window leaves the session running. The tray blocks duplicate launches from its own instance and blinks while confirmation is open. Child exit or launch failure restores its idle state.
 
 ## [ RUNTIME ]
 
@@ -16,7 +16,7 @@ Common [Nuke preparation](NUKE-KERNEL.md) blocks radios/links, requests Lockdown
 
 If `/sys/kernel/kexec_crash_loaded` is `1`, Panic enables SysRq and requests a crash transition. If execution continues, it waits three seconds before submitting `systemctl poweroff --no-block`. Acceptance means a shutdown job was queued, not that every best-effort cleanup step completed.
 
-Handled interruption or rejected poweroff returns failure. Panic does not alter USB arm markers; the calling dispatch owns token-matched restoration, including when a nonblocking poweroff request returns. Later Arm/Disarm invalidates older restoration callbacks.
+Handled interruption or rejected poweroff returns failure. Panic does not alter USB arm markers. The calling dispatch owns token-matched restoration, including when a nonblocking poweroff request returns. Later Arm/Disarm invalidates older restoration callbacks.
 
 Quitting the tray removes only the shortcut. It neither disables the service, disarms USB Nuke nor cancels submitted actions. Blinking indicates an open confirmation window, not containment progress.
 

@@ -6,17 +6,17 @@ Runs native CPU, RAM and DMI inventory tools with session values. Wrappers cover
 
 ## [ STARTUP ]
 
-Build hooks divert installed tools to `-real` paths and install the shared wrapper. Help/version requests pass through; ordinary inventory requires `cores_env`.
+Build hooks divert installed tools to `-real` paths and install the shared wrapper. Help/version requests pass through. Ordinary inventory requires `cores_env`.
 
 CLI launches prepare a temporary hardware snapshot and compiled supervisor. Nested wrappers can reuse the existing environment instead of creating another view.
 
 ## [ RUNTIME ]
 
-The catalog supplies CPU topology/caches, memory layouts and DMI/SMBIOS records. Active/total CPUs report the full model; installed/usable RAM reports its module sum. These capacities may exceed the host.
+The catalog supplies CPU topology/caches, memory layouts and DMI/SMBIOS records. Active/total CPUs report the full model. Installed/usable RAM reports its module sum. These capacities may exceed the host.
 
-`inventory.py` requires the query library and supervisor while native tools retain output formatting. `lscpu` receives a generated sysroot; `lshw` disables separate CPUID scanning and hwloc disables its x86 component.
+`inventory.py` requires the query library and supervisor while native tools retain output formatting. `lscpu` receives a generated sysroot. `lshw` disables separate CPUID scanning and hwloc disables its x86 component.
 
-Read-only private mounts, the query library and seccomp supervisor handle supported queries in the launched process and descendants, including static executables. Resource counters can refresh during execution. Missing profile data or runtime components stops setup; the supervisor owns the view until participating processes end.
+Read-only private mounts, the query library and seccomp supervisor handle supported queries in the launched process and descendants, including static executables. Resource counters can refresh during execution. Missing profile data or runtime components stops setup. The supervisor owns the view until participating processes end.
 
 XFCE Task Manager uses the query library without private mounts or the supervisor. It retains native process controls while reporting persona totals and proportionally scaled memory. Explicit supervised launches use:
 
@@ -25,7 +25,7 @@ ph4ntxm-hardware-run /usr/bin/python3 -c 'import os
 print(os.cpu_count())'
 ```
 
-CPU counters preserve aggregate host activity; memory usage scales proportionally. The supervisor maps reported CPU IDs onto allowed host CPUs. When several reported IDs share a host CPU, affinity changes must select the complete group; partial selections return `EOPNOTSUPP`.
+CPU counters preserve aggregate host activity. Memory usage scales proportionally. The supervisor maps reported CPU IDs onto allowed host CPUs. When several reported IDs share a host CPU, affinity changes must select the complete group. Partial selections return `EOPNOTSUPP`.
 
 Reporting adds no physical capacity. Airlocks and Media Viewers budget against actual RAM and reject managed inventory environments.
 

@@ -16,7 +16,7 @@ The catalog's CPU specification supplies model name, architecture, vendor, famil
 
 Memory generation validates the catalog's module layout, slot count, capacity, speeds, ECC widths, form factors and voltage relationships. An inconsistent layout fails instead of producing an unrelated RAM configuration.
 
-Installed RAM is the sum of the selected modules. The reported usable RAM has the same capacity, even when it exceeds host RAM. `PH4_REPORTED_RAM` expresses this capacity in GiB; `PH4_USABLE_RAM_BYTES` and `PH4_INSTALLED_RAM_BYTES` express it in bytes. These are persona reporting values, not physical allocation limits.
+Installed RAM is the sum of the selected modules. The reported usable RAM has the same capacity, even when it exceeds host RAM. `PH4_REPORTED_RAM` expresses this capacity in GiB. `PH4_USABLE_RAM_BYTES` and `PH4_INSTALLED_RAM_BYTES` express it in bytes. These are persona reporting values, not physical allocation limits.
 
 `/run/ph4ntxm/cores_env` also includes memory limits and slots, BIOS attributes, CPU socket/manufacturer information, device class and the profile identifier. Values are emitted as shell-quoted exports for downstream components.
 

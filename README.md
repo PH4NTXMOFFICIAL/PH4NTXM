@@ -22,7 +22,7 @@ PH4NTXM is a Debian-based Linux operating system that runs live from USB. Once t
 
 Every boot creates a disposable session for your selected mode. The Adaptive Identity Engine checks the boot machine ID and creates a seed linking the hostname, MAC addresses and reported hardware. Browser and network settings use the relevant session values to keep the profile consistent.
 
-At shutdown, Nuke blocks networking, ends the live user's programs and attempts RAM scrubbing before powering off. The session is discarded; the next boot creates a new one.
+At shutdown, Nuke blocks networking, ends the live user's programs and attempts RAM scrubbing before powering off. The session is discarded. The next boot creates a new one.
 
 The setup screen asks you to choose and confirm a session password before opening the desktop. Use it for screen unlock and administrator actions. Emergency protection remains available without a password prompt. The password is set again on the next boot.
 
@@ -48,7 +48,7 @@ Tor Browser opens after the protection and Tor readiness checks pass. If Tor bec
 
 Check your system:
 
-Boot Pilot shows readiness, connects to Wi-Fi and opens your mode's browser. Identity displays current identifiers; Health provides detailed reports and a mode-aware Browser Check. The OpSec Suite adds network, kernel, process and radio inspection, connection monitoring and file shredding.
+Boot Pilot shows readiness, connects to Wi-Fi and opens your mode's browser. Identity displays current identifiers. Health provides detailed reports and a mode-aware Browser Check. The OpSec Suite adds network, kernel, process and radio inspection, connection monitoring and file shredding.
 
 Open documents, archives and media:
 
@@ -56,11 +56,11 @@ Document Airlock converts supported documents into a previewable raster PDF. Arc
 
 Review devices and application networking:
 
-USB Guard optionally preserves current USB connections and blocks new devices pending approval. Net Guard optionally requires approval for each live-user process execution before outbound IP access. Both require the session password for Enable, Allow and Disable; approvals are temporary.
+USB Guard optionally preserves current USB connections and blocks new devices pending approval. Net Guard optionally requires approval for each live-user process execution before outbound IP access. Both require the session password for Enable, Allow and Disable. Approvals are temporary.
 
 Block networking or end the session:
 
-Lockdown blocks network traffic; disabling it restores your mode's rules. Panic Button requests emergency termination after confirmation. Armed USB Nuke triggers the same sequence when matching storage is removed.
+Lockdown blocks network traffic. Disabling it restores your mode's rules. Panic Button requests emergency termination after confirmation. Armed USB Nuke triggers the same sequence when matching storage is removed.
 
 See the [component pages](docs/README.md) for supported formats, controls, limits and troubleshooting.
 

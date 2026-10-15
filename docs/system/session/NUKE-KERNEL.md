@@ -6,7 +6,7 @@ Coordinates session containment and best-effort RAM scrubbing for normal termina
 
 ## [ STARTUP ]
 
-The build hook packages two small initramfs stages around the installed kernel. It requires the selected kernel configuration to confirm `CONFIG_MEMTEST=y`; missing or unverified support stops the build. [Arm Crashkernel](ARM-CRASHKERNEL.md) loads the first stage early and locks later loading in the running session.
+The build hook packages two small initramfs stages around the installed kernel. It requires the selected kernel configuration to confirm `CONFIG_MEMTEST=y`. Missing or unverified support stops the build. [Arm Crashkernel](ARM-CRASHKERNEL.md) loads the first stage early and locks later loading in the running session.
 
 The common `ph4ntxm-nuke.sh` helper prepares the current system for termination. It requires root and is shared with the emergency flow.
 
@@ -18,7 +18,7 @@ It then stops RAM seeding, disables swap, synchronizes, requests cache dropping 
 
 After a crash transition, the first initramfs reconstructs an exact memory map from the ranges passed during arming. It attempts to load the next kernel using the file syscall, then the legacy loading path if necessary.
 
-The second kernel starts with `memtest=17` and the reconstructed map. Its init reads `EarlyMemtestBad` from `/proc/meminfo`: zero reports `COMPLETE - NO ERRORS DETECTED`; a positive value reports `COMPLETE - BAD MEMORY DETECTED` with its size. Missing, unreadable or malformed results report `RESULT UNAVAILABLE` without claiming completion.
+The second kernel starts with `memtest=17` and the reconstructed map. Its init reads `EarlyMemtestBad` from `/proc/meminfo`: zero reports `COMPLETE - NO ERRORS DETECTED`. A positive value reports `COMPLETE - BAD MEMORY DETECTED` with its size. Missing, unreadable or malformed results report `RESULT UNAVAILABLE` without claiming completion.
 
 Completion covers the kernel's eligible early-test ranges, not guaranteed physical-memory coverage or erasure. Every result continues to the allocatable RAM scrub, its completion report and poweroff attempts. Both stages retain fallback shutdown/reboot requests if the preferred path returns.
 

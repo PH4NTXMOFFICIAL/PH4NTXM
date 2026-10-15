@@ -8,7 +8,7 @@ The shared state is the connection between these layers. A generated file, a com
 
 ## [ SOURCE AND BUILD LAYOUT ]
 
-`config/includes.chroot` supplies installed services, helpers, launchers, policies and component sources. Build hooks compile or install them; package lists supply distribution packages.
+`config/includes.chroot` supplies installed services, helpers, launchers, policies and component sources. Build hooks compile or install them. Package lists supply distribution packages.
 
 `build.sh` combines the shared configuration with `editions/abyss` or `editions/ghost` in a locked, independent `build/<edition>` workspace. It runs live-build and retains that edition's latest ISO/checksum.
 
@@ -129,11 +129,11 @@ Kernel settings and systemd restrictions follow each component's needs. SSH and 
 
 ## [ DOCUMENT, ARCHIVE AND MEDIA ISOLATION ]
 
-Document Airlock uses a trusted disposable KVM guest without networking or a shared home. A bounded protocol returns RGB pages; the host validates framing, dimensions and size before previewing and exporting a new raster PDF without the original active structure or metadata.
+Document Airlock uses a trusted disposable KVM guest without networking or a shared home. A bounded protocol returns RGB pages. The host validates framing, dimensions and size before previewing and exporting a new raster PDF without the original active structure or metadata.
 
 Archive Airlock reuses the guest infrastructure to list archives and stream one selected regular file into a private RAM workspace. Unsafe paths, links and special files are blocked. After the guest exits, supported files open through isolated viewers or a read-only text preview. Unpacking does not sanitize their contents.
 
-Both Airlocks require KVM, private tmpfs storage and disabled swap. Passwords for supported encrypted inputs travel through private channels, outside command arguments, environment variables and logs. Decryption stays in the guest; failed output is discarded and retries use fresh guests. Archive and document passwords remain separate, and exported raster PDFs are unencrypted.
+Both Airlocks require KVM, private tmpfs storage and disabled swap. Passwords for supported encrypted inputs travel through private channels, outside command arguments, environment variables and logs. Decryption stays in the guest. Failed output is discarded and retries use fresh guests. Archive and document passwords remain separate, and exported raster PDFs are unencrypted.
 
 Media Viewers use offline namespaces, a private bus/home and nested Xephyr display with read-only inputs. A separate process receives fixed-format audio. Transient user services bound memory, swap, tasks and CPU. All three tools budget against actual available RAM and reject managed inventory environments.
 
@@ -141,11 +141,11 @@ See [Document Airlock](docs/system/session/DOCUMENT-AIRLOCK.md), [Archive Airloc
 
 ## [ OPERATOR VIEWS AND DIAGNOSTICS ]
 
-Boot Pilot combines identity, network and system readiness before enabling Continue; browser launch also requires its launcher gates. It provides Wi-Fi controls using volatile NetworkManager profiles that preserve the prepared MAC and disable autoconnect.
+Boot Pilot combines identity, network and system readiness before enabling Continue. Browser launch also requires its launcher gates. It provides Wi-Fi controls using volatile NetworkManager profiles that preserve the prepared MAC and disable autoconnect.
 
-Identity displays a snapshot of selected identifiers. Health collects resources, guardian state and termination prerequisites; critical findings force Unsafe / Not Ready. Its separate Browser Check uses a local Firefox comparison page in normal modes and local Tor Browser evidence in Lone Wolf, without changing browser policy.
+Identity displays a snapshot of selected identifiers. Health collects resources, guardian state and termination prerequisites. Critical findings force Unsafe / Not Ready. Its separate Browser Check uses a local Firefox comparison page in normal modes and local Tor Browser evidence in Lone Wolf, without changing browser policy.
 
-[USB Guard](docs/system/session/USB-GUARD.md) optionally preserves current USB connections and blocks new devices pending password-authenticated approval. [Net Guard](docs/system/session/NET-GUARD.md) optionally gates outbound live-user IP sockets through BPF LSM and cgroup egress checks, independently of nftables. Grants bind to exact process executions; activation invalidates existing sockets and daemon failure retains denial. Both controls are off at boot and use temporary approvals.
+[USB Guard](docs/system/session/USB-GUARD.md) optionally preserves current USB connections and blocks new devices pending password-authenticated approval. [Net Guard](docs/system/session/NET-GUARD.md) optionally gates outbound live-user IP sockets through BPF LSM and cgroup egress checks, independently of nftables. Grants bind to exact process executions. Activation invalidates existing sockets and daemon failure retains denial. Both controls are off at boot and use temporary approvals.
 
 The OpSec Suite provides Network, Kernel, Process, Radio, ConnWatch and Shredder. Each presents its own evidence, with confirmed actions where supported.
 
@@ -159,6 +159,6 @@ Normal termination targets invoke the common Nuke preparation: request Lockdown,
 
 The first emergency initramfs reconstructs the memory map and loads the next kernel with `memtest=17`. The following init performs another allocatable-memory scrub and attempts poweroff, with fallback termination requests if the preferred path returns. Several containment steps are best effort so one failure does not prevent later attempts.
 
-Panic Button requires confirmation; USB Nuke triggers the same backend on any matching whole USB storage removal, including boot media. A shared lock and per-attempt tokens protect Arm, Disarm and restoration from stale callbacks.
+Panic Button requires confirmation. USB Nuke triggers the same backend on any matching whole USB storage removal, including boot media. A shared lock and per-attempt tokens protect Arm, Disarm and restoration from stale callbacks.
 
 See [Nuke Kernel](docs/system/session/NUKE-KERNEL.md), [Panic](docs/system/session/PANIC.md), [USB Nuke](docs/system/session/USB-NUKE.md) and [THREAT_MODEL.md](THREAT_MODEL.md).
