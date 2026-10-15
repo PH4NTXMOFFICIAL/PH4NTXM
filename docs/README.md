@@ -90,6 +90,7 @@ Run session checks in the live environment. For one-shot services, inspect the c
 [WIFI CONTROL](system/session/WIFI-CONTROL.md)  
 [OPERATIONAL TOOLS](system/session/OPERATIONAL-TOOLS.md)  
 [USB GUARD](system/session/USB-GUARD.md)\
+[NET GUARD](system/session/NET-GUARD.md)\
 [PH4NTXM OPSEC SUITE](system/session/PH4NTXM-OPSEC-SUITE.md)  
 
 ## [ CONTAINMENT AND TERMINATION ]

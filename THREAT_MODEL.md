@@ -87,6 +87,7 @@ PH4NTXM Health and Boot Pilot expose failed runtime chains instead of treating m
 - Archive Airlock isolates parsing and bounds listings/file streams before handing selected files to viewers. Unpacking does not sanitize content; unrestricted extraction and automatic execution are unsupported. Hypervisor escapes and host compromise remain outside this boundary.
 - Media viewers use offline namespaces, a private display and resource limits while sharing the host kernel. Originals remain unsanitized; opening outside the wrapper crosses another boundary.
 - USB Guard requires explicit activation. Approvals are temporary, the kernel still parses descriptors, and root/kernel compromise can bypass enforcement.
+- Net Guard requires explicit activation and covers outbound live-user IP sockets. Other UIDs, approved IPC proxies and pre-existing privileged packet rings remain outside its process-approval boundary; approval preserves the existing firewall/Tor policy.
 - RAM seeding supplies synthetic noise, not encryption or concealment of secrets. Memory scrub and file overwrite remain best effort.
 
 ## [ OUT OF SCOPE ]

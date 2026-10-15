@@ -1,0 +1,41 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+SOURCE=/usr/local/src/ph4ntxm-net-guard
+BUILD=/tmp/ph4ntxm-net-guard-build
+CLANG=$(command -v clang-19 || command -v clang)
+
+install -d -m 0700 "$BUILD"
+trap 'rm -rf /tmp/ph4ntxm-net-guard-build' EXIT HUP INT TERM
+cp "$SOURCE/native.c" "$SOURCE/guard.bpf.c" "$SOURCE/guard.h" "$SOURCE/core_types.h" "$SOURCE/Makefile" "$BUILD/"
+make -C "$BUILD" CC=gcc CLANG="$CLANG" \
+    CFLAGS='-std=c17 -O2 -Wall -Wextra -Werror -fPIE -fstack-protector-strong -fstack-clash-protection -fcf-protection=full -D_FORTIFY_SOURCE=3 -ffile-prefix-map=/tmp/ph4ntxm-net-guard-build=/usr/src/ph4ntxm-net-guard' \
+    check
+strip --strip-all "$BUILD/ph4ntxm-net-guard-native"
+install -d -o root -g root -m 0755 /usr/lib/ph4ntxm /usr/local/sbin
+install -o root -g root -m 0755 "$BUILD/ph4ntxm-net-guard-native" /usr/local/sbin/ph4ntxm-net-guard-native
+install -o root -g root -m 0644 "$BUILD/net-guard.bpf.o" /usr/lib/ph4ntxm/net-guard.bpf.o
+chmod 0755 /usr/local/sbin/ph4ntxm-net-guard-control /usr/local/bin/ph4ntxm-net-guard /usr/local/bin/ph4ntxm-net-guard-monitor
+chown root:root /usr/lib/ph4ntxm/net_guard.py /usr/lib/ph4ntxm/net_guard_client.py
+chmod 0644 /usr/lib/ph4ntxm/net_guard.py /usr/lib/ph4ntxm/net_guard_client.py
+sha256sum \
+    /usr/local/sbin/ph4ntxm-net-guard-native \
+    /usr/lib/ph4ntxm/net-guard.bpf.o \
+    /usr/lib/ph4ntxm/net_guard.py \
+    /usr/local/sbin/ph4ntxm-net-guard-control \
+    >/usr/lib/ph4ntxm/net-guard.sha256
+chown root:root /usr/lib/ph4ntxm/net-guard.sha256
+chmod 0644 /usr/lib/ph4ntxm/net-guard.sha256
+python3 -I - <<'VERIFY'
+import sys
+sys.path.insert(0, '/usr/lib/ph4ntxm')
+from net_guard import validate_installation
+validate_installation()
+from net_guard_client import HelperCall
+HelperCall('snapshot')
+VERIFY
+update-desktop-database
+rm -rf "$SOURCE"

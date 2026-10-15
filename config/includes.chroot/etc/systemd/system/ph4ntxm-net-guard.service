@@ -1,0 +1,37 @@
+[Unit]
+Description=PH4NTXM Net Guard
+After=local-fs.target
+StartLimitIntervalSec=30
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStartPre=/usr/local/sbin/ph4ntxm-net-guard-control prepare
+ExecStart=/usr/local/sbin/ph4ntxm-net-guard-native daemon
+Restart=on-failure
+RestartSec=1s
+RuntimeDirectory=ph4ntxm-net-guard
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+UMask=0077
+TimeoutStartSec=15s
+TimeoutStopSec=5s
+LimitMEMLOCK=67108864
+MemoryMax=134217728
+TasksMax=16
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_BPF CAP_PERFMON CAP_NET_ADMIN CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+ReadWritePaths=/run/ph4ntxm-net-guard /sys/fs/bpf/ph4ntxm-net-guard

@@ -18,7 +18,7 @@ Applications share the PH4NTXM interface and call underlying services or helpers
 
 [USB Nuke](USB-NUKE.md) arms matching storage-removal triggers without selecting a drive serial. [Panic](PANIC.md) requests the same emergency backend after confirmation.
 
-[USB Guard](USB-GUARD.md) optionally preserves existing USB connections and blocks new ones pending review. Enable, Allow and Disable require the session password; approvals end on disconnect. Audio/video approvals remain unavailable.
+[USB Guard](USB-GUARD.md) optionally preserves existing USB connections and blocks new ones pending review. [Net Guard](NET-GUARD.md) optionally blocks outbound IP access until the exact running process is approved. Enable, Allow and Disable require fresh passwords; closing either window leaves enforcement running.
 
 [Document Airlock](DOCUMENT-AIRLOCK.md) previews and exports raster PDFs from an offline guest. [Archive Airlock](ARCHIVE-AIRLOCK.md) lists archives and opens selected files through isolated viewers. [Media Viewers](MEDIA-VIEWERS.md) play original files read-only in offline sandboxes.
 
@@ -37,6 +37,7 @@ Trace findings to the relevant helper, service or isolation prerequisite. A disp
 [ph4ntxm-panic-button](../../../config/includes.chroot/usr/local/bin/ph4ntxm-panic-button)\
 [ph4ntxm-usb-nuke](../../../config/includes.chroot/usr/local/bin/ph4ntxm-usb-nuke)\
 [ph4ntxm-usb-guard](../../../config/includes.chroot/usr/local/bin/ph4ntxm-usb-guard)\
+[ph4ntxm-net-guard](../../../config/includes.chroot/usr/local/bin/ph4ntxm-net-guard)\
 [ph4ntxm-document-airlock](../../../config/includes.chroot/usr/local/bin/ph4ntxm-document-airlock)\
 [ph4ntxm-archive-airlock](../../../config/includes.chroot/usr/local/bin/ph4ntxm-archive-airlock)\
 [ph4ntxm-media](../../../config/includes.chroot/usr/local/bin/ph4ntxm-media)

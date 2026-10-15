@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Net Guard Monitor
+Comment=Notify when Net Guard blocks a process
+Exec=/usr/local/bin/ph4ntxm-net-guard-monitor
+Icon=ph4ntxm-net-guard
+Terminal=false
+OnlyShowIn=XFCE;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true

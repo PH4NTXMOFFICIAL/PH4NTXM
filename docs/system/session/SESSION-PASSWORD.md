@@ -16,7 +16,7 @@ GTK runs as unprivileged `lightdm` with a temporary home and no supplementary gr
 
 General sudo requires the password on each invocation. The [OpSec Process/Radio backends](PH4NTXM-OPSEC-SUITE.md) have a separate parent-process authentication lifetime; no general sudo grace period is enabled.
 
-Lockdown release, USB Nuke disarm and USB Guard Enable/Allow/Disable use graphical password prompts. USB Guard requires fresh authentication for every action; only its bounded snapshot is passwordless.
+Lockdown release, USB Nuke disarm and both USB Guard and Net Guard Enable/Allow/Disable use graphical password prompts. Both guards require fresh authentication for every action; only their bounded snapshots are passwordless.
 
 Panic, Lockdown activation and USB Nuke arming remain passwordless. Wi-Fi setup and enumerated status helpers have narrow exceptions without arbitrary root commands. Cancelled/incorrect authentication leaves protection unchanged; shutdown Nuke runs independently.
 

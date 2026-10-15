@@ -54,9 +54,9 @@ Open documents, archives and media:
 
 Document Airlock converts supported documents into a previewable raster PDF. Archive Airlock inspects archives and opens selected files through isolated viewers. Supported encrypted documents and ZIP entries unlock inside the offline guest. Image and media viewers provide separate offline sandboxes.
 
-Review new USB devices:
+Review devices and application networking:
 
-USB Guard optionally preserves current USB connections and blocks new or reconnected devices for review. Each approval requires the session password and lasts only for that connection.
+USB Guard optionally preserves current USB connections and blocks new devices pending approval. Net Guard optionally requires approval for each live-user process execution before outbound IP access. Both require the session password for Enable, Allow and Disable; approvals are temporary.
 
 Block networking or end the session:
 

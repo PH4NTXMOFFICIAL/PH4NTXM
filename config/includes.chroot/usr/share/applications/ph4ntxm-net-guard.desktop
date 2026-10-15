@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Net Guard
+Comment=Review and approve network access for running processes
+Exec=/usr/local/bin/ph4ntxm-net-guard
+Icon=ph4ntxm-net-guard
+Terminal=false
+Categories=System;X-PH4NTXMApps;
+StartupNotify=false

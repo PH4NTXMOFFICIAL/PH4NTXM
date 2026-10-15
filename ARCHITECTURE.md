@@ -145,7 +145,7 @@ Boot Pilot combines identity, network and system readiness before enabling Conti
 
 Identity displays a snapshot of selected identifiers. Health collects resources, guardian state and termination prerequisites; critical findings force Unsafe / Not Ready. Its separate Browser Check uses a local Firefox comparison page in normal modes and local Tor Browser evidence in Lone Wolf, without changing browser policy.
 
-[USB Guard](docs/system/session/USB-GUARD.md) optionally preserves current USB connections and blocks new or reconnected devices pending individual password-authenticated approval. Approval expires on disconnect.
+[USB Guard](docs/system/session/USB-GUARD.md) optionally preserves current USB connections and blocks new devices pending password-authenticated approval. [Net Guard](docs/system/session/NET-GUARD.md) optionally gates outbound live-user IP sockets through BPF LSM and cgroup egress checks, independently of nftables. Grants bind to exact process executions; activation invalidates existing sockets and daemon failure retains denial. Both controls are off at boot and use temporary approvals.
 
 The OpSec Suite provides Network, Kernel, Process, Radio, ConnWatch and Shredder. Each presents its own evidence, with confirmed actions where supported.
 
