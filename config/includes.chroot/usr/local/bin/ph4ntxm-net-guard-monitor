@@ -7,25 +7,42 @@ import sys
 import threading
 import time
 
-sys.path.insert(0, '/usr/lib/ph4ntxm')
+sys.path.insert(0, "/usr/lib/ph4ntxm")
 from net_guard_client import BoundedProcess, HelperCall
 
 import gi
 
-gi.require_version('Gio', '2.0')
+gi.require_version("Gio", "2.0")
 from gi.repository import Gio, GLib
 
-GUI = '/usr/local/bin/ph4ntxm-net-guard'
-NOTIFICATION = ['/usr/bin/notify-send', '--app-name=PH4NTXM Net Guard', '--icon=ph4ntxm-net-guard',
-                '--urgency=normal', '--transient', '--expire-time=8000', '--action=open=Open Net Guard',
-                '--wait', '--', 'Network access blocked',
-                'Open Net Guard to review requests from running processes.']
+GUI = "/usr/local/bin/ph4ntxm-net-guard"
+NOTIFICATION = [
+    "/usr/bin/notify-send",
+    "--app-name=PH4NTXM Net Guard",
+    "--icon=ph4ntxm-net-guard",
+    "--urgency=normal",
+    "--transient",
+    "--expire-time=8000",
+    "--action=open=Open Net Guard",
+    "--wait",
+    "--",
+    "Network access blocked",
+    "Open Net Guard to review requests from running processes.",
+]
 
 
 def pending_requests(snapshot):
-    if not snapshot['enabled'] or snapshot['state'] != 'on' or not snapshot['generation']:
+    if (
+        not snapshot["enabled"]
+        or snapshot["state"] != "on"
+        or not snapshot["generation"]
+    ):
         return set()
-    return {(snapshot['generation'], item['request_id']) for item in snapshot['requests'] if not item['approved']}
+    return {
+        (snapshot["generation"], item["request_id"])
+        for item in snapshot["requests"]
+        if not item["approved"]
+    }
 
 
 class NotificationCall(BoundedProcess):
@@ -37,9 +54,12 @@ class NotificationCall(BoundedProcess):
         try:
             code, output = self.run_process(NOTIFICATION, 20, maximum=32)
             action = output.strip()
-            return {'ok': code == 0 and action in {b'', b'open'}, 'open': code == 0 and action == b'open'}
+            return {
+                "ok": code == 0 and action in {b"", b"open"},
+                "open": code == 0 and action == b"open",
+            }
         except Exception:
-            return {'ok': False, 'open': False}
+            return {"ok": False, "open": False}
 
 
 class NetGuardMonitor:
@@ -65,18 +85,19 @@ class NetGuardMonitor:
             try:
                 result = job.run()
             except Exception:
-                result = {'ok': False}
+                result = {"ok": False}
             GLib.idle_add(callback, job, result)
+
         try:
             threading.Thread(target=worker, daemon=False).start()
         except (RuntimeError, OSError):
-            callback(job, {'ok': False})
+            callback(job, {"ok": False})
 
     def poll(self):
         if self.stopping:
             return False
         if self.snapshot_job is None:
-            self.snapshot_job = HelperCall('snapshot')
+            self.snapshot_job = HelperCall("snapshot")
             self.start(self.snapshot_job, self.finish_snapshot)
         return True
 
@@ -87,7 +108,7 @@ class NetGuardMonitor:
         if self.stopping:
             self.maybe_quit()
             return False
-        if result.get('ok') is not True:
+        if result.get("ok") is not True:
             self.current = None
             return False
         self.current = pending_requests(result)
@@ -111,13 +132,15 @@ class NetGuardMonitor:
         if self.stopping:
             self.maybe_quit()
             return False
-        if result.get('ok') is True:
+        if result.get("ok") is True:
             self.notified.update(job.requests)
             if self.current is not None:
                 self.notified.intersection_update(self.current)
-            if result.get('open') is True:
+            if result.get("open") is True:
                 try:
-                    pid, _, _, _ = GLib.spawn_async([GUI], flags=GLib.SpawnFlags.DEFAULT)
+                    pid, _, _, _ = GLib.spawn_async(
+                        [GUI], flags=GLib.SpawnFlags.DEFAULT
+                    )
                     GLib.spawn_close_pid(pid)
                 except GLib.Error:
                     pass
@@ -127,7 +150,7 @@ class NetGuardMonitor:
     def close(self, *_):
         if not self.stopping:
             self.stopping = True
-            for name in ('poll_source', 'initial_source'):
+            for name in ("poll_source", "initial_source"):
                 source = getattr(self, name, 0)
                 if source:
                     GLib.source_remove(source)
@@ -138,14 +161,20 @@ class NetGuardMonitor:
         self.maybe_quit()
 
     def maybe_quit(self):
-        if self.stopping and self.snapshot_job is None and self.notification_job is None and not self.quitting:
+        if (
+            self.stopping
+            and self.snapshot_job is None
+            and self.notification_job is None
+            and not self.quitting
+        ):
             self.quitting = True
             self.application.quit()
 
 
 def main():
-    application = Gio.Application(application_id='org.ph4ntxm.NetGuardMonitor')
+    application = Gio.Application(application_id="org.ph4ntxm.NetGuardMonitor")
     monitor = None
+
     def activate(current):
         nonlocal monitor
         if monitor is None:
@@ -153,10 +182,11 @@ def main():
             monitor = NetGuardMonitor(current)
             signal.signal(signal.SIGTERM, monitor.close)
             signal.signal(signal.SIGINT, monitor.close)
-            current.connect('shutdown', monitor.close)
-    application.connect('activate', activate)
+            current.connect("shutdown", monitor.close)
+
+    application.connect("activate", activate)
     return application.run(sys.argv)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main())

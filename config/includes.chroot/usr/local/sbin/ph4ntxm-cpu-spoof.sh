@@ -38,6 +38,7 @@ fi
 chmod 0444 "$FAKE_CPUINFO" "$FAKE_SYSFS"
 
 mounted_targets=()
+
 cleanup_partial_mounts() {
     local target
     for ((idx = ${#mounted_targets[@]} - 1; idx >= 0; idx--)); do
@@ -45,6 +46,7 @@ cleanup_partial_mounts() {
         umount "$target" >/dev/null 2>&1 || true
     done
 }
+
 trap cleanup_partial_mounts ERR
 
 bind_readonly() {

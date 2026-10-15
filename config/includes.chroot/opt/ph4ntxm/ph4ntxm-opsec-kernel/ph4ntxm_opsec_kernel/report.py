@@ -237,8 +237,7 @@ def collect_report(progress=None):
 
     if modules["ok"]:
         missing_paths = sum(
-            not module.get("path")
-            for module in modules["data"].get("modules", [])
+            not module.get("path") for module in modules["data"].get("modules", [])
         )
         if missing_paths:
             noun = "module" if missing_paths == 1 else "modules"
@@ -252,9 +251,7 @@ def collect_report(progress=None):
             value is None and key not in unsupported
             for key, value in sysctl_state["data"].get("values", {}).items()
         )
-        information.extend(
-            f"{key} interface is not exposed." for key in unsupported
-        )
+        information.extend(f"{key} interface is not exposed." for key in unsupported)
         if missing_sysctls:
             noun = "setting is" if missing_sysctls == 1 else "settings are"
             unavailable.append(f"{missing_sysctls} sysctl {noun} unavailable.")

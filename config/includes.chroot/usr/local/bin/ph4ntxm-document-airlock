@@ -13,7 +13,14 @@ import zlib
 from pathlib import Path
 
 sys.path.insert(0, "/usr/local/lib/ph4ntxm-document-airlock")
-from airlock import AirlockError, AirlockSession, PasswordIncorrect, PasswordRequired, check_ready, read_input
+from airlock import (
+    AirlockError,
+    AirlockSession,
+    PasswordIncorrect,
+    PasswordRequired,
+    check_ready,
+    read_input,
+)
 
 CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
 ICON_FILE = "/usr/share/icons/Lyra-blue-dark/apps/scalable/ph4ntxm-document-airlock.svg"
@@ -164,7 +171,19 @@ def desktop(document=None):
                         raise AirlockError("Conversion cancelled.")
                     session.convert(suffix, data, password=password)
                 except Exception as exc:
-                    error = exc if isinstance(exc, (AirlockError, OSError, ValueError, subprocess.SubprocessError)) else AirlockError("Document conversion failed.")
+                    error = (
+                        exc
+                        if isinstance(
+                            exc,
+                            (
+                                AirlockError,
+                                OSError,
+                                ValueError,
+                                subprocess.SubprocessError,
+                            ),
+                        )
+                        else AirlockError("Document conversion failed.")
+                    )
                     if session:
                         try:
                             session.close(cancel=False)
@@ -176,7 +195,9 @@ def desktop(document=None):
             try:
                 threading.Thread(target=worker, daemon=False).start()
             except Exception:
-                self.finished(None, AirlockError("Document conversion could not start."), filename)
+                self.finished(
+                    None, AirlockError("Document conversion could not start."), filename
+                )
 
         def finished(self, session, error, filename):
             self.busy = False
@@ -234,7 +255,12 @@ def desktop(document=None):
             self.set_result_enabled(True)
 
         def on_export(self, _):
-            if self.busy or self.closing or not self.session or self.export_dialog is not None:
+            if (
+                self.busy
+                or self.closing
+                or not self.session
+                or self.export_dialog is not None
+            ):
                 return
             dialog = Gtk.FileChooserDialog(
                 title="Export converted PDF",
@@ -265,7 +291,12 @@ def desktop(document=None):
                 self.finish_closing()
 
         def finish_closing(self):
-            if not self.closing or self.busy or self.password_dialog is not None or self.export_dialog is not None:
+            if (
+                not self.closing
+                or self.busy
+                or self.password_dialog is not None
+                or self.export_dialog is not None
+            ):
                 return False
             if self.session:
                 self.session.close()
@@ -276,7 +307,11 @@ def desktop(document=None):
         def on_close(self, *_):
             self.closing = True
             self.cancelled.set()
-            if self.busy or self.password_dialog is not None or self.export_dialog is not None:
+            if (
+                self.busy
+                or self.password_dialog is not None
+                or self.export_dialog is not None
+            ):
                 self.status.set_text("Closing the isolated session…")
                 if self.password_dialog is not None:
                     self.password_dialog.response(Gtk.ResponseType.CANCEL)
@@ -327,7 +362,9 @@ def main():
                     break
                 except (PasswordRequired, PasswordIncorrect) as error:
                     if not sys.stdin.isatty():
-                        raise AirlockError("This document requires a password. Open Document Airlock or use an interactive terminal.") from None
+                        raise AirlockError(
+                            "This document requires a password. Open Document Airlock or use an interactive terminal."
+                        ) from None
                     print(str(error), file=sys.stderr)
                     password = getpass.getpass("Document password: ")
             password = None

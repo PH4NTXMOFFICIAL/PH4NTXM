@@ -23,23 +23,35 @@ def check_workspace(root, edition):
             raise ValueError(f"Refusing a symbolic link at {path}")
     if work.exists():
         marker = work / ".ph4ntxm-edition"
-        if marker.is_symlink() or not marker.is_file() or marker.read_text().strip() != edition:
+        if (
+            marker.is_symlink()
+            or not marker.is_file()
+            or marker.read_text().strip() != edition
+        ):
             raise ValueError(f"Refusing an unmanaged build directory: {work}")
         for name in ("config", ".build", "chroot", "binary", "cache", "auto", "local"):
             if (work / name).is_symlink():
                 raise ValueError(f"Refusing a symbolic link at {work / name}")
     for line in Path("/proc/self/mountinfo").read_text().splitlines():
-        target = re.sub(r"\\([0-7]{3})", lambda match: chr(int(match[1], 8)), line.split()[4])
+        target = re.sub(
+            r"\\([0-7]{3})", lambda match: chr(int(match[1], 8)), line.split()[4]
+        )
         mount = Path(target)
         if mount == work or work in mount.parents:
-            raise ValueError(f"A filesystem is still mounted in {work}; unmount it before rebuilding.")
+            raise ValueError(
+                f"A filesystem is still mounted in {work}; unmount it before rebuilding."
+            )
     return work
 
 
 def prepare(root, edition):
     work = check_workspace(root, edition)
-    if any((work / name).exists() for name in ("chroot", "binary")) or ((work / ".build").exists() and any((work / ".build").iterdir())):
-        raise ValueError("Clean the previous live-build before preparing a new configuration.")
+    if any((work / name).exists() for name in ("chroot", "binary")) or (
+        (work / ".build").exists() and any((work / ".build").iterdir())
+    ):
+        raise ValueError(
+            "Clean the previous live-build before preparing a new configuration."
+        )
     profile = json.loads((root / "editions" / edition / "edition.json").read_text())
     if profile["name"] != edition:
         raise ValueError("Edition profile does not match its directory.")
@@ -55,12 +67,21 @@ def prepare(root, edition):
         shutil.copytree(overlay, config, symlinks=True, dirs_exist_ok=True)
         common = config / "common"
         text = common.read_text()
-        text, count = re.subn(r'^LB_IMAGE_NAME="[^"]*"$', f'LB_IMAGE_NAME="ph4ntxm-{edition}"', text, flags=re.M)
+        text, count = re.subn(
+            r'^LB_IMAGE_NAME="[^"]*"$',
+            f'LB_IMAGE_NAME="ph4ntxm-{edition}"',
+            text,
+            flags=re.M,
+        )
         if count != 1:
             raise ValueError("Expected exactly one LB_IMAGE_NAME in config/common.")
         common.write_text(text)
         includes = config / "includes.chroot"
-        assets = (f"usr/share/themes/{profile['theme']}", profile["wallpaper"].lstrip("/"), profile["login_background"].lstrip("/"))
+        assets = (
+            f"usr/share/themes/{profile['theme']}",
+            profile["wallpaper"].lstrip("/"),
+            profile["login_background"].lstrip("/"),
+        )
         for name in assets:
             if not (includes / name).exists():
                 raise ValueError(f"Missing {edition} asset: {name}")
@@ -98,7 +119,11 @@ def finalize(root, edition):
         temporary.replace(checksum)
     finally:
         temporary.unlink(missing_ok=True)
-    if os.geteuid() == 0 and os.environ.get("SUDO_UID", "").isdigit() and os.environ.get("SUDO_GID", "").isdigit():
+    if (
+        os.geteuid() == 0
+        and os.environ.get("SUDO_UID", "").isdigit()
+        and os.environ.get("SUDO_GID", "").isdigit()
+    ):
         for path in (checksum, *work.glob(f"ph4ntxm-{edition}-amd64.*")):
             if path.is_file() and not path.is_symlink():
                 os.chown(path, int(os.environ["SUDO_UID"]), int(os.environ["SUDO_GID"]))

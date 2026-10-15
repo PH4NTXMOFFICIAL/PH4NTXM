@@ -33,7 +33,13 @@ from archive_protocol import (
     safe_name,
 )
 
-FORMAT_LABELS = {0x30000: "TAR", 0x50000: "ZIP", 0xD0000: "RAR", 0xE0000: "7z", 0x100000: "RAR"}
+FORMAT_LABELS = {
+    0x30000: "TAR",
+    0x50000: "ZIP",
+    0xD0000: "RAR",
+    0xE0000: "7z",
+    0x100000: "RAR",
+}
 FORMAT_READERS = ("zip", "rar", "rar5", "7zip", "tar")
 FILTER_READERS = ("none", "gzip", "bzip2", "xz", "zstd")
 ARCHIVE_PATH = Path("/tmp/job/archive")
@@ -61,11 +67,22 @@ class EncryptionUnsupported(ArchiveRejected):
 def library_error(error, password):
     message = error.msg
     if message == "Passphrase required for this entry":
-        return PasswordRequired("Enter the password to open this ZIP entry.") if not password else ArchiveRejected("The encrypted ZIP entry could not be decrypted.")
+        return (
+            PasswordRequired("Enter the password to open this ZIP entry.")
+            if not password
+            else ArchiveRejected("The encrypted ZIP entry could not be decrypted.")
+        )
     if message in {"Incorrect passphrase", "Too many incorrect passphrases"}:
         return PasswordIncorrect("The ZIP password is incorrect. Try again.")
-    if isinstance(message, str) and ("encryption support unavailable" in message or "encryption is not supported" in message.lower() or "encryption not supported" in message.lower() or "encrypted, but currently not supported" in message):
-        return EncryptionUnsupported("Encryption for this archive format is not supported.")
+    if isinstance(message, str) and (
+        "encryption support unavailable" in message
+        or "encryption is not supported" in message.lower()
+        or "encryption not supported" in message.lower()
+        or "encrypted, but currently not supported" in message
+    ):
+        return EncryptionUnsupported(
+            "Encryption for this archive format is not supported."
+        )
     return ArchiveRejected("The archive is damaged or unsupported.")
 
 
@@ -91,8 +108,13 @@ def rar_vint(source, limit=10):
 
 
 def validate_rar_volume(path, pointer, family):
-    if any(ffi.filter_name(pointer, index) != b"none" for index in range(ffi.filter_count(pointer))):
-        raise ArchiveRejected("Compressed wrappers around RAR archives are not supported.")
+    if any(
+        ffi.filter_name(pointer, index) != b"none"
+        for index in range(ffi.filter_count(pointer))
+    ):
+        raise ArchiveRejected(
+            "Compressed wrappers around RAR archives are not supported."
+        )
     signature, scan_limit = {
         0xD0000: (b"Rar!\x1a\x07\x00", 128 * 1024),
         0x100000: (b"Rar!\x1a\x07\x01\x00", 512 * 1024),
@@ -104,9 +126,18 @@ def validate_rar_volume(path, pointer, family):
         elif prefix.startswith((b"MZ", b"\x7fELF")):
             source.seek(0)
             prefix = source.read(scan_limit)
-            offset = next((position for position in range(0, len(prefix) - len(signature) + 1, 16) if prefix[position : position + len(signature)] == signature), None)
+            offset = next(
+                (
+                    position
+                    for position in range(0, len(prefix) - len(signature) + 1, 16)
+                    if prefix[position : position + len(signature)] == signature
+                ),
+                None,
+            )
             if offset is None:
-                raise ArchiveRejected("The self-extracting RAR header could not be verified.")
+                raise ArchiveRejected(
+                    "The self-extracting RAR header could not be verified."
+                )
         else:
             raise ArchiveRejected("The RAR header could not be verified.")
         source.seek(offset + len(signature))
@@ -139,7 +170,9 @@ def validate_rar_volume(path, pointer, family):
             flags, _ = rar_vint(main_fields)
             multipart = bool(flags & 0x0003)
         if multipart:
-            raise ArchiveRejected("Multipart RAR archives are not supported. Choose a single-volume archive.")
+            raise ArchiveRejected(
+                "Multipart RAR archives are not supported. Choose a single-volume archive."
+            )
 
 
 class ArchiveReader:
@@ -241,7 +274,11 @@ def entry_record(entry, index, format_label="ZIP"):
 
 def receive_source(incoming):
     size, index, password_size = struct.unpack("!IIH", read_exact(incoming, 10))
-    if not 0 < size <= MAX_INPUT or (index != LIST_INDEX and index >= MAX_ENTRIES) or password_size > MAX_PASSWORD_BYTES:
+    if (
+        not 0 < size <= MAX_INPUT
+        or (index != LIST_INDEX and index >= MAX_ENTRIES)
+        or password_size > MAX_PASSWORD_BYTES
+    ):
         raise ArchiveRejected("The archive request exceeds the supported limits.")
     password = read_exact(incoming, password_size)
     if b"\0" in password:
@@ -267,9 +304,13 @@ def list_archive(path, password=b""):
             if index >= MAX_ENTRIES:
                 raise ArchiveRejected("The archive contains too many entries.")
             record = entry_record(entry, index, archive.format_label())
-            metadata_size += len(json.dumps(record, ensure_ascii=False).encode("utf-8")) + 1
+            metadata_size += (
+                len(json.dumps(record, ensure_ascii=False).encode("utf-8")) + 1
+            )
             if metadata_size > MAX_METADATA - 128:
-                raise ArchiveRejected("The archive listing exceeds the supported limits.")
+                raise ArchiveRejected(
+                    "The archive listing exceeds the supported limits."
+                )
             entries.append(record)
         return {"format": archive.format_label(), "entries": entries}
 
@@ -280,7 +321,9 @@ class Response:
         self.started = False
 
     def metadata(self, magic, value):
-        data = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        data = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode(
+            "utf-8"
+        )
         if len(data) > MAX_METADATA:
             raise ArchiveRejected("The archive listing exceeds the supported limits.")
         self.started = True
@@ -297,7 +340,9 @@ class Response:
                 record = entry_record(entry, index, format_label)
                 if record["kind"] != "file":
                     if record["encrypted"] and format_label != "ZIP":
-                        raise EncryptionUnsupported("Encryption for this archive format is not supported.")
+                        raise EncryptionUnsupported(
+                            "Encryption for this archive format is not supported."
+                        )
                     raise ArchiveRejected("The selected entry cannot be opened.")
                 if record["encrypted"] and not password:
                     raise PasswordRequired("Enter the password to open this ZIP entry.")
@@ -307,7 +352,9 @@ class Response:
                         raise ArchiveRejected("The archive returned invalid file data.")
                     total += len(block)
                     if total > MAX_OUTPUT:
-                        raise ArchiveRejected("The selected file exceeds the output limit.")
+                        raise ArchiveRejected(
+                            "The selected file exceeds the output limit."
+                        )
                     if not self.started:
                         self.started = True
                         self.outgoing.write(DATA_MAGIC)
@@ -340,10 +387,21 @@ def main():
         if response.started:
             return
         response.metadata(ERROR_MAGIC, {"code": error.code, "error": str(error)})
-    except (AirlockError, ArchiveError, OSError, ValueError, UnicodeError, MemoryError, OverflowError):
+    except (
+        AirlockError,
+        ArchiveError,
+        OSError,
+        ValueError,
+        UnicodeError,
+        MemoryError,
+        OverflowError,
+    ):
         if response.started:
             return
-        response.metadata(ERROR_MAGIC, {"code": "archive", "error": "The archive is damaged or unsupported."})
+        response.metadata(
+            ERROR_MAGIC,
+            {"code": "archive", "error": "The archive is damaged or unsupported."},
+        )
     response.finish(incoming)
 
 

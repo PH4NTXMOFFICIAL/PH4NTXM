@@ -96,7 +96,9 @@ def active(unit):
 
 
 def privileged_read(path):
-    code, output = run([SUDO, "-n", "/usr/local/sbin/ph4ntxm-session-status", "read", path])
+    code, output = run(
+        [SUDO, "-n", "/usr/local/sbin/ph4ntxm-session-status", "read", path]
+    )
     return output if code == 0 else ""
 
 
@@ -549,8 +551,11 @@ def network_features(mode):
         if not tor_ok and firewall_ok:
             code, status = run(
                 [
-                    SYSTEMCTL, "show", "ph4ntxm-lonewolf-dns.service",
-                    "--property=ActiveState", "--property=SubState",
+                    SYSTEMCTL,
+                    "show",
+                    "ph4ntxm-lonewolf-dns.service",
+                    "--property=ActiveState",
+                    "--property=SubState",
                 ]
             )
             bridge = dict(
@@ -1057,7 +1062,8 @@ class BootPilot(Gtk.Window):
 
     def build(self):
         provider = Gtk.CssProvider()
-        provider.load_from_data(b"""
+        provider.load_from_data(
+            b"""
             window { background: #0d1117; color: #d7e0ea; }
             .top-panel { background: #121a24; padding: 20px 22px; border-bottom: 1px solid #263241; }
             .title { font-size: 24px; font-weight: 700; }
@@ -1079,7 +1085,8 @@ class BootPilot(Gtk.Window):
             .network-list row:selected { background: #173047; }
             .footer { background: #0d1117; border-top: 1px solid #263241; padding: 12px 18px; }
             button { padding: 8px 16px; }
-        """)
+        """
+        )
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
@@ -1088,7 +1095,8 @@ class BootPilot(Gtk.Window):
             provider = Gtk.CssProvider()
             provider.load_from_path(override)
             Gtk.StyleContext.add_provider_for_screen(
-                Gdk.Screen.get_default(), provider,
+                Gdk.Screen.get_default(),
+                provider,
                 Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1,
             )
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -1116,7 +1124,9 @@ class BootPilot(Gtk.Window):
         meta.pack_start(self.timestamp_label, False, False, 0)
         top.pack_end(meta, False, False, 0)
         root.pack_start(top, False, False, 0)
-        self.connection_status = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.connection_status = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL, spacing=8
+        )
         self.connection_status.set_halign(Gtk.Align.CENTER)
         self.connection_status.set_margin_top(10)
         self.connection_status.set_margin_bottom(10)
@@ -1431,7 +1441,9 @@ class BootPilot(Gtk.Window):
         self.browser_launching = True
         self.update_browser_controls()
         GLib.timeout_add(
-            100, self.check_browser_launch, process,
+            100,
+            self.check_browser_launch,
+            process,
             time.monotonic() + (15 if mode == "lonewolf" else 2),
         )
 
@@ -1523,9 +1535,7 @@ class BootPilot(Gtk.Window):
                 browser_status = False, "Browser readiness is unavailable."
             GLib.idle_add(self.apply_boot_state, groups, browser_status)
 
-        threading.Thread(
-            target=worker, name="ph4ntxm-boot-state", daemon=True
-        ).start()
+        threading.Thread(target=worker, name="ph4ntxm-boot-state", daemon=True).start()
 
     def apply_boot_state(self, groups, browser_status):
         self.boot_refresh_active = False
@@ -1539,7 +1549,8 @@ class BootPilot(Gtk.Window):
         connection_detail = next(
             (
                 check["detail"]
-                for group in groups for check in group["checks"]
+                for group in groups
+                for check in group["checks"]
                 if check["label"] == "Tor Routing" and check["state"] == "pending"
             ),
             "",

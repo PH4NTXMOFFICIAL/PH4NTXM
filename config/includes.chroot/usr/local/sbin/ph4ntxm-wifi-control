@@ -388,7 +388,9 @@ def connect_network(bus, request):
                     and str(prop(bus, device, NM_DEVICE_IFACE, "ActiveConnection"))
                     == active_connection
                     and int(
-                        prop(bus, active_connection, NM_ACTIVE_CONNECTION_IFACE, "State")
+                        prop(
+                            bus, active_connection, NM_ACTIVE_CONNECTION_IFACE, "State"
+                        )
                     )
                     == ACTIVE_CONNECTION_STATE_ACTIVATED
                 ):

@@ -70,7 +70,11 @@ class DocumentGuestTests(unittest.TestCase):
                 document.storeToURL(
                     uno.systemPathToFileUrl(str(self.root / name)),
                     properties(
-                        {"FilterName": export_filter, "Password": self.password, "Overwrite": True}
+                        {
+                            "FilterName": export_filter,
+                            "Password": self.password,
+                            "Overwrite": True,
+                        }
                     ),
                 )
         finally:

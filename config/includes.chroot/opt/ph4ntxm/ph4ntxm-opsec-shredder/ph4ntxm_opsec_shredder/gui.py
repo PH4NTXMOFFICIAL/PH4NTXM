@@ -53,41 +53,77 @@ class ShredderWindow(ReportWindow):
 
         marks = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
         queue = section("Marked paths")
-        queue.pack_start(label("Marking and unmarking update the queue. Overwrite and deletion begin after final confirmation.", "subtitle"), False, False, 0)
+        queue.pack_start(
+            label(
+                "Marking and unmarking update the queue. Overwrite and deletion begin after final confirmation.",
+                "subtitle",
+            ),
+            False,
+            False,
+            0,
+        )
         controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         self.add_files = Gtk.Button(label="Mark Files…")
-        self.add_files.connect("clicked", lambda _: self.choose_paths(Gtk.FileChooserAction.OPEN))
+        self.add_files.connect(
+            "clicked", lambda _: self.choose_paths(Gtk.FileChooserAction.OPEN)
+        )
         self.add_folders = Gtk.Button(label="Mark Folders…")
-        self.add_folders.connect("clicked", lambda _: self.choose_paths(Gtk.FileChooserAction.SELECT_FOLDER))
+        self.add_folders.connect(
+            "clicked", lambda _: self.choose_paths(Gtk.FileChooserAction.SELECT_FOLDER)
+        )
         self.remove_marks = Gtk.Button(label="Unmark Selected")
         self.remove_marks.connect("clicked", self.on_unmark_selected)
         self.clear_marks = Gtk.Button(label="Unmark All")
         self.clear_marks.connect("clicked", self.on_unmark_all)
-        for button in (self.add_files, self.add_folders, self.remove_marks, self.clear_marks):
+        for button in (
+            self.add_files,
+            self.add_folders,
+            self.remove_marks,
+            self.clear_marks,
+        ):
             controls.pack_start(button, False, False, 0)
             self.action_buttons.append(button)
         queue.pack_start(controls, False, False, 0)
         self.mark_model = Gtk.ListStore(str, str, str, str)
         self.mark_table = self.table(
             self.mark_model,
-            [("Path", 0, 390), ("Type", 1, 120), ("State", 2, 100), ("Evidence", 3, 350)],
+            [
+                ("Path", 0, 390),
+                ("Type", 1, 120),
+                ("State", 2, 100),
+                ("Evidence", 3, 350),
+            ],
         )
         self.mark_table.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
-        self.mark_table.get_selection().connect("changed", lambda _: self.update_controls())
+        self.mark_table.get_selection().connect(
+            "changed", lambda _: self.update_controls()
+        )
         mark_scroll = scroll(self.mark_table)
         mark_scroll.set_min_content_height(160)
         queue.pack_start(mark_scroll, True, True, 0)
         marks.pack_start(queue, True, True, 0)
         overwrite = section("Overwrite and deletion")
-        overwrite.pack_start(label("Folders are processed recursively. Symbolic link targets are not followed.", "subtitle"), False, False, 0)
+        overwrite.pack_start(
+            label(
+                "Folders are processed recursively. Symbolic link targets are not followed.",
+                "subtitle",
+            ),
+            False,
+            False,
+            0,
+        )
         pass_controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        pass_controls.pack_start(label("Overwrite passes", "data-label"), False, False, 0)
+        pass_controls.pack_start(
+            label("Overwrite passes", "data-label"), False, False, 0
+        )
         self.passes = Gtk.SpinButton.new_with_range(1, sh.MAX_PASSES, 1)
         self.passes.set_value(sh.DEFAULT_PASSES)
         self.passes.set_numeric(True)
         self.passes.connect("value-changed", self.on_passes_changed)
         pass_controls.pack_start(self.passes, False, False, 0)
-        self.shred_button = add_class(Gtk.Button(label="Overwrite and Delete Marked Paths…"), "danger")
+        self.shred_button = add_class(
+            Gtk.Button(label="Overwrite and Delete Marked Paths…"), "danger"
+        )
         self.shred_button.connect("clicked", self.on_shred)
         self.action_buttons.append(self.shred_button)
         pass_controls.pack_end(self.shred_button, False, False, 0)
@@ -106,11 +142,22 @@ class ShredderWindow(ReportWindow):
         progress_section.pack_start(self.operation_state, False, False, 0)
         progress_section.pack_start(self.current_target, False, False, 0)
         progress_section.pack_start(self.progress_bar, False, False, 0)
-        progress_section.pack_start(label("Progress applies to overwrite passes for the current file. The execution report records final deletion results.", "subtitle"), False, False, 0)
+        progress_section.pack_start(
+            label(
+                "Progress applies to overwrite passes for the current file. The execution report records final deletion results.",
+                "subtitle",
+            ),
+            False,
+            False,
+            0,
+        )
         execution.pack_start(progress_section, False, False, 0)
         results = section("Execution report")
         self.result_model = Gtk.ListStore(str, str, str)
-        self.result_table = self.table(self.result_model, [("Result", 0, 120), ("Path", 1, 390), ("Details", 2, 390)])
+        self.result_table = self.table(
+            self.result_model,
+            [("Result", 0, 120), ("Path", 1, 390), ("Details", 2, 390)],
+        )
         result_scroll = scroll(self.result_table)
         result_scroll.set_min_content_height(160)
         results.pack_start(result_scroll, True, True, 0)
@@ -136,23 +183,43 @@ class ShredderWindow(ReportWindow):
         elif report.get("last_run"):
             title, status, detail = execution_summary(report["last_run"])
         else:
-            title, status, detail = "No paths marked", "info", "Choose files or folders to prepare the queue"
-        self.set_summary(title, status=status, detail=detail, updated=report["collected_at"])
+            title, status, detail = (
+                "No paths marked",
+                "info",
+                "Choose files or folders to prepare the queue",
+            )
+        self.set_summary(
+            title, status=status, detail=detail, updated=report["collected_at"]
+        )
         queue = section("Marked queue")
         queue.pack_start(data_row("Marked targets", str(count)), False, False, 0)
-        pass_row = add_class(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18), "data-row")
+        pass_row = add_class(
+            Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18), "data-row"
+        )
         pass_row.pack_start(label("Overwrite passes", "data-label"), False, False, 0)
         self.overview_passes = label(str(self.pass_count), "data-value", True)
         self.overview_passes.set_xalign(1)
         pass_row.pack_end(self.overview_passes, True, True, 0)
         queue.pack_start(pass_row, False, False, 0)
-        queue.pack_start(label("Add and review targets in Marked paths. Unmarking removes a queue entry and leaves the file in place.", "subtitle"), False, False, 0)
+        queue.pack_start(
+            label(
+                "Add and review targets in Marked paths. Unmarking removes a queue entry and leaves the file in place.",
+                "subtitle",
+            ),
+            False,
+            False,
+            0,
+        )
         self.overview.pack_start(queue, False, False, 0)
         limitations = section("Storage limits")
-        limitations.pack_start(label(STORAGE_LIMITATIONS, "data-label"), False, False, 0)
+        limitations.pack_start(
+            label(STORAGE_LIMITATIONS, "data-label"), False, False, 0
+        )
         self.overview.pack_start(limitations, False, False, 0)
         for target in report["targets"]:
-            self.mark_model.append([target["path"], target["kind"], target["state"], target["detail"]])
+            self.mark_model.append(
+                [target["path"], target["kind"], target["state"], target["detail"]]
+            )
         if report.get("last_run"):
             title, status, detail = execution_summary(report["last_run"])
             previous = section("Last execution")
@@ -161,7 +228,9 @@ class ShredderWindow(ReportWindow):
             for result in report["last_run"]["results"]:
                 if result[0] == "error":
                     text = f"{result[1]}: {result[2] if len(result) > 2 else 'Overwrite or deletion failed'}"
-                    previous.pack_start(finding_row(text, "bad", "Failed"), False, False, 0)
+                    previous.pack_start(
+                        finding_row(text, "bad", "Failed"), False, False, 0
+                    )
             self.overview.pack_start(previous, False, False, 0)
         self.update_controls()
         self.overview.show_all()
@@ -205,13 +274,19 @@ class ShredderWindow(ReportWindow):
             transient_for=self,
             action=action,
         )
-        dialog.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Mark", Gtk.ResponseType.OK)
+        dialog.add_buttons(
+            "Cancel", Gtk.ResponseType.CANCEL, "Mark", Gtk.ResponseType.OK
+        )
         dialog.set_select_multiple(True)
         response = dialog.run()
         paths = dialog.get_filenames() if response == Gtk.ResponseType.OK else []
         dialog.destroy()
         if paths:
-            self.run_action(lambda: self.mark_paths(paths), self.on_queue_update, "Updating marked paths")
+            self.run_action(
+                lambda: self.mark_paths(paths),
+                self.on_queue_update,
+                "Updating marked paths",
+            )
 
     def mark_paths(self, paths):
         errors = []
@@ -220,14 +295,24 @@ class ShredderWindow(ReportWindow):
             if sh.mark(path):
                 marked += 1
             else:
-                errors.append(f"{path}: Could not mark the path; it may be missing, protected, already marked, or the queue could not be saved")
-        return {"ok": not errors, "message": f"Marked {marked} target(s)", "errors": errors}
+                errors.append(
+                    f"{path}: Could not mark the path; it may be missing, protected, already marked, or the queue could not be saved"
+                )
+        return {
+            "ok": not errors,
+            "message": f"Marked {marked} target(s)",
+            "errors": errors,
+        }
 
     def on_unmark_selected(self, button):
         paths = self.selected_marks()
         if self.running or self.overwriting or not paths:
             return
-        self.run_action(lambda: self.unmark_paths(paths), self.on_queue_update, "Removing selected marks")
+        self.run_action(
+            lambda: self.unmark_paths(paths),
+            self.on_queue_update,
+            "Removing selected marks",
+        )
 
     def unmark_paths(self, paths):
         errors = []
@@ -236,8 +321,14 @@ class ShredderWindow(ReportWindow):
             if sh.unmark(path):
                 removed += 1
             else:
-                errors.append(f"{path}: The mark could not be removed; it may have changed or the queue could not be saved")
-        return {"ok": not errors, "message": f"Unmarked {removed} target(s)", "errors": errors}
+                errors.append(
+                    f"{path}: The mark could not be removed; it may have changed or the queue could not be saved"
+                )
+        return {
+            "ok": not errors,
+            "message": f"Unmarked {removed} target(s)",
+            "errors": errors,
+        }
 
     def on_unmark_all(self, button):
         if self.running or self.overwriting or not self.current_marks:
@@ -251,12 +342,18 @@ class ShredderWindow(ReportWindow):
 
     def on_queue_update(self, outcome):
         if not outcome["ok"]:
-            errors = outcome.get("errors") or [outcome.get("error") or "The marked queue could not be updated"]
-            self.show_message("Marked paths update failed", "\n".join(errors), error=True)
+            errors = outcome.get("errors") or [
+                outcome.get("error") or "The marked queue could not be updated"
+            ]
+            self.show_message(
+                "Marked paths update failed", "\n".join(errors), error=True
+            )
         self.refresh()
 
     def confirm_targets(self, targets, passes):
-        dialog = Gtk.Dialog(title="Confirm overwrite and deletion", transient_for=self, modal=True)
+        dialog = Gtk.Dialog(
+            title="Confirm overwrite and deletion", transient_for=self, modal=True
+        )
         dialog.set_default_size(720, 520)
         dialog.set_resizable(True)
         dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
@@ -266,8 +363,24 @@ class ShredderWindow(ReportWindow):
         content = dialog.get_content_area()
         content.set_border_width(18)
         content.set_spacing(12)
-        content.pack_start(label(f"Destroy {len(targets)} marked target(s) using {passes} overwrite pass(es)?", "section-title"), False, False, 0)
-        content.pack_start(label("This operation overwrites file contents and deletes the listed paths. Folders include their contents. Symbolic link targets are not followed.", "data-label"), False, False, 0)
+        content.pack_start(
+            label(
+                f"Destroy {len(targets)} marked target(s) using {passes} overwrite pass(es)?",
+                "section-title",
+            ),
+            False,
+            False,
+            0,
+        )
+        content.pack_start(
+            label(
+                "This operation overwrites file contents and deletes the listed paths. Folders include their contents. Symbolic link targets are not followed.",
+                "data-label",
+            ),
+            False,
+            False,
+            0,
+        )
         target_view = Gtk.TextView()
         target_view.set_editable(False)
         target_view.set_cursor_visible(False)
@@ -288,7 +401,10 @@ class ShredderWindow(ReportWindow):
             return
         targets = sh.list_marks()
         if targets != self.current_marks:
-            self.show_message("Marked targets changed", "Review the updated marked queue before confirming overwrite and deletion.")
+            self.show_message(
+                "Marked targets changed",
+                "Review the updated marked queue before confirming overwrite and deletion.",
+            )
             self.refresh()
             return
         if not targets:
@@ -359,23 +475,44 @@ class ShredderWindow(ReportWindow):
             self.current_target.set_text(detail)
             self.progress_bar.set_fraction(1)
             self.progress_bar.set_text("Job finished")
-            states = {"shredded": "Completed", "shredded_dir": "Completed", "missing": "Missing", "error": "Failed"}
+            states = {
+                "shredded": "Completed",
+                "shredded_dir": "Completed",
+                "missing": "Missing",
+                "error": "Failed",
+            }
             for result in outcome["results"]:
-                detail = result[2] if len(result) > 2 else "Overwrite and deletion finished" if result[0] in ("shredded", "shredded_dir") else "Path no longer exists"
-                self.result_model.append([states.get(result[0], result[0]), result[1], detail])
+                detail = (
+                    result[2]
+                    if len(result) > 2
+                    else (
+                        "Overwrite and deletion finished"
+                        if result[0] in ("shredded", "shredded_dir")
+                        else "Path no longer exists"
+                    )
+                )
+                self.result_model.append(
+                    [states.get(result[0], result[0]), result[1], detail]
+                )
             self.refresh()
         application.release()
         return GLib.SOURCE_REMOVE
 
     def on_delete_event(self, window, event):
         if self.overwriting:
-            self.show_message("Overwrite job is still running", "Wait for the execution report before closing this window. The current overwrite job cannot be safely cancelled.")
+            self.show_message(
+                "Overwrite job is still running",
+                "Wait for the execution report before closing this window. The current overwrite job cannot be safely cancelled.",
+            )
             return True
         return False
 
     def close(self):
         if self.overwriting:
-            self.show_message("Overwrite job is still running", "Wait for the execution report before closing this window. The current overwrite job cannot be safely cancelled.")
+            self.show_message(
+                "Overwrite job is still running",
+                "Wait for the execution report before closing this window. The current overwrite job cannot be safely cancelled.",
+            )
             return
         super().close()
 

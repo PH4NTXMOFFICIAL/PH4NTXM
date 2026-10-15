@@ -151,7 +151,9 @@ def collect_report(progress=None):
             error = outcome.get("error") or "No error details were returned."
             unavailable.append(f"{names[name]} could not be collected: {error}")
     for missing in route_data["data"].get("unavailable", []):
-        family = {"ipv4": "IPv4", "ipv6": "IPv6"}.get(missing["family"], missing["family"])
+        family = {"ipv4": "IPv4", "ipv6": "IPv6"}.get(
+            missing["family"], missing["family"]
+        )
         error = missing.get("error") or "No error details were returned."
         unavailable.append(f"{family} route evidence is unavailable: {error}")
     if namespace["ok"] and not namespace["data"].get("available"):
@@ -200,10 +202,14 @@ def plain_report(report):
         lines.append("No default routes detected")
     lines.extend(["", "DNS"])
     lines.extend(report["dns_data"]["data"].get("servers", []))
-    lines.append(f"Backend: {report['dns_backend']['data'].get('backend', 'Unavailable')}")
+    lines.append(
+        f"Backend: {report['dns_backend']['data'].get('backend', 'Unavailable')}"
+    )
     lines.extend(["", "IPv6 and network namespace"])
     if report["ipv6"]["ok"]:
-        lines.append(f"IPv6: {'Enabled' if report['ipv6']['data']['enabled'] else 'Disabled'}")
+        lines.append(
+            f"IPv6: {'Enabled' if report['ipv6']['data']['enabled'] else 'Disabled'}"
+        )
     else:
         lines.append("IPv6: Unavailable")
     namespace = report["namespace"]["data"]

@@ -55,12 +55,14 @@ def browser_report_text(report):
     ]
     for row in report["rows"]:
         state, _ = BROWSER_STATUSES[row["status"]]
-        lines.extend((
-            "",
-            f"{row['label']}: {state}",
-            f"Expected: {browser_value(row['expected'])}",
-            f"Observed: {browser_value(row['observed'])}",
-        ))
+        lines.extend(
+            (
+                "",
+                f"{row['label']}: {state}",
+                f"Expected: {browser_value(row['expected'])}",
+                f"Observed: {browser_value(row['observed'])}",
+            )
+        )
         if row["detail"]:
             lines.append(row["detail"])
     return "\n".join(lines)
@@ -233,17 +235,25 @@ class HealthWindow(ReportWindow):
         self.browser_sorted = Gtk.TreeModelSort(model=self.browser_rows)
         view = self.table(
             self.browser_sorted,
-            (("Check", 0, 165), ("Expected", 1, 220),
-             ("Observed", 2, 220), ("Result", 3, 110)),
+            (
+                ("Check", 0, 165),
+                ("Expected", 1, 220),
+                ("Observed", 2, 220),
+                ("Result", 3, 110),
+            ),
         )
         view.get_selection().connect("changed", self.select_browser_row)
         page.pack_start(scroll(view), True, True, 0)
-        self.browser_details = label("Select a result for its full explanation", "data-value", True)
+        self.browser_details = label(
+            "Select a result for its full explanation", "data-value", True
+        )
         details = scroll(self.browser_details)
         details.set_min_content_height(72)
         details.set_max_content_height(130)
         page.pack_start(details, False, True, 0)
-        self.browser_scope = label("Browser checks are collected separately from the Health score.", "subtitle")
+        self.browser_scope = label(
+            "Browser checks are collected separately from the Health score.", "subtitle"
+        )
         page.pack_start(self.browser_scope, False, False, 0)
         self.stack.add_titled(page, "browser", "Browser Check")
         self.update_browser_controls()
@@ -254,15 +264,19 @@ class HealthWindow(ReportWindow):
         self.browser_start.set_label("Check Tor Browser" if tor else "Check Firefox")
         self.browser_intro.set_text(
             "Inspect Tor Browser verification, protection and private session evidence locally."
-            if tor else
-            "Open a local Firefox tab and compare browser-visible values with the session persona."
+            if tor
+            else "Open a local Firefox tab and compare browser-visible values with the session persona."
         )
         self.browser_start.set_sensitive(
-            not self.closed and not self.running and not self.browser_busy
+            not self.closed
+            and not self.running
+            and not self.browser_busy
             and mode in ("linux", "windows", "lonewolf")
         )
         self.browser_cancel.set_sensitive(self.browser_busy)
-        self.browser_copy.set_sensitive(self.browser_report is not None and not self.browser_busy)
+        self.browser_copy.set_sensitive(
+            self.browser_report is not None and not self.browser_busy
+        )
 
     def set_busy(self, busy, phase=None):
         super().set_busy(busy, phase)
@@ -292,11 +306,15 @@ class HealthWindow(ReportWindow):
         self.browser_rows.clear()
         self.browser_details.set_text("Results will appear after the check")
         self.browser_status.set_text(
-            "Checking Tor Browser locally…" if mode == "lonewolf" else "Preparing the local Firefox check…"
+            "Checking Tor Browser locally…"
+            if mode == "lonewolf"
+            else "Preparing the local Firefox check…"
         )
         set_status(self.browser_status, "info")
         self.update_browser_controls()
-        threading.Thread(target=self.prepare_browser_check, args=(generation, mode), daemon=True).start()
+        threading.Thread(
+            target=self.prepare_browser_check, args=(generation, mode), daemon=True
+        ).start()
 
     def prepare_browser_check(self, generation, mode):
         session = None
@@ -325,7 +343,9 @@ class HealthWindow(ReportWindow):
         try:
             process = subprocess.Popen(
                 ["/usr/bin/firefox-esr", "-new-tab", url],
-                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
         except OSError as error:
             return self.finish_browser_check(generation, None, str(error))
@@ -375,17 +395,28 @@ class HealthWindow(ReportWindow):
             self.browser_report = report
             for row in report["rows"]:
                 state, _ = BROWSER_STATUSES[row["status"]]
-                self.browser_rows.append((
-                    row["label"], browser_value(row["expected"]),
-                    browser_value(row["observed"]), state, row["detail"],
-                ))
+                self.browser_rows.append(
+                    (
+                        row["label"],
+                        browser_value(row["expected"]),
+                        browser_value(row["observed"]),
+                        state,
+                        row["detail"],
+                    )
+                )
             differences = sum(row["status"] == "different" for row in report["rows"])
             unavailable = sum(row["status"] == "unavailable" for row in report["rows"])
-            stamp = datetime.fromisoformat(report["collected_at"]).astimezone().strftime("%H:%M:%S")
+            stamp = (
+                datetime.fromisoformat(report["collected_at"])
+                .astimezone()
+                .strftime("%H:%M:%S")
+            )
             self.browser_status.set_text(
                 f"Checked {stamp} · {differences} different · {unavailable} unavailable"
             )
-            set_status(self.browser_status, "warn" if differences or unavailable else "good")
+            set_status(
+                self.browser_status, "warn" if differences or unavailable else "good"
+            )
             self.browser_scope.set_text(report["scope"])
         self.update_browser_controls()
         return GLib.SOURCE_REMOVE
@@ -402,6 +433,7 @@ class HealthWindow(ReportWindow):
     def copy_browser_report(self, _):
         if self.browser_report is not None:
             from gi.repository import Gdk
+
             Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(
                 browser_report_text(self.browser_report), -1
             )
@@ -484,18 +516,13 @@ class HealthWindow(ReportWindow):
                 self.rows.append(
                     (group["title"], row["label"], row["value"], state, severity)
                 )
-                if (
-                    group["title"] != "Final Assessment"
-                    and severity in ("warn", "bad")
-                ):
+                if group["title"] != "Final Assessment" and severity in ("warn", "bad"):
                     findings.append((row, state, severity))
             if findings:
                 box = section(group["title"])
                 for row, state, severity in findings:
                     box.pack_start(
-                        finding_row(
-                            f"{row['label']}: {row['value']}", severity, state
-                        ),
+                        finding_row(f"{row['label']}: {row['value']}", severity, state),
                         False,
                         False,
                         0,

@@ -3,7 +3,8 @@
 # Licensed under the GNU General Public License v3.0.
 
 import sys
-sys.path.insert(0, '/usr/lib/ph4ntxm')
+
+sys.path.insert(0, "/usr/lib/ph4ntxm")
 from usb_guard import entry
 
 raise SystemExit(entry())

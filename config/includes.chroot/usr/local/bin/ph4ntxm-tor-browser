@@ -154,7 +154,7 @@ cleanup() {
         for signal in TERM KILL; do
             attempts=50
             [[ "$signal" != KILL ]] || attempts=10
-            for ((attempt=0; attempt<attempts; attempt++)); do
+            for ((attempt = 0; attempt < attempts; attempt++)); do
                 browser_running || break 2
                 kill -s "$signal" -- "-$BROWSER_PID" "$BROWSER_PID" 2>/dev/null || true
                 sleep 0.1

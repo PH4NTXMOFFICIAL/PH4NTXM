@@ -222,11 +222,16 @@ def read_sysctl(key):
     output = run([SYSCTL, "-n", key])
 
     if not output["ok"] and key == "net.core.bpf_jit_harden":
-        output = run([
-            "/usr/bin/sudo", "-n", "--",
-            "/usr/local/sbin/ph4ntxm-session-status", "read",
-            "/proc/sys/net/core/bpf_jit_harden",
-        ])
+        output = run(
+            [
+                "/usr/bin/sudo",
+                "-n",
+                "--",
+                "/usr/local/sbin/ph4ntxm-session-status",
+                "read",
+                "/proc/sys/net/core/bpf_jit_harden",
+            ]
+        )
 
     if not output["ok"]:
         return None

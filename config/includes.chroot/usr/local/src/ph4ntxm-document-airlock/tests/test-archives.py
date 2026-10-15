@@ -28,7 +28,14 @@ MISSING = object()
 
 
 def entry(name="notes.txt", size=4, kind="file", reason="", encrypted=False):
-    return {"index": 0, "name": name, "size": size, "kind": kind, "reason": reason, "encrypted": encrypted}
+    return {
+        "index": 0,
+        "name": name,
+        "size": size,
+        "kind": kind,
+        "reason": reason,
+        "encrypted": encrypted,
+    }
 
 
 def listing(entries=None, format="ZIP"):
@@ -45,7 +52,12 @@ def listing_stream(value=MISSING):
 
 
 def data_stream(chunks=(b"text",)):
-    return archives.DATA_MAGIC + b"".join(struct.pack("!I", len(chunk)) + chunk for chunk in chunks) + struct.pack("!I", 0) + archives.END_MAGIC
+    return (
+        archives.DATA_MAGIC
+        + b"".join(struct.pack("!I", len(chunk)) + chunk for chunk in chunks)
+        + struct.pack("!I", 0)
+        + archives.END_MAGIC
+    )
 
 
 def command(response, exit_code=0, wait_ack=True):
@@ -57,7 +69,16 @@ def command(response, exit_code=0, wait_ack=True):
         "sys.stdout.buffer.write(%r); sys.stdout.buffer.flush(); "
         "%s"
         "sys.exit(%d)"
-    ) % (archives.INPUT_MAGIC, response, "assert sys.stdin.buffer.read(8)==%r; " % archives.ACK_MAGIC if wait_ack else "", exit_code)
+    ) % (
+        archives.INPUT_MAGIC,
+        response,
+        (
+            "assert sys.stdin.buffer.read(8)==%r; " % archives.ACK_MAGIC
+            if wait_ack
+            else ""
+        ),
+        exit_code,
+    )
     return [sys.executable, "-c", code]
 
 
@@ -66,7 +87,9 @@ class ArchiveTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
         self.sessions = []
-        self.memory = mock.patch.object(airlock, "available_memory_mib", return_value=4096)
+        self.memory = mock.patch.object(
+            airlock, "available_memory_mib", return_value=4096
+        )
         self.storage = mock.patch.object(archives, "check_storage")
         self.memory.start()
         self.storage.start()
@@ -88,7 +111,9 @@ class ArchiveTests(unittest.TestCase):
 
     def receive_listing(self, value):
         session = self.session()
-        return session.receive_listing(io.BytesIO(listing_data(value)), archives.LIST_MAGIC)
+        return session.receive_listing(
+            io.BytesIO(listing_data(value)), archives.LIST_MAGIC
+        )
 
     def test_snapshot_refuses_to_replace_or_remove_previous_copy(self):
         session = self.session()
@@ -106,48 +131,93 @@ class ArchiveTests(unittest.TestCase):
         self.assertEqual(self.receive_listing(listing([]))["entries"], [])
 
     def test_listing_rejects_malformed_fields(self):
-        values = [None, [], {"format": "ZIP"}, listing(format="ISO"), listing(format=[]), listing(entries={}), {**listing(), "extra": True}]
+        values = [
+            None,
+            [],
+            {"format": "ZIP"},
+            listing(format="ISO"),
+            listing(format=[]),
+            listing(entries={}),
+            {**listing(), "extra": True},
+        ]
         alterations = (
-            {"index": True}, {"index": 1}, {"index": -1}, {"name": 1},
-            {"size": True}, {"size": -1}, {"size": 2 ** 63}, {"size": "4"},
-            {"kind": "symlink"}, {"kind": []}, {"reason": None},
-            {"reason": "x" * 161}, {"reason": "line\nfeed"},
+            {"index": True},
+            {"index": 1},
+            {"index": -1},
+            {"name": 1},
+            {"size": True},
+            {"size": -1},
+            {"size": 2**63},
+            {"size": "4"},
+            {"kind": "symlink"},
+            {"kind": []},
+            {"reason": None},
+            {"reason": "x" * 161},
+            {"reason": "line\nfeed"},
             {"kind": "blocked", "reason": ""},
         )
-        values.extend(listing([{**entry(), **alteration}]) for alteration in alterations)
+        values.extend(
+            listing([{**entry(), **alteration}]) for alteration in alterations
+        )
         malformed = entry()
         del malformed["reason"]
-        values.extend((listing([malformed]), listing([{**entry(), "extra": 1}]), listing([[]])))
+        values.extend(
+            (listing([malformed]), listing([{**entry(), "extra": 1}]), listing([[]]))
+        )
         for value in values:
             with self.subTest(value=value):
                 with self.assertRaises(archives.ArchiveError):
                     self.receive_listing(value)
 
     def test_listing_rejects_unsafe_names_and_excess_entries(self):
-        names = ("", "/absolute", "../escape", "folder/../escape", "./file", "folder//file", "C:drive.txt", "a\\b", "nul\x00.txt", "line\n.txt", "bidi\u202e.txt", "x" * 1025, "é" * 513, "\ud800")
+        names = (
+            "",
+            "/absolute",
+            "../escape",
+            "folder/../escape",
+            "./file",
+            "folder//file",
+            "C:drive.txt",
+            "a\\b",
+            "nul\x00.txt",
+            "line\n.txt",
+            "bidi\u202e.txt",
+            "x" * 1025,
+            "é" * 513,
+            "\ud800",
+        )
         for name in names:
             with self.subTest(name=repr(name)):
                 with self.assertRaises(archives.ArchiveError):
                     self.receive_listing(listing([entry(name)]))
-        values = [{**entry(), "index": index} for index in range(archives.MAX_ENTRIES + 1)]
+        values = [
+            {**entry(), "index": index} for index in range(archives.MAX_ENTRIES + 1)
+        ]
         with self.assertRaisesRegex(archives.ArchiveError, "entry limit"):
             self.receive_listing(listing(values))
 
     def test_listing_requires_bounded_complete_json(self):
         session = self.session()
-        for size in (0, archives.MAX_METADATA + 1, 2 ** 32 - 1):
+        for size in (0, archives.MAX_METADATA + 1, 2**32 - 1):
             with self.subTest(size=size):
                 with self.assertRaises(archives.ArchiveError):
-                    session.receive_listing(io.BytesIO(struct.pack("!I", size)), archives.LIST_MAGIC)
+                    session.receive_listing(
+                        io.BytesIO(struct.pack("!I", size)), archives.LIST_MAGIC
+                    )
         for payload in (b"\xff", b"{broken", b"{}{}", b"true"):
             with self.subTest(payload=payload):
                 with self.assertRaises(archives.ArchiveError):
-                    session.receive_listing(io.BytesIO(struct.pack("!I", len(payload)) + payload), archives.LIST_MAGIC)
+                    session.receive_listing(
+                        io.BytesIO(struct.pack("!I", len(payload)) + payload),
+                        archives.LIST_MAGIC,
+                    )
         data = listing_data()
         for position in range(len(data)):
             with self.subTest(position=position):
                 with self.assertRaises(archives.ArchiveError):
-                    session.receive_listing(io.BytesIO(data[:position]), archives.LIST_MAGIC)
+                    session.receive_listing(
+                        io.BytesIO(data[:position]), archives.LIST_MAGIC
+                    )
         with self.assertRaises(archives.ArchiveError):
             session.receive_listing(io.BytesIO(data), archives.DATA_MAGIC)
 
@@ -226,27 +296,50 @@ class ArchiveTests(unittest.TestCase):
 
     def test_ram_guards_read_actual_memory_and_reject_inventory_environment(self):
         with mock.patch.object(airlock, "available_memory_mib", REAL_AVAILABLE_MEMORY):
-            with mock.patch.dict(os.environ, {"PH4_REPORTED_RAM": "64", "PH4_USABLE_RAM_BYTES": str(64 * 1024 ** 3)}, clear=True):
-                with mock.patch.object(airlock.Path, "read_text", return_value="MemTotal: 999999999 kB\nMemAvailable: 126976 kB\n") as read:
+            with mock.patch.dict(
+                os.environ,
+                {"PH4_REPORTED_RAM": "64", "PH4_USABLE_RAM_BYTES": str(64 * 1024**3)},
+                clear=True,
+            ):
+                with mock.patch.object(
+                    airlock.Path,
+                    "read_text",
+                    return_value="MemTotal: 999999999 kB\nMemAvailable: 126976 kB\n",
+                ) as read:
                     self.assertEqual(archives.available_memory_mib(), 124)
                     read.assert_called_once_with(encoding="ascii")
-            with mock.patch.dict(os.environ, {"PH4_INVENTORY_MEMINFO": "persona"}, clear=True):
+            with mock.patch.dict(
+                os.environ, {"PH4_INVENTORY_MEMINFO": "persona"}, clear=True
+            ):
                 with mock.patch.object(airlock.Path, "read_text") as read:
-                    with self.assertRaisesRegex(archives.ArchiveError, "Actual available RAM"):
+                    with self.assertRaisesRegex(
+                        archives.ArchiveError, "Actual available RAM"
+                    ):
                         archives.available_memory_mib()
                     read.assert_not_called()
-        minimum = archives.GUEST_RAM_MIB + archives.QEMU_RESERVE_MIB + archives.RESERVE_MIB + 1
+        minimum = (
+            archives.GUEST_RAM_MIB
+            + archives.QEMU_RESERVE_MIB
+            + archives.RESERVE_MIB
+            + 1
+        )
         with mock.patch.object(airlock, "available_memory_mib", return_value=minimum):
             archives.check_memory(1)
-        with mock.patch.object(airlock, "available_memory_mib", return_value=minimum - 1):
+        with mock.patch.object(
+            airlock, "available_memory_mib", return_value=minimum - 1
+        ):
             with self.assertRaisesRegex(archives.ArchiveError, "available RAM"):
                 archives.check_memory(1)
 
     def test_storage_guard_keeps_ram_workspace_reserve(self):
-        needed = 5 + 16 * 1024 ** 2
+        needed = 5 + 16 * 1024**2
         for available, allowed in ((needed, True), (needed - 1, False)):
             with self.subTest(available=available):
-                with mock.patch.object(archives.os, "statvfs", return_value=SimpleNamespace(f_bavail=available, f_frsize=1)):
+                with mock.patch.object(
+                    archives.os,
+                    "statvfs",
+                    return_value=SimpleNamespace(f_bavail=available, f_frsize=1),
+                ):
                     if allowed:
                         REAL_CHECK_STORAGE(self.root, 5)
                     else:
@@ -254,8 +347,14 @@ class ArchiveTests(unittest.TestCase):
                             REAL_CHECK_STORAGE(self.root, 5)
 
     def test_ready_preserves_runtime_failure_and_checks_resource_guards(self):
-        with mock.patch.object(airlock, "check_ready", side_effect=airlock.AirlockError("Document Airlock KVM unavailable")):
-            with self.assertRaisesRegex(archives.ArchiveError, "Archive Airlock KVM unavailable"):
+        with mock.patch.object(
+            airlock,
+            "check_ready",
+            side_effect=airlock.AirlockError("Document Airlock KVM unavailable"),
+        ):
+            with self.assertRaisesRegex(
+                archives.ArchiveError, "Archive Airlock KVM unavailable"
+            ):
                 archives.check_ready()
         with mock.patch.object(airlock, "check_ready", return_value=self.root) as ready:
             self.assertEqual(archives.check_ready(), self.root)
@@ -277,7 +376,12 @@ class ArchiveTests(unittest.TestCase):
 
         with mock.patch.object(archives.subprocess, "Popen", side_effect=popen):
             with mock.patch.object(archives.os, "killpg", wraps=os.killpg) as kill:
-                result = session.request(archives.LIST_INDEX, session.receive_listing, archives.MAX_METADATA, command(listing_stream()))
+                result = session.request(
+                    archives.LIST_INDEX,
+                    session.receive_listing,
+                    archives.MAX_METADATA,
+                    command(listing_stream()),
+                )
                 kill.assert_not_called()
         self.assertEqual(result, listing())
         self.assertEqual(processes[0].returncode, 0)
@@ -296,7 +400,10 @@ class ArchiveTests(unittest.TestCase):
         cases = (
             ([entry(size=1)], data_stream((b"12",))),
             ([entry(size=5)], data_stream((b"1234",))),
-            ([entry(size=None)], archives.DATA_MAGIC + struct.pack("!I", archives.CHUNK_SIZE + 1)),
+            (
+                [entry(size=None)],
+                archives.DATA_MAGIC + struct.pack("!I", archives.CHUNK_SIZE + 1),
+            ),
             ([entry(size=None)], data_stream(())),
         )
         for entries, response in cases:
@@ -331,7 +438,11 @@ class ArchiveTests(unittest.TestCase):
         for value in values:
             with self.subTest(entry=value):
                 session = self.session([value])
-                with mock.patch.object(archives.subprocess, "Popen", side_effect=AssertionError("A blocked entry started a reader")) as popen:
+                with mock.patch.object(
+                    archives.subprocess,
+                    "Popen",
+                    side_effect=AssertionError("A blocked entry started a reader"),
+                ) as popen:
                     with self.assertRaises(archives.ArchiveError):
                         session.extract(0)
                     popen.assert_not_called()
@@ -340,7 +451,13 @@ class ArchiveTests(unittest.TestCase):
     def test_truncated_wrong_ending_trailing_and_failed_process_are_rejected(self):
         response = data_stream()
         cases = [response[:position] for position in (0, 7, 10, 14, len(response) - 1)]
-        cases.extend((archives.LIST_MAGIC + response[8:], response[:-8] + b"WRONGEND", response + b"trailing"))
+        cases.extend(
+            (
+                archives.LIST_MAGIC + response[8:],
+                response[:-8] + b"WRONGEND",
+                response + b"trailing",
+            )
+        )
         for data in cases:
             with self.subTest(data=data):
                 session = self.session()
@@ -360,17 +477,30 @@ class ArchiveTests(unittest.TestCase):
         for family in ("RAR", "7z", "TAR"):
             with self.subTest(family=family):
                 with self.assertRaises(archives.ArchiveError):
-                    self.receive_listing(listing([entry(encrypted=True)],family))
-        self.assertEqual(self.receive_listing(listing([entry(encrypted=True)])), listing([entry(encrypted=True)]))
+                    self.receive_listing(listing([entry(encrypted=True)], family))
+        self.assertEqual(
+            self.receive_listing(listing([entry(encrypted=True)])),
+            listing([entry(encrypted=True)]),
+        )
 
     def test_password_error_discards_view_and_clears_cached_secret(self):
-        for code, error in (("password_required",archives.PasswordRequired), ("password_incorrect",archives.PasswordIncorrect)):
+        for code, error in (
+            ("password_required", archives.PasswordRequired),
+            ("password_incorrect", archives.PasswordIncorrect),
+        ):
             session = self.session([entry(encrypted=True)])
             session.set_password("secret")
-            payload = json.dumps({"code":code,"error":"The password was not accepted."}).encode()
-            response = archives.ERROR_MAGIC + struct.pack("!I",len(payload)) + payload + archives.END_MAGIC
+            payload = json.dumps(
+                {"code": code, "error": "The password was not accepted."}
+            ).encode()
+            response = (
+                archives.ERROR_MAGIC
+                + struct.pack("!I", len(payload))
+                + payload
+                + archives.END_MAGIC
+            )
             with self.assertRaises(error):
-                session.extract(0,command(response))
+                session.extract(0, command(response))
             self.assertFalse(session.password)
             self.assertIsNone(session.view)
             self.assertEqual(list(session.directory.glob("view-*")), [])
@@ -379,23 +509,40 @@ class ArchiveTests(unittest.TestCase):
         session = self.session()
         session.set_password("κωδικός")
         old = session.password
-        self.assertEqual(bytes(old),"κωδικός".encode())
+        self.assertEqual(bytes(old), "κωδικός".encode())
         session.set_password("next")
-        self.assertEqual(bytes(session.password),b"next")
+        self.assertEqual(bytes(session.password), b"next")
         session.close()
         self.assertFalse(old)
         self.assertFalse(session.password)
 
     def test_isolated_error_response_is_strict_and_never_opens_a_view(self):
-        payload = json.dumps({"code": "archive", "error": "Archive is encrypted"}).encode()
-        response = archives.ERROR_MAGIC + struct.pack("!I", len(payload)) + payload + archives.END_MAGIC
+        payload = json.dumps(
+            {"code": "archive", "error": "Archive is encrypted"}
+        ).encode()
+        response = (
+            archives.ERROR_MAGIC
+            + struct.pack("!I", len(payload))
+            + payload
+            + archives.END_MAGIC
+        )
         session = self.session()
         with self.assertRaisesRegex(archives.ArchiveError, "encrypted"):
             session.extract(0, command(response))
         self.assertIsNone(session.view)
-        for payload in (b"{}", b'{"error":1}', b'{"error":"bad\\nerror"}', b'{"error":"safe","extra":1}'):
+        for payload in (
+            b"{}",
+            b'{"error":1}',
+            b'{"error":"bad\\nerror"}',
+            b'{"error":"safe","extra":1}',
+        ):
             session = self.session()
-            response = archives.ERROR_MAGIC + struct.pack("!I", len(payload)) + payload + archives.END_MAGIC
+            response = (
+                archives.ERROR_MAGIC
+                + struct.pack("!I", len(payload))
+                + payload
+                + archives.END_MAGIC
+            )
             with self.assertRaises(archives.ArchiveError):
                 session.extract(0, command(response))
 
@@ -432,9 +579,16 @@ class ArchiveTests(unittest.TestCase):
         try:
             with mock.patch.object(archives.subprocess, "Popen", side_effect=popen):
                 with mock.patch.object(archives, "TIMEOUT", timeout):
-                    with mock.patch.object(airlock, "available_memory_mib", side_effect=available):
+                    with mock.patch.object(
+                        airlock, "available_memory_mib", side_effect=available
+                    ):
                         with self.assertRaises(archives.ArchiveError) as caught:
-                            session.request(archives.LIST_INDEX, session.receive_listing, 1, [sys.executable, "-c", "import time; time.sleep(30)"])
+                            session.request(
+                                archives.LIST_INDEX,
+                                session.receive_listing,
+                                1,
+                                [sys.executable, "-c", "import time; time.sleep(30)"],
+                            )
             self.assertTrue(started.is_set())
             self.assertLess(time.monotonic() - start, 4)
             self.assertIsNotNone(processes[0].returncode)
@@ -449,7 +603,12 @@ class ArchiveTests(unittest.TestCase):
                 processes[0].wait()
 
     def test_cancellation_timeout_and_live_ram_guards_kill_and_reap(self):
-        for mode, message in (("cancel", "cancelled"), ("timeout", "time limit"), ("ram", "RAM became too low"), ("unverified", "could not be verified")):
+        for mode, message in (
+            ("cancel", "cancelled"),
+            ("timeout", "time limit"),
+            ("ram", "RAM became too low"),
+            ("unverified", "could not be verified"),
+        ):
             with self.subTest(mode=mode):
                 self.assertIn(message, self.stopped_request(mode))
 
@@ -461,9 +620,22 @@ class ArchiveTests(unittest.TestCase):
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             with mock.patch.object(archives.subprocess, "Popen") as popen:
                 with self.assertRaisesRegex(archives.ArchiveError, "already running"):
-                    session.request(archives.LIST_INDEX, session.receive_listing, 1, command(listing_stream()))
+                    session.request(
+                        archives.LIST_INDEX,
+                        session.receive_listing,
+                        1,
+                        command(listing_stream()),
+                    )
                 popen.assert_not_called()
-        self.assertEqual(session.request(archives.LIST_INDEX, session.receive_listing, 1, command(listing_stream())), listing())
+        self.assertEqual(
+            session.request(
+                archives.LIST_INDEX,
+                session.receive_listing,
+                1,
+                command(listing_stream()),
+            ),
+            listing(),
+        )
 
     def test_untrusted_lock_or_snapshot_cannot_start_a_reader(self):
         session = self.session()
@@ -472,17 +644,31 @@ class ArchiveTests(unittest.TestCase):
         lock_path.chmod(0o644)
         with mock.patch.object(archives.subprocess, "Popen") as popen:
             with self.assertRaisesRegex(archives.ArchiveError, "lock is not trusted"):
-                session.request(archives.LIST_INDEX, session.receive_listing, 1, command(listing_stream()))
+                session.request(
+                    archives.LIST_INDEX,
+                    session.receive_listing,
+                    1,
+                    command(listing_stream()),
+                )
             popen.assert_not_called()
         lock_path.chmod(0o600)
         session.source.chmod(0o644)
         with mock.patch.object(archives.subprocess, "Popen") as popen:
             with self.assertRaisesRegex(archives.ArchiveError, "copy is not trusted"):
-                session.request(archives.LIST_INDEX, session.receive_listing, 1, command(listing_stream()))
+                session.request(
+                    archives.LIST_INDEX,
+                    session.receive_listing,
+                    1,
+                    command(listing_stream()),
+                )
             popen.assert_not_called()
 
     def test_text_preview_rejects_binary_and_invalid_utf8_and_cleans_view(self):
-        for data, allowed in ((b"\xef\xbb\xbfhello", True), (b"binary\x00data", False), (b"\xff", False)):
+        for data, allowed in (
+            (b"\xef\xbb\xbfhello", True),
+            (b"binary\x00data", False),
+            (b"\xff", False),
+        ):
             session = self.session([entry(size=len(data))])
             output = session.directory / "preview.txt"
             output.write_bytes(data)

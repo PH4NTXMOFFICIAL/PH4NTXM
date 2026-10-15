@@ -15,10 +15,23 @@ import time
 
 import airlock
 from archive_protocol import (
-    ACK_MAGIC, ARCHIVE_SUFFIXES, CHUNK_SIZE, DATA_MAGIC,
-    END_MAGIC, ERROR_MAGIC, GUEST_RAM_MIB, INPUT_MAGIC, LIST_INDEX, LIST_MAGIC,
-    MAX_ENTRIES, MAX_INPUT, MAX_METADATA, MAX_OUTPUT, TIMEOUT,
-    safe_name, viewer_kind,
+    ACK_MAGIC,
+    ARCHIVE_SUFFIXES,
+    CHUNK_SIZE,
+    DATA_MAGIC,
+    END_MAGIC,
+    ERROR_MAGIC,
+    GUEST_RAM_MIB,
+    INPUT_MAGIC,
+    LIST_INDEX,
+    LIST_MAGIC,
+    MAX_ENTRIES,
+    MAX_INPUT,
+    MAX_METADATA,
+    MAX_OUTPUT,
+    TIMEOUT,
+    safe_name,
+    viewer_kind,
 )
 
 RESERVE_MIB = 192
@@ -54,13 +67,22 @@ def available_memory_mib():
     try:
         return airlock.available_memory_mib()
     except (airlock.AirlockError, ValueError, OSError) as exc:
-        raise ArchiveError("Actual available RAM could not be verified. Open Archive Airlock from the desktop.") from exc
+        raise ArchiveError(
+            "Actual available RAM could not be verified. Open Archive Airlock from the desktop."
+        ) from exc
 
 
 def check_memory(extra=0):
-    required = GUEST_RAM_MIB + QEMU_RESERVE_MIB + RESERVE_MIB + (extra + 1024 * 1024 - 1) // (1024 * 1024)
+    required = (
+        GUEST_RAM_MIB
+        + QEMU_RESERVE_MIB
+        + RESERVE_MIB
+        + (extra + 1024 * 1024 - 1) // (1024 * 1024)
+    )
     if available_memory_mib() < required:
-        raise ArchiveError("Not enough available RAM. Close other applications and try again.")
+        raise ArchiveError(
+            "Not enough available RAM. Close other applications and try again."
+        )
 
 
 def check_storage(directory, extra):
@@ -72,8 +94,17 @@ def check_storage(directory, extra):
 def check_ready():
     try:
         runtime = airlock.check_ready(".pdf")
-    except (airlock.AirlockError, OSError, ValueError, subprocess.SubprocessError) as exc:
-        raise ArchiveError(str(exc).replace("Document Airlock", "Archive Airlock").replace("Conversion", "Archive inspection")) from exc
+    except (
+        airlock.AirlockError,
+        OSError,
+        ValueError,
+        subprocess.SubprocessError,
+    ) as exc:
+        raise ArchiveError(
+            str(exc)
+            .replace("Document Airlock", "Archive Airlock")
+            .replace("Conversion", "Archive inspection")
+        ) from exc
     check_memory(MAX_METADATA)
     check_storage(runtime, MAX_METADATA)
     return runtime
@@ -88,21 +119,36 @@ def validate_listing(value):
     if not isinstance(entries, list) or len(entries) > MAX_ENTRIES:
         raise ArchiveError("The archive exceeds the entry limit.")
     for index, entry in enumerate(entries):
-        if not isinstance(entry, dict) or set(entry) != {"index", "name", "size", "kind", "reason", "encrypted"}:
+        if not isinstance(entry, dict) or set(entry) != {
+            "index",
+            "name",
+            "size",
+            "kind",
+            "reason",
+            "encrypted",
+        }:
             raise ArchiveError("The isolated reader returned invalid file metadata.")
         if type(entry["index"]) is not int or entry["index"] != index:
             raise ArchiveError("The isolated reader returned invalid entry numbers.")
         if type(entry["encrypted"]) is not bool:
-            raise ArchiveError("The isolated reader returned invalid encryption metadata.")
+            raise ArchiveError(
+                "The isolated reader returned invalid encryption metadata."
+            )
         if entry["encrypted"] and entry["kind"] == "file" and value["format"] != "ZIP":
             raise ArchiveError("This archive encryption is not supported.")
         if entry["kind"] not in {"file", "directory", "blocked"}:
             raise ArchiveError("The isolated reader returned an invalid entry type.")
         if not isinstance(entry["name"], str) or not safe_name(entry["name"]):
             raise ArchiveError("The isolated reader returned an unsafe filename.")
-        if entry["size"] is not None and (type(entry["size"]) is not int or not 0 <= entry["size"] < 2 ** 63):
+        if entry["size"] is not None and (
+            type(entry["size"]) is not int or not 0 <= entry["size"] < 2**63
+        ):
             raise ArchiveError("The isolated reader returned an invalid file size.")
-        if not isinstance(entry["reason"], str) or len(entry["reason"]) > 160 or (entry["reason"] and not safe_name(entry["reason"])):
+        if (
+            not isinstance(entry["reason"], str)
+            or len(entry["reason"]) > 160
+            or (entry["reason"] and not safe_name(entry["reason"]))
+        ):
             raise ArchiveError("The isolated reader returned invalid entry details.")
         if entry["kind"] == "blocked" and not entry["reason"]:
             raise ArchiveError("The isolated reader returned incomplete entry details.")
@@ -119,8 +165,10 @@ def viewer_limit(name):
 
 
 def process_status(pid):
-    value = (Path("/proc") / str(pid) / "stat").read_text(encoding="ascii", errors="replace")
-    fields = value[value.rfind(")") + 2:].split()
+    value = (Path("/proc") / str(pid) / "stat").read_text(
+        encoding="ascii", errors="replace"
+    )
+    fields = value[value.rfind(")") + 2 :].split()
     return fields[0], int(fields[2]), int(fields[3]), int(fields[19])
 
 
@@ -130,7 +178,12 @@ def viewer_processes(group):
         state, process_group, session_id, process_started = process_status(identifier)
         if started is not None and process_started != started:
             return []
-        if started is None and process_group == identifier and session_id == identifier and state not in {"Z", "X"}:
+        if (
+            started is None
+            and process_group == identifier
+            and session_id == identifier
+            and state not in {"Z", "X"}
+        ):
             return [(identifier, process_started)]
     except FileNotFoundError:
         pass
@@ -145,13 +198,22 @@ def viewer_processes(group):
             state, process_group, session_id, process_started = process_status(pid)
         except FileNotFoundError:
             continue
-        if process_group == identifier and session_id == identifier and state not in {"Z", "X"}:
+        if (
+            process_group == identifier
+            and session_id == identifier
+            and state not in {"Z", "X"}
+        ):
             members.append((pid, process_started))
     try:
         state, process_group, session_id, process_started = process_status(identifier)
         if started is not None and process_started != started:
             return []
-        if started is None and process_group == identifier and session_id == identifier and state not in {"Z", "X"}:
+        if (
+            started is None
+            and process_group == identifier
+            and session_id == identifier
+            and state not in {"Z", "X"}
+        ):
             return [(identifier, process_started)]
     except FileNotFoundError:
         pass
@@ -167,7 +229,12 @@ def signal_viewer_group(group, value):
         try:
             descriptor = os.pidfd_open(pid)
             state, process_group, session_id, process_started = process_status(pid)
-            if process_started == started and process_group == identifier and session_id == identifier and state not in {"Z", "X"}:
+            if (
+                process_started == started
+                and process_group == identifier
+                and session_id == identifier
+                and state not in {"Z", "X"}
+            ):
                 signal.pidfd_send_signal(descriptor, value)
         except (FileNotFoundError, ProcessLookupError):
             pass
@@ -178,7 +245,9 @@ def signal_viewer_group(group, value):
 
 class ArchiveSession:
     def __init__(self, runtime):
-        self.temporary = tempfile.TemporaryDirectory(prefix="ph4ntxm-archive-", dir=runtime)
+        self.temporary = tempfile.TemporaryDirectory(
+            prefix="ph4ntxm-archive-", dir=runtime
+        )
         self.directory = Path(self.temporary.name)
         self.source = self.directory / "source"
         self.entries = []
@@ -211,7 +280,10 @@ class ArchiveSession:
             self.temporary._finalizer.detach()
             if self.view is not None:
                 self.view._finalizer.detach()
-            raise ArchiveError("The isolated viewer could not be stopped. Private files were retained at %s." % self.directory)
+            raise ArchiveError(
+                "The isolated viewer could not be stopped. Private files were retained at %s."
+                % self.directory
+            )
         if self.view is not None:
             self.view.cleanup()
             self.view = None
@@ -240,25 +312,42 @@ class ArchiveSession:
         except (ArchiveError, OSError, ValueError, IndexError, AttributeError):
             pass
         finally:
-            if self.viewer_process is not None and self.viewer_process.poll() is not None:
+            if (
+                self.viewer_process is not None
+                and self.viewer_process.poll() is not None
+            ):
                 self.viewer_process = None
         return stopped
 
     def snapshot(self, filename):
         if not str(filename).lower().endswith(ARCHIVE_SUFFIXES):
             raise ArchiveError("Choose a ZIP, RAR, 7z or TAR archive.")
-        descriptor = os.open(filename, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK)
+        descriptor = os.open(
+            filename, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK
+        )
         created = False
         try:
             with os.fdopen(descriptor, "rb") as source:
                 before = os.fstat(source.fileno())
-                if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= MAX_INPUT:
-                    raise ArchiveError("Choose a non-empty regular archive no larger than 128 MiB.")
-                if available_memory_mib() < RESERVE_MIB + (before.st_size // (1024 * 1024)) + 1:
+                if (
+                    not stat.S_ISREG(before.st_mode)
+                    or not 0 < before.st_size <= MAX_INPUT
+                ):
+                    raise ArchiveError(
+                        "Choose a non-empty regular archive no larger than 128 MiB."
+                    )
+                if (
+                    available_memory_mib()
+                    < RESERVE_MIB + (before.st_size // (1024 * 1024)) + 1
+                ):
                     raise ArchiveError("Not enough available RAM to copy this archive.")
                 check_storage(self.directory, before.st_size + MAX_METADATA)
                 total = 0
-                output = os.open(self.source, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+                output = os.open(
+                    self.source,
+                    os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                    0o600,
+                )
                 created = True
                 with os.fdopen(output, "wb") as destination:
                     while True:
@@ -269,13 +358,26 @@ class ArchiveSession:
                             break
                         total += len(chunk)
                         if total > before.st_size or total > MAX_INPUT:
-                            raise ArchiveError("The archive changed while it was being copied.")
-                        if total % (1024 * 1024) == 0 and available_memory_mib() < RESERVE_MIB:
-                            raise ArchiveError("Not enough available RAM to copy this archive.")
+                            raise ArchiveError(
+                                "The archive changed while it was being copied."
+                            )
+                        if (
+                            total % (1024 * 1024) == 0
+                            and available_memory_mib() < RESERVE_MIB
+                        ):
+                            raise ArchiveError(
+                                "Not enough available RAM to copy this archive."
+                            )
                         destination.write(chunk)
                     after = os.fstat(source.fileno())
-                    if total != before.st_size or (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
-                        raise ArchiveError("The archive changed while it was being copied.")
+                    if total != before.st_size or (
+                        before.st_size,
+                        before.st_mtime_ns,
+                        before.st_ctime_ns,
+                    ) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+                        raise ArchiveError(
+                            "The archive changed while it was being copied."
+                        )
         except BaseException:
             if created:
                 self.source.unlink(missing_ok=True)
@@ -289,14 +391,20 @@ class ArchiveSession:
 
     def receive_listing(self, stream, magic):
         if magic != LIST_MAGIC:
-            raise ArchiveError("The isolated reader returned an invalid contents response.")
+            raise ArchiveError(
+                "The isolated reader returned an invalid contents response."
+            )
         size = struct.unpack("!I", read_exact(stream, 4))[0]
         if not 0 < size <= MAX_METADATA:
             raise ArchiveError("The archive contents exceed the metadata limit.")
         try:
-            return validate_listing(json.loads(read_exact(stream, size).decode("utf-8")))
+            return validate_listing(
+                json.loads(read_exact(stream, size).decode("utf-8"))
+            )
         except (ValueError, UnicodeError, TypeError, RecursionError) as exc:
-            raise ArchiveError("The isolated reader returned invalid archive contents.") from exc
+            raise ArchiveError(
+                "The isolated reader returned invalid archive contents."
+            ) from exc
 
     def selected_entry(self, index):
         if type(index) is not int or not 0 <= index < len(self.entries):
@@ -306,7 +414,9 @@ class ArchiveSession:
             raise ArchiveError("This entry cannot be opened.")
         if viewer_kind(entry["name"]) is None:
             raise ArchiveError("This file type has no isolated viewer.")
-        if entry["size"] == 0 or (entry["size"] is not None and entry["size"] > viewer_limit(entry["name"])):
+        if entry["size"] == 0 or (
+            entry["size"] is not None and entry["size"] > viewer_limit(entry["name"])
+        ):
             raise ArchiveError("This file is empty or exceeds its viewer's size limit.")
         return entry
 
@@ -317,13 +427,19 @@ class ArchiveSession:
             limit = min(limit, entry["size"])
         self.clear_view()
         self.view = tempfile.TemporaryDirectory(prefix="view-", dir=self.directory)
-        output = Path(self.view.name) / ("selected" + PurePosixPath(entry["name"]).suffix.lower())
+        output = Path(self.view.name) / (
+            "selected" + PurePosixPath(entry["name"]).suffix.lower()
+        )
 
         def receive(stream, magic):
             if magic != DATA_MAGIC:
-                raise ArchiveError("The isolated reader returned an invalid file response.")
+                raise ArchiveError(
+                    "The isolated reader returned an invalid file response."
+                )
             total = 0
-            descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            descriptor = os.open(
+                output, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600
+            )
             with os.fdopen(descriptor, "wb") as handle:
                 while True:
                     size = struct.unpack("!I", read_exact(stream, 4))[0]
@@ -331,12 +447,16 @@ class ArchiveSession:
                         break
                     total += size
                     if size > CHUNK_SIZE or total > limit:
-                        raise ArchiveError("The extracted file exceeds its viewer's size limit.")
+                        raise ArchiveError(
+                            "The extracted file exceeds its viewer's size limit."
+                        )
                     if self.cancelled.is_set():
                         raise ArchiveError("Opening the archive file was cancelled.")
                     handle.write(read_exact(stream, size))
                 if total == 0 or (entry["size"] is not None and total != entry["size"]):
-                    raise ArchiveError("The extracted file does not match its listed size.")
+                    raise ArchiveError(
+                        "The extracted file does not match its listed size."
+                    )
             return output
 
         try:
@@ -351,22 +471,37 @@ class ArchiveSession:
         check_memory(output_limit)
         check_storage(self.directory, output_limit)
         lock_path = self.directory.parent / "ph4ntxm-airlock.lock"
-        descriptor = os.open(lock_path, os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+        descriptor = os.open(
+            lock_path, os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600
+        )
         with os.fdopen(descriptor, "wb") as lock:
             metadata = os.fstat(lock.fileno())
-            if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or metadata.st_mode & 0o077:
+            if (
+                not stat.S_ISREG(metadata.st_mode)
+                or metadata.st_uid != os.getuid()
+                or metadata.st_mode & 0o077
+            ):
                 raise ArchiveError("The Airlock session lock is not trusted.")
             try:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError:
-                raise ArchiveError("Another Airlock operation is already running.") from None
+                raise ArchiveError(
+                    "Another Airlock operation is already running."
+                ) from None
             return self.exchange(index, receive, command)
 
     def exchange(self, index, receive, command):
-        source_fd = os.open(self.source, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK)
+        source_fd = os.open(
+            self.source, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK
+        )
         with os.fdopen(source_fd, "rb") as source:
             metadata = os.fstat(source.fileno())
-            if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or metadata.st_mode & 0o077 or not 0 < metadata.st_size <= MAX_INPUT:
+            if (
+                not stat.S_ISREG(metadata.st_mode)
+                or metadata.st_uid != os.getuid()
+                or metadata.st_mode & 0o077
+                or not 0 < metadata.st_size <= MAX_INPUT
+            ):
                 raise ArchiveError("The private archive copy is not trusted.")
             return self.run_process(index, receive, command, source, metadata.st_size)
 
@@ -374,7 +509,15 @@ class ArchiveSession:
         password = bytes(self.password)
         if command is None:
             command = airlock.vm_command(".pdf", GUEST_RAM_MIB)
-        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, start_new_session=True, close_fds=True, env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"})
+        process = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+            close_fds=True,
+            env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"},
+        )
         done = threading.Event()
         sent = threading.Event()
         failure = []
@@ -398,7 +541,9 @@ class ArchiveSession:
                     return
                 try:
                     if available_memory_mib() < RESERVE_MIB:
-                        failure.append("Available RAM became too low. The isolated reader was stopped.")
+                        failure.append(
+                            "Available RAM became too low. The isolated reader was stopped."
+                        )
                         stop()
                         return
                 except ArchiveError:
@@ -408,7 +553,9 @@ class ArchiveSession:
 
         def send():
             try:
-                process.stdin.write(struct.pack("!8sIIH", INPUT_MAGIC, size, index, len(password)))
+                process.stdin.write(
+                    struct.pack("!8sIIH", INPUT_MAGIC, size, index, len(password))
+                )
                 process.stdin.write(password)
                 remaining = size
                 while remaining:
@@ -443,47 +590,96 @@ class ArchiveSession:
             if magic == ERROR_MAGIC:
                 length = struct.unpack("!I", read_exact(process.stdout, 4))[0]
                 if not 0 < length <= 4096:
-                    raise ArchiveError("The isolated reader returned an invalid error response.")
+                    raise ArchiveError(
+                        "The isolated reader returned an invalid error response."
+                    )
                 error = json.loads(read_exact(process.stdout, length).decode("utf-8"))
-                if not isinstance(error, dict) or set(error) != {"code", "error"} or not isinstance(error["code"], str) or error["code"] not in {"password_required", "password_incorrect", "archive", "unsupported"} or not isinstance(error["error"], str) or not 0 < len(error["error"]) <= 512 or not safe_name(error["error"]):
-                    raise ArchiveError("The isolated reader could not inspect this archive.")
+                if (
+                    not isinstance(error, dict)
+                    or set(error) != {"code", "error"}
+                    or not isinstance(error["code"], str)
+                    or error["code"]
+                    not in {
+                        "password_required",
+                        "password_incorrect",
+                        "archive",
+                        "unsupported",
+                    }
+                    or not isinstance(error["error"], str)
+                    or not 0 < len(error["error"]) <= 512
+                    or not safe_name(error["error"])
+                ):
+                    raise ArchiveError(
+                        "The isolated reader could not inspect this archive."
+                    )
                 if read_exact(process.stdout, 8) != END_MAGIC:
-                    raise ArchiveError("The isolated reader returned an invalid stream ending.")
+                    raise ArchiveError(
+                        "The isolated reader returned an invalid stream ending."
+                    )
                 if not sent.wait(5):
-                    raise ArchiveError("The archive could not be delivered to the isolated reader.")
+                    raise ArchiveError(
+                        "The archive could not be delivered to the isolated reader."
+                    )
                 process.stdin.write(ACK_MAGIC)
                 process.stdin.flush()
                 if process.stdout.read(1):
-                    raise ArchiveError("The isolated reader returned unexpected trailing data.")
+                    raise ArchiveError(
+                        "The isolated reader returned unexpected trailing data."
+                    )
                 process.wait(timeout=5)
                 if failure or process.returncode != 0 or self.cancelled.is_set():
-                    raise ArchiveError(failure[0] if failure else "The isolated archive reader stopped unexpectedly.")
+                    raise ArchiveError(
+                        failure[0]
+                        if failure
+                        else "The isolated archive reader stopped unexpectedly."
+                    )
                 if error["code"] == "password_required":
                     self.clear_password()
                     raise PasswordRequired("This archive entry requires a password.")
                 if error["code"] == "password_incorrect":
                     self.clear_password()
-                    raise PasswordIncorrect("The archive password was not accepted. Try again.")
+                    raise PasswordIncorrect(
+                        "The archive password was not accepted. Try again."
+                    )
                 raise ArchiveError(error["error"])
             result = receive(process.stdout, magic)
             if read_exact(process.stdout, 8) != END_MAGIC:
-                raise ArchiveError("The isolated reader returned an invalid stream ending.")
+                raise ArchiveError(
+                    "The isolated reader returned an invalid stream ending."
+                )
             if not sent.wait(5):
-                raise ArchiveError("The archive could not be delivered to the isolated reader.")
+                raise ArchiveError(
+                    "The archive could not be delivered to the isolated reader."
+                )
             process.stdin.write(ACK_MAGIC)
             process.stdin.flush()
             if process.stdout.read(1):
-                raise ArchiveError("The isolated reader returned unexpected trailing data.")
+                raise ArchiveError(
+                    "The isolated reader returned unexpected trailing data."
+                )
             process.wait(timeout=5)
             if failure or process.returncode != 0 or self.cancelled.is_set():
-                raise ArchiveError(failure[0] if failure else "The isolated archive reader stopped unexpectedly.")
+                raise ArchiveError(
+                    failure[0]
+                    if failure
+                    else "The isolated archive reader stopped unexpectedly."
+                )
             return result
-        except (OSError, ValueError, UnicodeError, RuntimeError, subprocess.SubprocessError, ArchiveError) as exc:
+        except (
+            OSError,
+            ValueError,
+            UnicodeError,
+            RuntimeError,
+            subprocess.SubprocessError,
+            ArchiveError,
+        ) as exc:
             if failure:
                 raise ArchiveError(failure[0]) from None
             if isinstance(exc, ArchiveError):
                 raise
-            raise ArchiveError("The archive could not be read. It may be damaged, encrypted, unsupported or exceed the resource limits.") from exc
+            raise ArchiveError(
+                "The archive could not be read. It may be damaged, encrypted, unsupported or exceed the resource limits."
+            ) from exc
         finally:
             done.set()
             if watcher in started_threads:
@@ -529,7 +725,14 @@ class ArchiveSession:
             if kind == "document":
                 command = ["/usr/local/bin/ph4ntxm-document-airlock", "--", str(path)]
             else:
-                command = ["/usr/local/bin/ph4ntxm-media", "--kind", "image" if kind == "image" else "video", "--airlock-input", "--", str(path)]
+                command = [
+                    "/usr/local/bin/ph4ntxm-media",
+                    "--kind",
+                    "image" if kind == "image" else "video",
+                    "--airlock-input",
+                    "--",
+                    str(path),
+                ]
             process = subprocess.Popen(command, start_new_session=True)
             self.viewer_process = process
             self.viewer_group = (process.pid, None)

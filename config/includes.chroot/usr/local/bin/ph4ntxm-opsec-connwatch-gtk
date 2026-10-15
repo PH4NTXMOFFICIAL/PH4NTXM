@@ -77,14 +77,17 @@ def collect_snapshot():
             "active": completed.returncode == 0,
             "state": state if known else "Unavailable",
             "error": (
-                None if known
+                None
+                if known
                 else completed.stderr.strip() or "Service state unavailable"
             ),
         }
     except (OSError, subprocess.TimeoutExpired) as error:
         service = {
-            "ok": False, "active": False,
-            "state": "Unavailable", "error": str(error),
+            "ok": False,
+            "active": False,
+            "state": "Unavailable",
+            "error": str(error),
         }
     stats = read_stats(STATE_DIR / "connwatch-stats.log")
     history = read_history(STATE_DIR / "connwatch-alerts.history")
@@ -95,7 +98,9 @@ def collect_snapshot():
         title, score, status = "Snapshot unavailable", None, "warn"
     elif high:
         title, score, status = (
-            "High inbound attempt volume", max(0, 100 - high * 10), "warn"
+            "High inbound attempt volume",
+            max(0, 100 - high * 10),
+            "warn",
         )
     elif stats["rows"]:
         title, score, status = "Inbound attempts observed", 85, "warn"
@@ -147,7 +152,11 @@ class ConnWatchWindow(ReportWindow):
         facts = section("Monitor snapshot")
         self.facts = {}
         for name in (
-            "Service", "Stats snapshot", "Saved sources", "High volume", "Alerts"
+            "Service",
+            "Stats snapshot",
+            "Saved sources",
+            "High volume",
+            "Alerts",
         ):
             widget = label("Checking", "data-value", True)
             row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18)
@@ -177,8 +186,10 @@ class ConnWatchWindow(ReportWindow):
         view = self.table(
             self.sorted_sources,
             (
-                ("Source address", 0, 360), ("5m Hits", 1, 100),
-                ("Target ports", 2, 210), ("Activity", 3, 110),
+                ("Source address", 0, 360),
+                ("5m Hits", 1, 100),
+                ("Target ports", 2, 210),
+                ("Activity", 3, 110),
             ),
         )
         view.set_tooltip_column(0)
@@ -238,8 +249,10 @@ class ConnWatchWindow(ReportWindow):
         modified = stats["modified"]
         stamp = (
             datetime.fromtimestamp(modified)
-            .astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
-            if modified is not None else "Unavailable"
+            .astimezone()
+            .strftime("%Y-%m-%d %H:%M:%S %Z")
+            if modified is not None
+            else "Unavailable"
         )
         self.facts["Service"].set_text(service["state"])
         self.facts["Stats snapshot"].set_text(stamp)
@@ -247,10 +260,12 @@ class ConnWatchWindow(ReportWindow):
         self.facts["High volume"].set_text(str(report["high_volume"]))
         self.facts["Alerts"].set_text(
             f"Latest {len(history['rows'])}, up to {HISTORY_LIMIT}"
-            if history["ok"] else "Unavailable"
+            if history["ok"]
+            else "Unavailable"
         )
         errors = [
-            outcome["error"] for outcome in (service, stats, history)
+            outcome["error"]
+            for outcome in (service, stats, history)
             if not outcome["ok"] and outcome.get("error")
         ]
         self.evidence.set_text("\n".join(errors))

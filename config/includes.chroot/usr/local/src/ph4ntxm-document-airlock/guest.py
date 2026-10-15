@@ -126,7 +126,8 @@ def prepare_office(source, password):
     if process.returncode != 0 or result != b"ok":
         code = result.decode("ascii", errors="ignore")
         raise GuestConversionError(
-            code if code in {"password_required", "password_incorrect", "unsupported"}
+            code
+            if code in {"password_required", "password_incorrect", "unsupported"}
             else "conversion"
         )
     return destination
@@ -220,7 +221,11 @@ def pdf_metadata(pdf):
     if set(dimensions) != set(range(1, count + 1)):
         raise ValueError("Invalid page dimensions")
     for width, height in dimensions.values():
-        if not math.isfinite(width) or not math.isfinite(height) or min(width, height) <= 0:
+        if (
+            not math.isfinite(width)
+            or not math.isfinite(height)
+            or min(width, height) <= 0
+        ):
             raise ValueError("Invalid page size")
     return count, dimensions
 

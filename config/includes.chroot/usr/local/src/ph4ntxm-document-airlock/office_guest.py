@@ -123,9 +123,12 @@ def encrypted_office(source):
                 if len(data) > 2 * 1024 * 1024:
                     raise OfficeConversionError()
                 manifest = ET.fromstring(data)
-                return manifest.find(
-                    ".//{urn:oasis:names:tc:opendocument:xmlns:manifest:1.0}encryption-data"
-                ) is not None
+                return (
+                    manifest.find(
+                        ".//{urn:oasis:names:tc:opendocument:xmlns:manifest:1.0}encryption-data"
+                    )
+                    is not None
+                )
         except (KeyError, OSError, RuntimeError, zipfile.BadZipFile, ET.ParseError):
             raise OfficeConversionError() from None
     if source.suffix in {".docx", ".xlsx", ".pptx"}:
@@ -135,8 +138,12 @@ def encrypted_office(source):
             if stream.read(8) != olefile.MAGIC:
                 return False
         try:
-            with olefile.OleFileIO(source, raise_defects=olefile.DEFECT_INCORRECT) as compound:
-                return compound.exists("EncryptionInfo") and compound.exists("EncryptedPackage")
+            with olefile.OleFileIO(
+                source, raise_defects=olefile.DEFECT_INCORRECT
+            ) as compound:
+                return compound.exists("EncryptionInfo") and compound.exists(
+                    "EncryptedPackage"
+                )
         except (OSError, ValueError, olefile.OleFileError):
             raise OfficeConversionError() from None
     return False
@@ -175,7 +182,9 @@ def convert_office(source, destination, password=None):
                 "password_incorrect" if password else "password_required"
             )
         if document is None or handler.blocked:
-            raise OfficeConversionError("password_incorrect" if encrypted else "conversion")
+            raise OfficeConversionError(
+                "password_incorrect" if encrypted else "conversion"
+            )
         if document.supportsService("com.sun.star.text.TextDocument"):
             export_filter = "writer_pdf_Export"
         elif document.supportsService("com.sun.star.sheet.SpreadsheetDocument"):

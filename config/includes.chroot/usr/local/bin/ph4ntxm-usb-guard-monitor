@@ -13,12 +13,21 @@ gi.require_version("Gio", "2.0")
 from gi.repository import Gio, GLib
 
 GUI = "/usr/local/bin/ph4ntxm-usb-guard"
-HelperCall = runpy.run_path(GUI, run_name="ph4ntxm_usb_guard_monitor_backend")["HelperCall"]
+HelperCall = runpy.run_path(GUI, run_name="ph4ntxm_usb_guard_monitor_backend")[
+    "HelperCall"
+]
 NOTIFICATION_COMMAND = [
-    "/usr/bin/notify-send", "--app-name=PH4NTXM USB Guard",
-    "--icon=ph4ntxm-usb-guard", "--urgency=normal", "--transient",
-    "--expire-time=8000", "--action=open=Open USB Guard", "--wait", "--",
-    "New USB device blocked", "Open USB Guard to review the new device before allowing it.",
+    "/usr/bin/notify-send",
+    "--app-name=PH4NTXM USB Guard",
+    "--icon=ph4ntxm-usb-guard",
+    "--urgency=normal",
+    "--transient",
+    "--expire-time=8000",
+    "--action=open=Open USB Guard",
+    "--wait",
+    "--",
+    "New USB device blocked",
+    "Open USB Guard to review the new device before allowing it.",
 ]
 
 
@@ -31,7 +40,10 @@ class NotificationCall(HelperCall):
         try:
             code, output = self.run_process(NOTIFICATION_COMMAND, 20, maximum=32)
             action = output.strip()
-            return {"ok": code == 0 and action in {b"", b"open"}, "open": code == 0 and action == b"open"}
+            return {
+                "ok": code == 0 and action in {b"", b"open"},
+                "open": code == 0 and action == b"open",
+            }
         except Exception:
             return {"ok": False, "open": False}
 
@@ -120,7 +132,9 @@ class UsbGuardMonitor:
                 self.notified.intersection_update(self.current)
             if result.get("open") is True:
                 try:
-                    pid, _, _, _ = GLib.spawn_async([GUI], flags=GLib.SpawnFlags.DEFAULT)
+                    pid, _, _, _ = GLib.spawn_async(
+                        [GUI], flags=GLib.SpawnFlags.DEFAULT
+                    )
                     GLib.spawn_close_pid(pid)
                 except GLib.Error:
                     pass
@@ -141,7 +155,12 @@ class UsbGuardMonitor:
         self.maybe_quit()
 
     def maybe_quit(self):
-        if self.stopping and self.snapshot_job is None and self.notification_job is None and not self.quitting:
+        if (
+            self.stopping
+            and self.snapshot_job is None
+            and self.notification_job is None
+            and not self.quitting
+        ):
             self.quitting = True
             self.application.quit()
 

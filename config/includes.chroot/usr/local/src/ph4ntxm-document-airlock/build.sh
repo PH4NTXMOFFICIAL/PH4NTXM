@@ -16,6 +16,7 @@ INITRD="$WORK/initrd"
 KVER=$(find /boot -maxdepth 1 -name 'vmlinuz-*' -printf '%f\n' \
     | sed 's/^vmlinuz-//' | sort -V | tail -n 1)
 [ -n "$KVER" ]
+
 cleanup() {
     for target in "$GUEST/dev/pts" "$GUEST/dev" "$GUEST/proc"; do
         if mountpoint -q "$target"; then
@@ -24,6 +25,7 @@ cleanup() {
     done
     rm -rf "$WORK"
 }
+
 trap cleanup EXIT HUP INT TERM
 
 install -d -m 0755 "$OUTPUT" "$INITRD/bin" "$INITRD/dev" \

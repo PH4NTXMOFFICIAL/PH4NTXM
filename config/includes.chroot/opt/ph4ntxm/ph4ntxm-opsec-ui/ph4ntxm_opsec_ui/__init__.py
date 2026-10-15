@@ -59,9 +59,7 @@ def set_status(widget, status):
 
 
 def section(title):
-    box = add_class(
-        Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8), "section"
-    )
+    box = add_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8), "section")
     box.pack_start(label(title, "section-title"), False, False, 0)
     return box
 
@@ -291,9 +289,7 @@ class ReportWindow(Gtk.ApplicationWindow):
         self.mode.set_text(f"Mode  {MODE_LABELS.get(mode, 'Unavailable')}")
         set_status(self.mode, "good" if mode is not None else "warn")
 
-    def set_summary(
-        self, title, score=None, status="info", detail="", updated=None
-    ):
+    def set_summary(self, title, score=None, status="info", detail="", updated=None):
         self.verdict.set_text(title)
         self.summary.set_text(detail)
         set_status(self.dot, status)
@@ -445,7 +441,9 @@ class ReportWindow(Gtk.ApplicationWindow):
 
 class Application(Gtk.Application):
     def __init__(self, window_class, application_id):
-        super().__init__(application_id=application_id, flags=Gio.ApplicationFlags.FLAGS_NONE)
+        super().__init__(
+            application_id=application_id, flags=Gio.ApplicationFlags.FLAGS_NONE
+        )
         self.window_class = window_class
         self.window = None
 

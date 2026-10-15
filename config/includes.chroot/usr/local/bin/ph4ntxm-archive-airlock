@@ -11,7 +11,14 @@ import unicodedata
 from pathlib import Path
 
 sys.path.insert(0, "/usr/local/lib/ph4ntxm-document-airlock")
-from archives import ArchiveError, ArchiveSession, PasswordIncorrect, PasswordRequired, check_ready, viewer_kind
+from archives import (
+    ArchiveError,
+    ArchiveSession,
+    PasswordIncorrect,
+    PasswordRequired,
+    check_ready,
+    viewer_kind,
+)
 
 CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
 ICON_FILE = "/usr/share/icons/Lyra-blue-dark/apps/scalable/ph4ntxm-archive-airlock.svg"
@@ -41,7 +48,7 @@ def format_size(size):
         return "Unknown"
     if size < 1024:
         return "%d B" % size
-    for unit, divisor in (("GiB", 1024 ** 3), ("MiB", 1024 ** 2), ("KiB", 1024)):
+    for unit, divisor in (("GiB", 1024**3), ("MiB", 1024**2), ("KiB", 1024)):
         if size >= divisor:
             return "%.1f %s" % (size / divisor, unit)
     return "%d B" % size
@@ -61,7 +68,12 @@ def entry_state(entry):
         return VIEWER_LABELS[viewer], "Empty file", False, viewer
     if size is not None and size > VIEWER_LIMITS[viewer]:
         return VIEWER_LABELS[viewer], "Above viewing limit", False, viewer
-    return VIEWER_LABELS[viewer], "Password protected" if entry.get("encrypted") else "Ready to view", True, viewer
+    return (
+        VIEWER_LABELS[viewer],
+        "Password protected" if entry.get("encrypted") else "Ready to view",
+        True,
+        viewer,
+    )
 
 
 def desktop(archive=None):
@@ -131,7 +143,9 @@ def desktop(archive=None):
                 wrapped_label("PH4NTXM Archive Airlock", "title"), False, False, 0
             )
             header.pack_start(
-                wrapped_label("Offline archive viewing · Disposable session", "subtitle"),
+                wrapped_label(
+                    "Offline archive viewing · Disposable session", "subtitle"
+                ),
                 False,
                 False,
                 0,
@@ -178,7 +192,9 @@ def desktop(archive=None):
                 if position == 1:
                     column.set_sort_column_id(position)
                 self.tree.append_column(column)
-            self.tree.get_selection().connect("changed", lambda _: self.update_controls())
+            self.tree.get_selection().connect(
+                "changed", lambda _: self.update_controls()
+            )
             self.tree.connect("row-activated", lambda *_: self.on_open())
             list_scroll = Gtk.ScrolledWindow()
             list_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
@@ -216,7 +232,9 @@ def desktop(archive=None):
             content.pack_start(self.notice, False, False, 0)
             progress = Gtk.Box(spacing=10)
             self.spinner = Gtk.Spinner()
-            self.status = wrapped_label("Choose a ZIP, RAR, 7z or TAR archive.", "subtitle")
+            self.status = wrapped_label(
+                "Choose a ZIP, RAR, 7z or TAR archive.", "subtitle"
+            )
             progress.pack_start(self.spinner, False, False, 0)
             progress.pack_start(self.status, True, True, 0)
             content.pack_start(progress, False, False, 0)
@@ -278,7 +296,21 @@ def desktop(archive=None):
             dialog.set_use_preview_label(False)
             archive_filter = Gtk.FileFilter()
             archive_filter.set_name("Supported archives")
-            for suffix in ("zip", "rar", "7z", "tar", "tar.gz", "tgz", "tar.bz2", "tbz", "tbz2", "tar.xz", "txz", "tar.zst", "tzst"):
+            for suffix in (
+                "zip",
+                "rar",
+                "7z",
+                "tar",
+                "tar.gz",
+                "tgz",
+                "tar.bz2",
+                "tbz",
+                "tbz2",
+                "tar.xz",
+                "txz",
+                "tar.zst",
+                "tzst",
+            ):
                 archive_filter.add_pattern("*." + suffix)
                 archive_filter.add_pattern("*." + suffix.upper())
             dialog.add_filter(archive_filter)
@@ -339,7 +371,11 @@ def desktop(archive=None):
                         raise ArchiveError("Archive inspection cancelled.")
                     report = session.inspect(filename)
                 except Exception as exc:
-                    error = str(exc) if isinstance(exc, (ArchiveError, OSError, ValueError)) else "Archive inspection failed."
+                    error = (
+                        str(exc)
+                        if isinstance(exc, (ArchiveError, OSError, ValueError))
+                        else "Archive inspection failed."
+                    )
                     if not previous_closed:
                         session = previous
                     elif session:
@@ -379,11 +415,27 @@ def desktop(archive=None):
                     self.entries[index] = entry
                     kind, state, openable, viewer = entry_state(entry)
                     name = display_text(entry["name"])
-                    self.store.append((index, name, format_size(entry.get("size")), kind, state, openable, name.casefold(), viewer or "", GLib.markup_escape_text(name)))
+                    self.store.append(
+                        (
+                            index,
+                            name,
+                            format_size(entry.get("size")),
+                            kind,
+                            state,
+                            openable,
+                            name.casefold(),
+                            viewer or "",
+                            GLib.markup_escape_text(name),
+                        )
+                    )
                 count = len(self.entries)
                 self.status.set_text(
                     "%s · %d %s · Select a file to view."
-                    % (display_text(report["format"]), count, "entry" if count == 1 else "entries")
+                    % (
+                        display_text(report["format"]),
+                        count,
+                        "entry" if count == 1 else "entries",
+                    )
                     if count
                     else "The archive contains no entries."
                 )
@@ -399,7 +451,11 @@ def desktop(archive=None):
                 return
             session = self.session
             if password_message or (entry.get("encrypted") and not session.password):
-                password = ask_password(self, "Unlock Archive", password_message or "Enter the password for this archive entry.")
+                password = ask_password(
+                    self,
+                    "Unlock Archive",
+                    password_message or "Enter the password for this archive entry.",
+                )
                 if self.finish_closing():
                     return
                 if password is None:
@@ -409,7 +465,9 @@ def desktop(archive=None):
                 password = None
             viewer = viewer_kind(entry["name"])
             self.begin_operation(
-                "Opening text offline…" if viewer == "text" else "Opening selected file in its isolated viewer…"
+                "Opening text offline…"
+                if viewer == "text"
+                else "Opening selected file in its isolated viewer…"
             )
 
             def worker():
@@ -421,13 +479,19 @@ def desktop(archive=None):
                     else:
                         session.open_entry(entry["index"])
                 except Exception as exc:
-                    error = exc if isinstance(exc, (ArchiveError, OSError, ValueError)) else ArchiveError("The selected file could not be opened.")
+                    error = (
+                        exc
+                        if isinstance(exc, (ArchiveError, OSError, ValueError))
+                        else ArchiveError("The selected file could not be opened.")
+                    )
                 GLib.idle_add(self.open_finished, entry, text, error)
 
             try:
                 threading.Thread(target=worker, daemon=False).start()
             except Exception:
-                self.open_finished(entry, None, ArchiveError("The selected file could not be opened."))
+                self.open_finished(
+                    entry, None, ArchiveError("The selected file could not be opened.")
+                )
 
         def open_finished(self, entry, text, error):
             self.busy = False
@@ -455,7 +519,9 @@ def desktop(archive=None):
                 self.stack.set_visible_child_name("text")
                 self.status.set_text("Read-only text preview · Offline")
             else:
-                self.status.set_text("The viewer has closed. Select another file to view.")
+                self.status.set_text(
+                    "The viewer has closed. Select another file to view."
+                )
             self.update_controls()
             return False
 
@@ -475,7 +541,12 @@ def desktop(archive=None):
             self.status.set_text("Cancelling the current operation…")
 
         def finish_closing(self):
-            if not self.closing or self.busy or self.chooser_dialog is not None or self.password_dialog is not None:
+            if (
+                not self.closing
+                or self.busy
+                or self.chooser_dialog is not None
+                or self.password_dialog is not None
+            ):
                 return False
             if self.session:
                 try:
@@ -493,7 +564,11 @@ def desktop(archive=None):
             self.closing = True
             self.cancelled.set()
             self.update_controls()
-            if self.busy or self.chooser_dialog is not None or self.password_dialog is not None:
+            if (
+                self.busy
+                or self.chooser_dialog is not None
+                or self.password_dialog is not None
+            ):
                 self.status.set_text("Closing the isolated session…")
                 if self.chooser_dialog is not None:
                     self.chooser_dialog.response(Gtk.ResponseType.CANCEL)
@@ -528,7 +603,9 @@ def desktop(archive=None):
 def main():
     parser = argparse.ArgumentParser(description="PH4NTXM Archive Airlock")
     parser.add_argument("archive", nargs="?")
-    parser.add_argument("--check", action="store_true", help="Check isolation prerequisites")
+    parser.add_argument(
+        "--check", action="store_true", help="Check isolation prerequisites"
+    )
     arguments = parser.parse_args()
     try:
         if arguments.check:

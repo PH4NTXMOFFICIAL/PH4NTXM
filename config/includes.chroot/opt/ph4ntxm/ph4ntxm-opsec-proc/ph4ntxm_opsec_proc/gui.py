@@ -162,8 +162,7 @@ class ProcessWindow(ReportWindow):
             proc["pid"]: proc for proc in analysis["data"].get("suspicious", [])
         }
         findings = [
-            format_finding(name)
-            for name in assessment["data"].get("findings", [])
+            format_finding(name) for name in assessment["data"].get("findings", [])
         ]
         score = assessment["data"].get("score") if assessment["ok"] else None
         title, status = (
@@ -184,7 +183,10 @@ class ProcessWindow(ReportWindow):
         )
         finding_box = section("Process findings")
         finding_box.pack_start(
-            data_row("Report access", "Administrator" if report["privileged"] else "Regular user"),
+            data_row(
+                "Report access",
+                "Administrator" if report["privileged"] else "Regular user",
+            ),
             False,
             False,
             0,

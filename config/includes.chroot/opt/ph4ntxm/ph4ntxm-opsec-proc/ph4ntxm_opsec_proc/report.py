@@ -30,9 +30,7 @@ def collect_report(progress=None):
             )
         unavailable.extend(str(item) for item in outcome.get("warnings", []))
     listed = processes["data"].get("processes", [])
-    identities_missing = sum(
-        proc.get("start_time_ticks") is None for proc in listed
-    )
+    identities_missing = sum(proc.get("start_time_ticks") is None for proc in listed)
     if identities_missing:
         noun = "process" if identities_missing == 1 else "processes"
         unavailable.append(

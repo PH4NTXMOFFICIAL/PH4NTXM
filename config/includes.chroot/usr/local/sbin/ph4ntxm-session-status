@@ -9,24 +9,37 @@ import sys
 
 BASE = "/run/ph4ntxm/"
 READABLE = {
-    BASE + name for name in (
-        "persona_seed", "boot_mac", "session_dhcp",
-        "fake_dmi/sys_vendor", "fake_dmi/product_name", "fake_dmi/product_uuid",
+    BASE + name
+    for name in (
+        "persona_seed",
+        "boot_mac",
+        "session_dhcp",
+        "fake_dmi/sys_vendor",
+        "fake_dmi/product_name",
+        "fake_dmi/product_uuid",
     )
 } | {"/proc/sys/net/core/bpf_jit_harden"}
 CHECKABLE = {
-    BASE + name for name in (
-        "mode", "lonewolf_seed", "persona_seed", "gpu_env", "screen_env",
-        "clock-fuzz-profile", "boot_jitter",
+    BASE + name
+    for name in (
+        "mode",
+        "lonewolf_seed",
+        "persona_seed",
+        "gpu_env",
+        "screen_env",
+        "clock-fuzz-profile",
+        "boot_jitter",
     )
 }
 
 
 def allowed(action, path):
     if action == "read":
-        return path in READABLE or bool(re.fullmatch(
-            r"/run/ph4ntxm/boot_mac/[A-Za-z0-9_.:-]{1,15}", path
-        )) and path.rsplit("/", 1)[-1] not in {".", ".."}
+        return (
+            path in READABLE
+            or bool(re.fullmatch(r"/run/ph4ntxm/boot_mac/[A-Za-z0-9_.:-]{1,15}", path))
+            and path.rsplit("/", 1)[-1] not in {".", ".."}
+        )
     return action == "nonempty" and path in CHECKABLE
 
 

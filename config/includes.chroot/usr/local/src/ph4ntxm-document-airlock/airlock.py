@@ -77,7 +77,9 @@ def encode_password(password):
     except UnicodeError:
         raise AirlockError("The password contains unsupported characters.") from None
     if len(encoded) > MAX_PASSWORD_BYTES or b"\x00" in encoded:
-        raise AirlockError("The password must be at most 1024 UTF-8 bytes and contain no null characters.")
+        raise AirlockError(
+            "The password must be at most 1024 UTF-8 bytes and contain no null characters."
+        )
     return encoded
 
 
@@ -353,23 +355,37 @@ def receive_pages(stream, directory, acknowledge=None):
     if magic == ERROR_MAGIC:
         length = struct.unpack("!I", read_exact(stream, 4))[0]
         if not 0 < length <= 4096:
-            raise AirlockError("The isolated converter returned an invalid error response.")
+            raise AirlockError(
+                "The isolated converter returned an invalid error response."
+            )
         try:
             error = json.loads(read_exact(stream, length).decode("utf-8"))
         except (ValueError, UnicodeError, RecursionError):
-            raise AirlockError("The isolated converter returned an invalid error response.") from None
+            raise AirlockError(
+                "The isolated converter returned an invalid error response."
+            ) from None
         if (
             not isinstance(error, dict)
             or set(error) != {"code", "error"}
             or not isinstance(error["code"], str)
-            or error["code"] not in {"password_required", "password_incorrect", "conversion", "unsupported"}
+            or error["code"]
+            not in {
+                "password_required",
+                "password_incorrect",
+                "conversion",
+                "unsupported",
+            }
             or not isinstance(error["error"], str)
             or not 0 < len(error["error"]) <= 512
             or any(ord(character) < 32 for character in error["error"])
         ):
-            raise AirlockError("The isolated converter returned an invalid error response.")
+            raise AirlockError(
+                "The isolated converter returned an invalid error response."
+            )
         if read_exact(stream, 8) != END_MAGIC:
-            raise AirlockError("The isolated converter returned an invalid stream ending.")
+            raise AirlockError(
+                "The isolated converter returned an invalid stream ending."
+            )
         if acknowledge is not None:
             acknowledge()
         if stream.read(1):
@@ -377,7 +393,9 @@ def receive_pages(stream, directory, acknowledge=None):
         if error["code"] == "password_required":
             raise PasswordRequired("This document requires a password.")
         if error["code"] == "password_incorrect":
-            raise PasswordIncorrect("The encrypted document could not be opened with this password. Check the password and file.")
+            raise PasswordIncorrect(
+                "The encrypted document could not be opened with this password. Check the password and file."
+            )
         raise AirlockError(error["error"])
     if magic != OUTPUT_MAGIC:
         raise AirlockError(
@@ -548,7 +566,9 @@ class AirlockSession:
                     return
                 try:
                     if available_memory_mib() < HOST_RESERVE_MIB:
-                        memory_failure.append("Available RAM became too low. The isolated converter was stopped.")
+                        memory_failure.append(
+                            "Available RAM became too low. The isolated converter was stopped."
+                        )
                         stop()
                         return
                 except (AirlockError, OSError, ValueError):
@@ -560,7 +580,11 @@ class AirlockSession:
             try:
                 process.stdin.write(
                     struct.pack(
-                        "!8sI16sH", INPUT_MAGIC, len(data), suffix.encode("ascii"), len(password)
+                        "!8sI16sH",
+                        INPUT_MAGIC,
+                        len(data),
+                        suffix.encode("ascii"),
+                        len(password),
                     )
                 )
                 process.stdin.write(password)
@@ -582,7 +606,9 @@ class AirlockSession:
 
         def acknowledge():
             if not sent.wait(5):
-                raise AirlockError("The document could not be delivered to the isolated converter.")
+                raise AirlockError(
+                    "The document could not be delivered to the isolated converter."
+                )
             process.stdin.write(ACK_MAGIC)
             process.stdin.flush()
 
@@ -598,10 +624,20 @@ class AirlockSession:
             done.set()
             watcher.join()
             status = process.wait(timeout=5)
-            if status != 0 or self.cancelled.is_set() or timed_out.is_set() or memory_failure:
+            if (
+                status != 0
+                or self.cancelled.is_set()
+                or timed_out.is_set()
+                or memory_failure
+            ):
                 raise AirlockError("Conversion was cancelled, timed out, or failed.")
             self.pages = pages
-        except (AirlockError, OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+        except (
+            AirlockError,
+            OSError,
+            RuntimeError,
+            subprocess.TimeoutExpired,
+        ) as error:
             self.pages = []
             for path in self.directory.glob("page-*.rgbz"):
                 path.unlink(missing_ok=True)

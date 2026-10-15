@@ -129,7 +129,9 @@ def hardening_label(name, value, status):
     if value == "Unavailable":
         return "Unavailable"
     if status == "info" and name in (
-        "Kernel lockdown", "Module loading", "Module signatures"
+        "Kernel lockdown",
+        "Module loading",
+        "Module signatures",
     ):
         return "Intentional"
     return STATUS_LABELS[status]
@@ -352,10 +354,16 @@ class KernelWindow(ReportWindow):
         for key, value in values.items():
             status = hardening_status(key, value, report["mode"], unsupported)
             state = (
-                "Info" if key in unsupported else "Unavailable"
-                if value is None
+                "Info"
+                if key in unsupported
                 else (
-                    "Matches" if status == "good" else STATUS_LABELS.get(status, "Info")
+                    "Unavailable"
+                    if value is None
+                    else (
+                        "Matches"
+                        if status == "good"
+                        else STATUS_LABELS.get(status, "Info")
+                    )
                 )
             )
             if (key == "kernel.unprivileged_userns_clone" and value == "1") or (
@@ -365,9 +373,11 @@ class KernelWindow(ReportWindow):
             self.sysctls.append(
                 (
                     key,
-                    str(value)
-                    if value is not None
-                    else "Not exposed" if key in unsupported else "Unavailable",
+                    (
+                        str(value)
+                        if value is not None
+                        else "Not exposed" if key in unsupported else "Unavailable"
+                    ),
                     state,
                 )
             )

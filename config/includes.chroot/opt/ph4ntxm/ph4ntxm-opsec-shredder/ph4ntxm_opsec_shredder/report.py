@@ -17,9 +17,19 @@ def describe_target(path):
     try:
         evidence = os.lstat(path)
     except FileNotFoundError:
-        return {"path": path, "kind": "Unavailable", "state": "Missing", "detail": "Path no longer exists"}
+        return {
+            "path": path,
+            "kind": "Unavailable",
+            "state": "Missing",
+            "detail": "Path no longer exists",
+        }
     except OSError as error:
-        return {"path": path, "kind": "Unavailable", "state": "Unavailable", "detail": str(error)}
+        return {
+            "path": path,
+            "kind": "Unavailable",
+            "state": "Unavailable",
+            "detail": str(error),
+        }
     if stat.S_ISLNK(evidence.st_mode):
         kind = "Symbolic link"
         detail = "The link itself is removed; its target is not followed"
@@ -30,7 +40,12 @@ def describe_target(path):
         kind = "Folder"
         detail = "Recursive overwrite and deletion of folder contents"
     else:
-        return {"path": path, "kind": "Special file", "state": "Unsupported", "detail": "The backend refuses unsupported file types"}
+        return {
+            "path": path,
+            "kind": "Special file",
+            "state": "Unsupported",
+            "detail": "The backend refuses unsupported file types",
+        }
     return {"path": path, "kind": kind, "state": "Marked", "detail": detail}
 
 
@@ -77,13 +92,23 @@ def plain_report(report):
         "Marked paths",
     ]
     for target in report["targets"]:
-        lines.append(f"{target['path']} [{target['kind']}; {target['state']}] {target['detail']}")
+        lines.append(
+            f"{target['path']} [{target['kind']}; {target['state']}] {target['detail']}"
+        )
     if not report["targets"]:
         lines.append("No paths marked")
     run = report.get("last_run")
     if run:
         title, status, detail = execution_summary(run)
-        lines.extend(["", title, detail, f"Finished: {run['finished_at']}", f"Passes: {run['passes']}"])
+        lines.extend(
+            [
+                "",
+                title,
+                detail,
+                f"Finished: {run['finished_at']}",
+                f"Passes: {run['passes']}",
+            ]
+        )
         for result in run["results"]:
             message = result[2] if len(result) > 2 else ""
             lines.append(f"{result[0]}: {result[1]} {message}".rstrip())

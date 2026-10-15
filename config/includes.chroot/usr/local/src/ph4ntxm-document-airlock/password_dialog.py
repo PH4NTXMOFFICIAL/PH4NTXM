@@ -10,8 +10,12 @@ def ask_password(parent, title, message):
     gi.require_version("Gtk", "3.0")
     from gi.repository import Gtk
 
-    dialog = Gtk.Dialog(title=title, transient_for=parent, modal=True, destroy_with_parent=True)
-    dialog.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Unlock", Gtk.ResponseType.ACCEPT)
+    dialog = Gtk.Dialog(
+        title=title, transient_for=parent, modal=True, destroy_with_parent=True
+    )
+    dialog.add_buttons(
+        "Cancel", Gtk.ResponseType.CANCEL, "Unlock", Gtk.ResponseType.ACCEPT
+    )
     dialog.set_default_response(Gtk.ResponseType.ACCEPT)
     dialog.set_resizable(False)
     dialog.set_default_size(400, -1)

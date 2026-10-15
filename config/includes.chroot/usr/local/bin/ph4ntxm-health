@@ -221,7 +221,6 @@ separator
 section "Protection Runtime"
 
 check_runtime_file() {
-
     local FILE=$1
     local LABEL=$2
 
@@ -441,7 +440,6 @@ SWAP_TOTAL=$(awk '/SwapTotal/ {print int($2/1024)}' /proc/meminfo)
 SWAP_FREE=$(awk '/SwapFree/ {print int($2/1024)}' /proc/meminfo)
 
 if ((SWAP_TOTAL > 0)); then
-
     SWAP_USED=$((SWAP_TOTAL - SWAP_FREE))
     SWAP_PERCENT=$((SWAP_USED * 100 / SWAP_TOTAL))
 
@@ -451,18 +449,14 @@ if ((SWAP_TOTAL > 0)); then
     print_line "Swap:" \
         "${SWAP_USED} MB / ${SWAP_TOTAL} MB (${SWAP_PERCENT}%)" \
         "$SWAP_COLOR"
-
 else
-
     print_line "Swap:" "Disabled" "$GREEN"
-
 fi
 
 TEMP="UNAVAILABLE"
 MAX_TEMP=0
 
 for SENSOR in /sys/class/thermal/thermal_zone*/temp; do
-
     [[ -r "$SENSOR" ]] || continue
 
     RAW=$(cat "$SENSOR")
@@ -470,13 +464,11 @@ for SENSOR in /sys/class/thermal/thermal_zone*/temp; do
     [[ "$RAW" =~ ^[0-9]+$ ]] || continue
     ((RAW < 1000)) && RAW=$((RAW * 1000))
     ((RAW > MAX_TEMP)) && MAX_TEMP=$RAW
-
 done
 
 ((MAX_TEMP > 0)) && TEMP="$((MAX_TEMP / 1000))°C"
 
 if [[ "$TEMP" != "UNAVAILABLE" ]]; then
-
     VALUE=${TEMP%°C}
 
     if ((VALUE >= 90)); then
@@ -490,11 +482,8 @@ if [[ "$TEMP" != "UNAVAILABLE" ]]; then
     fi
 
     print_line "CPU Temperature:" "$TEMP" "$TEMP_COLOR"
-
 else
-
     print_line "CPU Temperature:" "Unavailable" "$GRAY"
-
 fi
 
 separator
@@ -771,7 +760,6 @@ else
 fi
 
 if [[ -r "$STATE_DIR/clock-fuzz-profile" ]]; then
-
     CLOCK_OFFSET=$(awk -F= '/^OFFSET_SECONDS=/{print $2}' "$STATE_DIR/clock-fuzz-profile")
     CLOCK_TICK=$(awk -F= '/^INITIAL_TICK=/{print $2}' "$STATE_DIR/clock-fuzz-profile")
     CLOCK_APPLIED=$(awk -F= '/^SKEW_APPLIED=/{print $2}' "$STATE_DIR/clock-fuzz-profile")
@@ -786,12 +774,9 @@ if [[ -r "$STATE_DIR/clock-fuzz-profile" ]]; then
         error
         print_line "System Clock Skew:" "Not applied" "$RED"
     fi
-
 else
-
     warning
     print_line "Clock Profile:" "Missing" "$AMBER"
-
 fi
 
 separator

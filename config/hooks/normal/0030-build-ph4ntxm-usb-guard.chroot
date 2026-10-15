@@ -13,7 +13,7 @@ c++ -std=c++17 -O2 -Wall -Wextra -Werror -Wpedantic \
     -pie -Wl,-z,relro,-z,now -lusbguard -o "$CLIENT"
 chown root:root "$CLIENT"
 chmod 0755 "$CLIENT"
-sha256sum "$CLIENT" > /usr/lib/ph4ntxm/usb-guard.sha256
+sha256sum "$CLIENT" >/usr/lib/ph4ntxm/usb-guard.sha256
 chown root:root /usr/lib/ph4ntxm/usb-guard.sha256 /etc/ph4ntxm-usb-guard.conf
 chmod 0644 /usr/lib/ph4ntxm/usb-guard.sha256
 chmod 0600 /etc/ph4ntxm-usb-guard.conf

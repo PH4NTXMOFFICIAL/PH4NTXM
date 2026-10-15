@@ -130,7 +130,6 @@ while true; do
             >/dev/null 2>&1; then
             MANAGED_IFACES["$IFACE"]=1
         fi
-
     done
 
     for IFACE in "${!MANAGED_IFACES[@]}"; do
