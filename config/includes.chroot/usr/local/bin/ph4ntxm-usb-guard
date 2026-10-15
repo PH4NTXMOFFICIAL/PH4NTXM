@@ -265,7 +265,7 @@ def label(text, style=None, lines=2):
 class UsbGuardWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="PH4NTXM USB Guard")
-        width, height = 780, 560
+        width, height = 900, 600
         display = Gdk.Display.get_default()
         if display:
             monitor = display.get_primary_monitor() or display.get_monitor(0)
@@ -274,7 +274,7 @@ class UsbGuardWindow(Gtk.Window):
                 width = min(width, max(480, area.width - 40))
                 height = min(height, max(360, area.height - 40))
         self.set_default_size(width, height)
-        self.set_size_request(min(640, width), -1)
+        self.set_size_request(min(640, width), min(420, height))
         self.set_position(Gtk.WindowPosition.CENTER)
         self.set_icon_name("ph4ntxm-usb-guard")
         if os.path.isfile(CSS_FILE):
