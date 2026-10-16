@@ -139,6 +139,8 @@ Media Viewers use offline namespaces, a private bus/home and nested Xephyr displ
 
 [Vault](docs/system/session/VAULT.md) collects selected files in private tmpfs and writes standard age-encrypted ZIP bundles on explicit Export. Manual unlock and review reuse the Airlock guest. A separate, bounded crypto sandbox handles encryption without persisting system configuration or profiles.
 
+[Metadata Cleaner](docs/system/session/METADATA-CLEANER.md) inspects and cleans selected RAM copies with Debian mat2 inside an offline, resource-limited sandbox. Reports compare supported metadata before and after. Explicit Export preserves originals and refuses replacement of existing files.
+
 See [Document Airlock](docs/system/session/DOCUMENT-AIRLOCK.md), [Archive Airlock](docs/system/session/ARCHIVE-AIRLOCK.md), [Vault](docs/system/session/VAULT.md) and [Media Viewers](docs/system/session/MEDIA-VIEWERS.md) for format support, limits and cleanup.
 
 ## [ OPERATOR VIEWS AND DIAGNOSTICS ]

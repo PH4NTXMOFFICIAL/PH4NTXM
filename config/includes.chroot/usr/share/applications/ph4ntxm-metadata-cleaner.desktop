@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Metadata Cleaner
+Comment=Inspect metadata and export a cleaned copy through an offline sandbox
+Exec=/usr/local/bin/ph4ntxm-metadata-cleaner -- %F
+Icon=ph4ntxm-metadata-cleaner
+Terminal=false
+Categories=Utility;X-PH4NTXMApps;
+StartupNotify=true

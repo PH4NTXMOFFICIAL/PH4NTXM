@@ -1,0 +1,602 @@
+#!/usr/bin/python3 -I
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+import argparse
+import importlib
+import os
+from pathlib import Path
+import signal
+import sys
+import threading
+import unicodedata
+
+BACKEND_DIR = "/usr/local/lib/ph4ntxm-metadata-cleaner"
+CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
+
+
+def load_backend():
+    sys.path.insert(0, BACKEND_DIR)
+    return importlib.import_module("cleaner")
+
+
+def display_text(value):
+    return "".join(
+        c if unicodedata.category(c) not in {"Cc", "Cf", "Cs"} else " "
+        for c in str(value)
+    )
+
+
+def format_size(value):
+    return (
+        "%.1f MiB" % (value / 1048576)
+        if value >= 1048576
+        else "%.1f KiB" % (value / 1024)
+    )
+
+
+def desktop(paths):
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk, Pango
+
+    def styled(widget, name):
+        widget.get_style_context().add_class(name)
+        return widget
+
+    def label(text, style=None):
+        widget = Gtk.Label(label=text, xalign=0)
+        widget.set_line_wrap(True)
+        widget.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        widget.set_max_width_chars(85)
+        return styled(widget, style) if style else widget
+
+    class CleanerWindow(Gtk.Window):
+        def __init__(self):
+            super().__init__(title="PH4NTXM Metadata Cleaner")
+            width, height = 900, 600
+            display = Gdk.Display.get_default()
+            monitor = (
+                (display.get_primary_monitor() or display.get_monitor(0))
+                if display
+                else None
+            )
+            if monitor:
+                area = monitor.get_workarea()
+                width = min(width, max(480, area.width - 40))
+                height = min(height, max(360, area.height - 40))
+            self.set_default_size(width, height)
+            self.set_size_request(min(640, width), min(420, height))
+            self.set_position(Gtk.WindowPosition.CENTER)
+            self.set_icon_name("ph4ntxm-metadata-cleaner")
+            self.set_wmclass("ph4ntxm-metadata-cleaner", "PH4NTXM Metadata Cleaner")
+            if Path(CSS_FILE).is_file():
+                provider = Gtk.CssProvider()
+                provider.load_from_path(CSS_FILE)
+                Gtk.StyleContext.add_provider_for_screen(
+                    self.get_screen(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+                )
+            settings = Gtk.Settings.get_default()
+            if settings:
+                settings.set_property("gtk-recent-files-enabled", False)
+            styled(self, "ph4ntxm-window")
+            self.backend = None
+            self.session = None
+            self.busy = False
+            self.closing = False
+            self.destroyed = False
+            self.dialog = None
+            self.exported = set()
+            self.build()
+            self.connect("delete-event", self.on_close)
+            self.connect("destroy", self.on_destroy)
+            self.update_controls()
+            GLib.idle_add(self.initialize)
+
+        def button(self, text, callback):
+            button = Gtk.Button(label=text)
+            button.connect("clicked", callback)
+            return button
+
+        def build(self):
+            root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            self.add(root)
+            header = styled(
+                Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5), "top-panel"
+            )
+            header.pack_start(
+                label("PH4NTXM Metadata Cleaner", "title"), False, False, 0
+            )
+            header.pack_start(
+                label(
+                    "Inspect metadata · Clean a copy · Review before sharing",
+                    "subtitle",
+                ),
+                False,
+                False,
+                0,
+            )
+            root.pack_start(header, False, False, 0)
+            content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+            content.set_border_width(16)
+            body = Gtk.ScrolledWindow()
+            body.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+            body.add(content)
+            root.pack_start(body, True, True, 0)
+            actions = Gtk.Box(spacing=8)
+            self.add_button = self.button("Add Files", self.on_add)
+            self.remove_button = self.button("Remove", self.on_remove)
+            self.inspect_button = self.button(
+                "Inspect", lambda _: self.on_process("inspect")
+            )
+            self.clean_button = self.button(
+                "Clean Copy", lambda _: self.on_process("clean")
+            )
+            self.clear_button = self.button("Clear", self.on_clear)
+            for button in (
+                self.add_button,
+                self.remove_button,
+                self.inspect_button,
+                self.clean_button,
+                self.clear_button,
+            ):
+                actions.pack_start(button, False, False, 0)
+            content.pack_start(actions, False, False, 0)
+            self.store = Gtk.ListStore(str, str, str, str)
+            self.tree = Gtk.TreeView(model=self.store)
+            self.tree.set_enable_search(False)
+            for title, index, expand in (
+                ("Filename", 1, True),
+                ("Size", 2, False),
+                ("State", 3, False),
+            ):
+                cell = Gtk.CellRendererText()
+                cell.set_property("ellipsize", Pango.EllipsizeMode.MIDDLE)
+                column = Gtk.TreeViewColumn(title, cell, text=index)
+                column.set_expand(expand)
+                column.set_min_width(100 if expand else 85)
+                column.set_resizable(True)
+                self.tree.append_column(column)
+            self.tree.get_selection().connect(
+                "changed", lambda _: self.selection_changed()
+            )
+            self.tree.connect("row-activated", lambda *_: self.on_process("inspect"))
+            files = Gtk.ScrolledWindow()
+            files.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+            files.set_min_content_height(75)
+            files.add(self.tree)
+            content.pack_start(files, True, True, 0)
+            self.count = label("0 / 32 files · 0 KiB / 128 MiB")
+            content.pack_start(self.count, False, False, 0)
+            self.tabs = Gtk.Notebook()
+            self.metadata_stores = []
+            for title in ("Before", "After"):
+                store = Gtk.ListStore(str, str)
+                self.metadata_stores.append(store)
+                tree = Gtk.TreeView(model=store)
+                tree.set_enable_search(False)
+                for heading, position in (("Field", 0), ("Value", 1)):
+                    renderer = Gtk.CellRendererText()
+                    renderer.set_property("wrap-width", 420 if position else 220)
+                    renderer.set_property("wrap-mode", Pango.WrapMode.WORD_CHAR)
+                    column = Gtk.TreeViewColumn(heading, renderer, text=position)
+                    column.set_expand(True)
+                    column.set_resizable(True)
+                    tree.append_column(column)
+                scroll = Gtk.ScrolledWindow()
+                scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+                scroll.set_min_content_height(85)
+                scroll.add(tree)
+                self.tabs.append_page(scroll, Gtk.Label(label=title))
+            content.pack_start(self.tabs, True, True, 0)
+            content.pack_start(
+                label(
+                    "Originals stay unchanged. Cleaning can rewrite document structure or image quality. Review visible content and filenames before sharing.",
+                    "subtitle",
+                ),
+                False,
+                False,
+                0,
+            )
+            self.status = label("Checking runtime…", "subtitle")
+            content.pack_start(self.status, False, False, 0)
+            footer = Gtk.Box(spacing=8)
+            self.original_button = self.button(
+                "Preview Original", lambda _: self.on_preview(False)
+            )
+            self.preview_button = self.button(
+                "Preview Cleaned", lambda _: self.on_preview(True)
+            )
+            self.export_button = self.button("Export Copy", self.on_export)
+            self.cancel_button = self.button("Cancel", self.on_cancel)
+            self.close_button = self.button("Close", self.on_close)
+            for button in (
+                self.original_button,
+                self.preview_button,
+                self.export_button,
+                self.cancel_button,
+            ):
+                footer.pack_start(button, False, False, 0)
+            footer.pack_end(self.close_button, False, False, 0)
+            content.pack_start(footer, False, False, 0)
+
+        def selected_id(self):
+            model, iterator = self.tree.get_selection().get_selected()
+            return model[iterator][0] if iterator is not None else None
+
+        def selected_item(self):
+            identifier = self.selected_id()
+            return (
+                next(
+                    (item for item in self.session.items if item["id"] == identifier),
+                    None,
+                )
+                if self.session
+                else None
+            )
+
+        def update_controls(self):
+            item = self.selected_item()
+            available = (
+                not self.busy
+                and not self.closing
+                and self.session is not None
+                and not self.session.cancelled.is_set()
+            )
+            self.add_button.set_sensitive(available)
+            self.clear_button.set_sensitive(not self.busy and self.session is not None)
+            for button in (self.remove_button, self.inspect_button, self.clean_button):
+                button.set_sensitive(available and item is not None)
+            preview = (
+                bool(
+                    item
+                    and self.backend.viewer_kind(item["name"])
+                    in {"document", "image", "media"}
+                )
+                if self.backend
+                else False
+            )
+            self.original_button.set_sensitive(available and preview)
+            self.preview_button.set_sensitive(
+                available and preview and item["result"] is not None
+            )
+            self.export_button.set_sensitive(
+                available and item is not None and item["result"] is not None
+            )
+            self.cancel_button.set_sensitive(self.busy and not self.closing)
+            self.tree.set_sensitive(not self.busy)
+            self.close_button.set_sensitive(not self.closing)
+
+        def selection_changed(self):
+            item = self.selected_item()
+            report = item["report"] if item else None
+            for key, store in zip(("before", "after"), self.metadata_stores):
+                store.clear()
+                if report is None or (key == "after" and not report["cleaned"]):
+                    store.append(
+                        [
+                            "",
+                            (
+                                "Run Clean Copy to compare metadata."
+                                if key == "after"
+                                else "Select a file and run Inspect or Clean Copy."
+                            ),
+                        ]
+                    )
+                else:
+                    for row in report[key]:
+                        store.append(row)
+                    if not report[key]:
+                        store.append(["", "No supported metadata reported."])
+                    if report[key + "_truncated"]:
+                        store.append(
+                            ["Report limit", "Some fields or values were truncated."]
+                        )
+            self.update_controls()
+
+        def refresh(self):
+            selected = self.selected_id()
+            self.store.clear()
+            total = 0
+            if self.session:
+                for item in self.session.items:
+                    total += item["size"]
+                    state = (
+                        "Cleaned copy"
+                        if item["result"]
+                        else "Inspected" if item["report"] else "Not inspected"
+                    )
+                    iterator = self.store.append(
+                        [
+                            item["id"],
+                            display_text(item["name"]),
+                            format_size(item["size"]),
+                            state,
+                        ]
+                    )
+                    if item["id"] == selected:
+                        self.tree.get_selection().select_iter(iterator)
+            self.count.set_text(
+                "%d / 32 files · %s / 128 MiB" % (len(self.store), format_size(total))
+            )
+            self.selection_changed()
+
+        def run(self, function, message, finished=None):
+            if self.busy:
+                return
+            self.busy = True
+            self.status.set_text(message)
+            self.update_controls()
+
+            def work():
+                result = None
+                error = None
+                try:
+                    result = function()
+                except Exception as failure:
+                    error = display_text(str(failure))[:1024]
+                GLib.idle_add(done, result, error)
+
+            def done(result, error):
+                if self.destroyed:
+                    return False
+                self.busy = False
+                if self.session:
+                    self.session.resume()
+                self.status.set_text(error or "Ready.")
+                if finished and not error:
+                    finished(result)
+                if self.destroyed:
+                    return False
+                self.refresh()
+                if self.closing:
+                    self.cleanup(True)
+                return False
+
+            try:
+                threading.Thread(target=work, daemon=False).start()
+            except (RuntimeError, OSError):
+                self.busy = False
+                self.status.set_text(
+                    "The metadata operation could not start. Try again."
+                )
+                self.update_controls()
+
+        def initialize(self):
+            def prepare():
+                self.backend = load_backend()
+                return self.backend.CleanerSession(self.backend.check_ready())
+
+            def ready(session):
+                self.session = session
+                self.status.set_text(
+                    "Add files to inspect metadata. Up to 64 MiB per file."
+                )
+                if paths:
+                    GLib.idle_add(lambda: self.add_paths(paths))
+
+            self.run(prepare, "Checking runtime…", ready)
+            return False
+
+        def chooser(self, title, save=False):
+            dialog = Gtk.FileChooserDialog(
+                title=title,
+                transient_for=self,
+                action=(
+                    Gtk.FileChooserAction.SAVE if save else Gtk.FileChooserAction.OPEN
+                ),
+            )
+            dialog.add_buttons(
+                "Cancel",
+                Gtk.ResponseType.CANCEL,
+                "Export" if save else "Add",
+                Gtk.ResponseType.OK,
+            )
+            dialog.set_local_only(True)
+            dialog.set_select_multiple(not save)
+            self.dialog = dialog
+            return dialog
+
+        def add_paths(self, values):
+            if self.session and not self.busy:
+                self.run(
+                    lambda: self.session.add_files(values),
+                    "Copying selected files into private RAM…",
+                )
+            return False
+
+        def on_add(self, *_):
+            dialog = self.chooser("Add Files")
+            try:
+                if dialog.run() == Gtk.ResponseType.OK:
+                    self.add_paths(dialog.get_filenames())
+            finally:
+                self.dialog = None
+                dialog.destroy()
+
+        def on_remove(self, *_):
+            identifier = self.selected_id()
+            if identifier:
+                self.run(
+                    lambda: self.session.remove(identifier),
+                    "Removing the private copy…",
+                )
+
+        def on_process(self, operation):
+            identifier = self.selected_id()
+            if not identifier or self.busy:
+                return
+
+            def finished(report):
+                if operation == "clean":
+                    self.exported.discard(identifier)
+                    self.tabs.set_current_page(1)
+                    self.status.set_text(
+                        "Cleaned copy ready. %d fields remain in the supported metadata report. Review before exporting."
+                        % len(report["after"])
+                    )
+                else:
+                    self.tabs.set_current_page(0)
+                    self.status.set_text(
+                        "Inspection complete. %d supported metadata fields reported."
+                        % len(report["before"])
+                    )
+
+            self.run(
+                lambda: self.session.process_file(identifier, operation),
+                (
+                    "Cleaning an isolated copy…"
+                    if operation == "clean"
+                    else "Inspecting metadata in isolation…"
+                ),
+                finished,
+            )
+
+        def on_preview(self, cleaned):
+            identifier = self.selected_id()
+            if identifier:
+                self.run(
+                    lambda: self.session.review(identifier, cleaned),
+                    "Opening the isolated preview. Close the viewer to return…",
+                )
+
+        def on_export(self, *_):
+            item = self.selected_item()
+            if not item:
+                return
+            dialog = self.chooser("Export Cleaned Copy", True)
+            dialog.set_do_overwrite_confirmation(False)
+            dialog.set_current_name(
+                item["name"][: -len(item["suffix"])] + "-cleaned" + item["suffix"]
+            )
+            hint = label("Choose a new filename. Existing files stay unchanged.")
+            dialog.set_extra_widget(hint)
+            hint.show()
+            try:
+                while dialog.run() == Gtk.ResponseType.OK:
+                    destination = dialog.get_filename()
+                    if os.path.lexists(destination):
+                        hint.set_text(
+                            "That filename already exists. Choose a new filename."
+                        )
+                        continue
+
+                    def finished(_):
+                        self.exported.add(item["id"])
+                        self.status.set_text(
+                            "Cleaned copy exported. The original was not changed."
+                        )
+
+                    self.run(
+                        lambda: self.session.export(item["id"], destination),
+                        "Exporting the cleaned copy…",
+                        finished,
+                    )
+                    break
+            finally:
+                self.dialog = None
+                dialog.destroy()
+
+        def confirm_discard(self):
+            pending = self.session and any(
+                item["result"] and item["id"] not in self.exported
+                for item in self.session.items
+            )
+            if not pending:
+                return True
+            dialog = Gtk.MessageDialog(
+                transient_for=self,
+                modal=True,
+                message_type=Gtk.MessageType.QUESTION,
+                buttons=Gtk.ButtonsType.NONE,
+                text="Discard unexported cleaned copies?",
+            )
+            dialog.format_secondary_text(
+                "Original files and previously exported copies remain unchanged."
+            )
+            dialog.add_buttons(
+                "Cancel", Gtk.ResponseType.CANCEL, "Discard", Gtk.ResponseType.OK
+            )
+            self.dialog = dialog
+            try:
+                return dialog.run() == Gtk.ResponseType.OK
+            finally:
+                self.dialog = None
+                dialog.destroy()
+
+        def cleanup(self, closing):
+            if self.busy:
+                return
+            self.closing = False
+
+            def clear():
+                if self.session:
+                    self.session.close()
+
+            def cleared(_):
+                self.session = None
+                self.exported.clear()
+                if closing:
+                    self.destroy()
+                else:
+                    self.initialize()
+
+            self.run(
+                clear, "Stopping workers and clearing the private RAM session…", cleared
+            )
+
+        def on_clear(self, *_):
+            if not self.busy and self.confirm_discard():
+                self.cleanup(False)
+
+        def on_cancel(self, *_):
+            if self.session:
+                self.session.cancel()
+                self.status.set_text("Cancelling and stopping owned workers…")
+
+        def on_destroy(self, *_):
+            self.destroyed = True
+            if Gtk.main_level():
+                Gtk.main_quit()
+
+        def on_close(self, *_):
+            if self.closing or self.dialog is not None:
+                return True
+            if not self.confirm_discard():
+                return True
+            if self.busy:
+                self.closing = True
+                self.on_cancel()
+                self.update_controls()
+            else:
+                self.cleanup(True)
+            return True
+
+    window = CleanerWindow()
+    window.show_all()
+    for number in (signal.SIGINT, signal.SIGTERM):
+        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, number, lambda: window.on_close())
+    Gtk.main()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="PH4NTXM Metadata Cleaner")
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("files", nargs="*")
+    args = parser.parse_args()
+    if args.check:
+        try:
+            load_backend().check_ready()
+            print("Metadata Cleaner prerequisites are ready.")
+            return 0
+        except Exception as error:
+            print(display_text(error), file=sys.stderr)
+            return 1
+    desktop(args.files)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

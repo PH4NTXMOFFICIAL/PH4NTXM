@@ -56,6 +56,9 @@ python3-stem
 macchanger
 unbound
 exiftool
+mat2
+ffmpeg
+python3-pil
 
 qemu-system-x86
 bubblewrap

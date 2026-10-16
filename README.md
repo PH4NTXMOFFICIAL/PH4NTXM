@@ -52,7 +52,9 @@ Boot Pilot shows readiness, connects to Wi-Fi and opens your mode's browser. Ide
 
 Open documents, archives and media:
 
-Document Airlock converts supported documents into a previewable raster PDF. Archive Airlock inspects archives and opens selected files through isolated viewers. Supported encrypted documents and ZIP entries unlock inside the offline guest. Image and media viewers provide separate offline sandboxes. Vault keeps explicitly selected files in private RAM and exports encrypted `.ph4vault` copies for manual use in a later session.
+Document Airlock converts supported documents into a previewable raster PDF. Archive Airlock inspects archives and opens selected files through isolated viewers. Supported encrypted documents and ZIP entries unlock inside the offline guest. Image and media viewers provide separate offline sandboxes.
+
+Vault keeps explicitly selected files in private RAM and exports encrypted `.ph4vault` copies for manual use in a later session. Metadata Cleaner compares supported metadata before and after offline cleaning, then exports a separate copy.
 
 Review devices and application networking:
 

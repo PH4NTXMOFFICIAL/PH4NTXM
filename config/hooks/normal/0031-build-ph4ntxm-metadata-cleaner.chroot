@@ -1,0 +1,26 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+SOURCE=/usr/local/src/ph4ntxm-metadata-cleaner
+RUNTIME=/usr/local/lib/ph4ntxm-metadata-cleaner
+python3 "$SOURCE/tests/test-cleaner.py"
+install -d -m 0755 "$RUNTIME"
+install -m 0644 "$SOURCE/cleaner.py" "$SOURCE/worker.py" "$SOURCE/cleaner_protocol.py" "$RUNTIME/"
+chmod 0755 /usr/local/bin/ph4ntxm-metadata-cleaner
+python3 -I - <<'VERIFY'
+from pathlib import Path
+import sys
+sys.path.insert(0, "/usr/local/lib/ph4ntxm-metadata-cleaner")
+import cleaner
+cleaner.check_components()
+for name in ("cleaner.py", "worker.py", "cleaner_protocol.py"):
+    source = Path("/usr/local/lib/ph4ntxm-metadata-cleaner") / name
+    compile(source.read_text(), str(source), "exec")
+source = Path("/usr/local/bin/ph4ntxm-metadata-cleaner")
+compile(source.read_text(), str(source), "exec")
+VERIFY
+update-desktop-database /usr/share/applications
+rm -rf "$SOURCE"
