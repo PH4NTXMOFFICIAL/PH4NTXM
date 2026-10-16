@@ -476,6 +476,13 @@ class NetGuardWindow(Gtk.ApplicationWindow):
         )
         dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
         dialog.add_button("Enable Protection", Gtk.ResponseType.OK)
+        action_area = dialog.get_action_area()
+        action_area.set_layout(Gtk.ButtonBoxStyle.END)
+        action_area.get_style_context().remove_class("linked")
+        action_area.set_border_width(12)
+        for button in action_area.get_children():
+            action_area.set_child_non_homogeneous(button, True)
+            button.set_halign(Gtk.Align.END)
         dialog.set_default_response(Gtk.ResponseType.CANCEL)
         response = dialog.run()
         dialog.destroy()
