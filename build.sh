@@ -78,6 +78,21 @@ if [[ -d "$WORK/.build" || -d "$WORK/chroot" || -d "$WORK/binary" ]]; then
     rm -f -- "$WORK/SHA256SUMS"
 fi
 
+if ((PREPARE_ONLY == 0)) && [[ -d "$WORK/cache/bootstrap" ]]; then
+    for cached_path in \
+        "$WORK/cache/bootstrap" \
+        "$WORK/cache/bootstrap/usr" \
+        "$WORK/cache/bootstrap/usr/bin" \
+        "$WORK/cache/bootstrap/usr/bin/systemctl" \
+        "$WORK/cache/bootstrap/usr/bin/systemd-run"; do
+        if [[ -e "$cached_path" && "$(stat -c '%u' -- "$cached_path")" != 0 ]]; then
+            printf '%s\n' 'Discarding bootstrap cache with invalid ownership. Downloaded packages are retained.'
+            rm -rf -- "$WORK/cache/bootstrap"
+            break
+        fi
+    done
+fi
+
 python3 "$ROOT/tools/prepare-edition.py" --edition "$EDITION"
 if ((PREPARE_ONLY)); then
     printf 'Prepared %s configuration: %s/config\n' "$EDITION" "$WORK"

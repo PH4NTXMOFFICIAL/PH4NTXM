@@ -1,0 +1,31 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+SOURCE=/usr/local/src/ph4ntxm-vault
+BUILD=$(mktemp -d /tmp/ph4ntxm-vault-build.XXXXXX)
+trap 'rm -rf "$BUILD"' EXIT HUP INT TERM
+export GO111MODULE=off GOPATH=/usr/share/gocode CGO_ENABLED=0
+export GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local GOMAXPROCS=2
+export GOCACHE="$BUILD/cache" GOTMPDIR="$BUILD/tmp"
+mkdir -m 0700 "$GOTMPDIR"
+cd "$SOURCE"
+go test -count=1 .
+install -d -m 0755 /usr/local/libexec/ph4ntxm-vault /usr/local/lib/ph4ntxm-vault
+go build -trimpath -ldflags='-s -w' -o /usr/local/libexec/ph4ntxm-vault/crypto .
+install -o root -g root -m 0644 "$SOURCE/vault.py" /usr/local/lib/ph4ntxm-vault/vault.py
+chmod 0755 /usr/local/libexec/ph4ntxm-vault/crypto /usr/local/bin/ph4ntxm-vault
+python3 -I - <<'VERIFY'
+from pathlib import Path
+import sys
+sys.path.insert(0, "/usr/local/lib/ph4ntxm-vault")
+import vault
+vault.check_runtime_components()
+for name in ("/usr/local/lib/ph4ntxm-vault/vault.py", "/usr/local/bin/ph4ntxm-vault"):
+    compile(Path(name).read_text(), name, "exec")
+VERIFY
+update-mime-database /usr/share/mime
+update-desktop-database /usr/share/applications
+rm -rf "$SOURCE"

@@ -229,6 +229,26 @@ def airlock_snapshot(source):
         raise
 
 
+def media_mount(file_fd, name, allow_airlock=False):
+    if allow_airlock:
+        return ["--ro-bind-data", str(file_fd), name]
+    return ["--ro-bind", "/proc/self/fd/%d" % file_fd, name]
+
+
+def media_command(args, payload, allow_airlock=False):
+    if allow_airlock:
+        return (
+            [
+                "/usr/bin/prlimit",
+                "--fsize=%d:%d" % (MAX_AIRLOCK_BYTES, MAX_AIRLOCK_BYTES),
+            ]
+            + args
+            + ["/usr/bin/prlimit", "--fsize=8388608:8388608"]
+            + payload
+        )
+    return args + payload
+
+
 def runtime_directory():
     path = Path("/run/user") / str(os.getuid())
     info = path.lstat()
@@ -674,10 +694,12 @@ def session(kind, directory, values=None, allow_airlock=False):
     descriptors = [fd]
     status = [0]
 
-    def spawn(args, extra_fds=(), **kwargs):
+    def spawn(args, extra_fds=(), airlock_handoff=False, **kwargs):
         child_filter = os.open("/proc/self/fd/%d" % fd, os.O_RDONLY | os.O_CLOEXEC)
         args = list(args)
         args[args.index("--seccomp") + 1] = str(child_filter)
+        if allow_airlock and not airlock_handoff:
+            args = ["/usr/bin/prlimit", "--fsize=8388608:8388608"] + args
         try:
             p = subprocess.Popen(
                 args,
@@ -752,7 +774,10 @@ def session(kind, directory, values=None, allow_airlock=False):
             finally:
                 os.close(source)
             opened.append((path, snapshot))
-        resource.setrlimit(resource.RLIMIT_FSIZE, (8 * 1024 * 1024, 8 * 1024 * 1024))
+        resource.setrlimit(
+            resource.RLIMIT_FSIZE,
+            (8 * 1024 * 1024, MAX_AIRLOCK_BYTES if allow_airlock else 8 * 1024 * 1024),
+        )
         parent = GdkX11.X11Window.get_xid(canvas.get_window())
         display_args = configured(sandbox(fd), config)
         display_args += [
@@ -842,7 +867,7 @@ def session(kind, directory, values=None, allow_airlock=False):
         names = []
         for index, (path, file_fd) in enumerate(opened):
             name = "/media/%02d-%s" % (index + 1, path.name)
-            args += ["--ro-bind", "/proc/self/fd/%d" % file_fd, name]
+            args += media_mount(file_fd, name, allow_airlock)
             names.append(name)
         if kind == "video":
             pipe = audio / "pcm"
@@ -885,9 +910,13 @@ def session(kind, directory, values=None, allow_airlock=False):
         else:
             audio_process = None
         player = spawn(
-            args
-            + ["/usr/bin/python3", str(LIB / "media.py"), "--inside", kind, *names],
+            media_command(
+                args,
+                ["/usr/bin/python3", str(LIB / "media.py"), "--inside", kind, *names],
+                allow_airlock,
+            ),
             extra_fds=tuple(x[1] for x in opened),
+            airlock_handoff=allow_airlock,
         )
 
         def poll():

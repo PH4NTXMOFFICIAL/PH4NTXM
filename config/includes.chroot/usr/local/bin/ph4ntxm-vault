@@ -1,0 +1,823 @@
+#!/usr/bin/python3 -I
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+import argparse
+import importlib
+import os
+import signal
+import sys
+import threading
+import unicodedata
+from pathlib import Path
+
+CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
+BACKEND_DIR = "/usr/local/lib/ph4ntxm-vault"
+VIEWERS = {"text": "Text", "document": "Document", "image": "Image", "media": "Media"}
+
+
+def load_backend():
+    if BACKEND_DIR not in sys.path:
+        sys.path.insert(0, BACKEND_DIR)
+    return importlib.import_module("vault")
+
+
+def display_text(value):
+    return "".join(
+        character if unicodedata.category(character) not in {"Cc", "Cf", "Cs"} else "�"
+        for character in str(value)
+    )
+
+
+def format_size(size):
+    if size >= 1024 * 1024:
+        return "%.1f MiB" % (size / (1024 * 1024))
+    if size >= 1024:
+        return "%.1f KiB" % (size / 1024)
+    return "%d B" % size
+
+
+def desktop(initial_path=None):
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk, Pango
+
+    def add_class(widget, name):
+        widget.get_style_context().add_class(name)
+        return widget
+
+    def label(text, style=None):
+        widget = Gtk.Label(label=text, xalign=0)
+        widget.set_line_wrap(True)
+        widget.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        widget.set_max_width_chars(90)
+        return add_class(widget, style) if style else widget
+
+    class VaultWindow(Gtk.Window):
+        def __init__(self):
+            super().__init__(title="PH4NTXM Vault")
+            width, height = 900, 600
+            display = Gdk.Display.get_default()
+            monitor = (
+                (display.get_primary_monitor() or display.get_monitor(0))
+                if display
+                else None
+            )
+            if monitor:
+                area = monitor.get_workarea()
+                width = min(width, max(480, area.width - 40))
+                height = min(height, max(360, area.height - 40))
+            self.set_default_size(width, height)
+            self.set_size_request(min(640, width), min(420, height))
+            self.set_position(Gtk.WindowPosition.CENTER)
+            self.set_icon_name("ph4ntxm-vault")
+            self.set_wmclass("ph4ntxm-vault", "PH4NTXM Vault")
+            if os.path.isfile(CSS_FILE):
+                provider = Gtk.CssProvider()
+                provider.load_from_path(CSS_FILE)
+                Gtk.StyleContext.add_provider_for_screen(
+                    self.get_screen(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+                )
+            settings = Gtk.Settings.get_default()
+            if settings:
+                settings.set_property("gtk-recent-files-enabled", False)
+            add_class(self, "ph4ntxm-window")
+            self.backend = None
+            self.session = None
+            self.owned = []
+            self.cancelled = threading.Event()
+            self.busy = False
+            self.mutating = False
+            self.closing = False
+            self.confirming = False
+            self.dialog = None
+            self.vault_name = "No vault unlocked"
+            self.build()
+            self.connect("delete-event", self.on_close)
+            self.connect("destroy", Gtk.main_quit)
+            self.update_controls()
+
+        def build(self):
+            root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            self.add(root)
+            header = add_class(
+                Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5), "top-panel"
+            )
+            header.pack_start(label("PH4NTXM Vault", "title"), False, False, 0)
+            header.pack_start(
+                label(
+                    "Selected files · Encrypted export · Private RAM session",
+                    "subtitle",
+                ),
+                False,
+                False,
+                0,
+            )
+            root.pack_start(header, False, False, 0)
+            content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+            content.set_border_width(16)
+            body_scroll = Gtk.ScrolledWindow()
+            body_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+            body_scroll.add(content)
+            root.pack_start(body_scroll, True, True, 0)
+            self.heading = Gtk.Label(label=self.vault_name, xalign=0)
+            self.heading.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+            self.heading.set_max_width_chars(75)
+            content.pack_start(self.heading, False, False, 0)
+            actions = Gtk.Box(spacing=8)
+            self.new_button = Gtk.Button(label="New Vault")
+            self.new_button.connect("clicked", self.on_new)
+            self.open_button = Gtk.Button(label="Open Vault")
+            self.open_button.connect("clicked", lambda _: self.on_open())
+            self.add_button = Gtk.Button(label="Add Files")
+            self.add_button.connect("clicked", self.on_add)
+            self.remove_button = Gtk.Button(label="Remove Selected")
+            self.remove_button.connect("clicked", self.on_remove)
+            for button in (
+                self.new_button,
+                self.open_button,
+                self.add_button,
+                self.remove_button,
+            ):
+                actions.pack_start(button, False, False, 0)
+            content.pack_start(actions, False, False, 0)
+            self.stack = Gtk.Stack()
+            self.stack.set_hhomogeneous(False)
+            self.stack.set_vhomogeneous(False)
+            self.store = Gtk.ListStore(str, str, str, str, str)
+            self.tree = Gtk.TreeView(model=self.store)
+            self.tree.set_enable_search(False)
+            self.tree.set_tooltip_column(4)
+            for heading, position, minimum, expand in (
+                ("Filename", 1, 200, True),
+                ("Size", 2, 85, False),
+                ("Review", 3, 150, False),
+            ):
+                renderer = Gtk.CellRendererText()
+                renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
+                column = Gtk.TreeViewColumn(heading, renderer, text=position)
+                column.set_min_width(minimum)
+                column.set_expand(expand)
+                column.set_resizable(True)
+                self.tree.append_column(column)
+            selection = self.tree.get_selection()
+            selection.set_mode(Gtk.SelectionMode.MULTIPLE)
+            selection.connect("changed", lambda _: self.update_controls())
+            self.tree.connect("row-activated", lambda *_: self.on_review())
+            scroll = Gtk.ScrolledWindow()
+            scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+            scroll.set_min_content_height(60)
+            scroll.add(self.tree)
+            self.stack.add_named(scroll, "files")
+            preview = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+            preview_header = Gtk.Box(spacing=10)
+            self.back_button = Gtk.Button(label="Back to Files")
+            self.back_button.connect("clicked", self.on_back)
+            self.preview_name = Gtk.Label(xalign=0)
+            self.preview_name.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+            preview_header.pack_start(self.back_button, False, False, 0)
+            preview_header.pack_start(self.preview_name, True, True, 0)
+            preview.pack_start(preview_header, False, False, 0)
+            self.text_view = Gtk.TextView()
+            self.text_view.set_editable(False)
+            self.text_view.set_cursor_visible(False)
+            self.text_view.set_monospace(True)
+            self.text_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+            self.text_view.set_left_margin(10)
+            self.text_view.set_right_margin(10)
+            text_scroll = Gtk.ScrolledWindow()
+            text_scroll.set_min_content_height(60)
+            text_scroll.add(self.text_view)
+            preview.pack_start(text_scroll, True, True, 0)
+            self.stack.add_named(preview, "text")
+            self.stack.set_visible_child_name("files")
+            content.pack_start(self.stack, True, True, 0)
+            self.summary = Gtk.Label(label="No files", xalign=0)
+            self.summary.set_ellipsize(Pango.EllipsizeMode.END)
+            content.pack_start(self.summary, False, False, 0)
+            content.pack_start(
+                label(
+                    "Add up to 32 nonempty files, 64 MiB total. Export a .ph4vault file "
+                    "to keep an encrypted copy. Lock or close clears this RAM session. "
+                    "Unsupported files can be carried but cannot be reviewed.",
+                    "subtitle",
+                ),
+                False,
+                False,
+                0,
+            )
+            progress = Gtk.Box(spacing=10)
+            self.spinner = Gtk.Spinner()
+            self.status = label(
+                "Create a vault or manually unlock an encrypted vault.", "subtitle"
+            )
+            self.status.set_lines(2)
+            self.status.set_ellipsize(Pango.EllipsizeMode.END)
+            progress.pack_start(self.spinner, False, False, 0)
+            progress.pack_start(self.status, True, True, 0)
+            content.pack_start(progress, False, False, 0)
+            footer = Gtk.Box(spacing=8)
+            self.review_button = Gtk.Button(label="Review Selected")
+            self.review_button.connect("clicked", lambda _: self.on_review())
+            self.export_button = add_class(Gtk.Button(label="Export Vault"), "safe")
+            self.export_button.connect("clicked", self.on_export)
+            self.lock_button = Gtk.Button(label="Lock")
+            self.lock_button.connect("clicked", self.on_lock)
+            self.cancel_button = Gtk.Button(label="Cancel")
+            self.cancel_button.connect("clicked", self.on_cancel)
+            self.close_button = Gtk.Button(label="Close")
+            self.close_button.connect("clicked", self.on_close)
+            for button in (
+                self.review_button,
+                self.export_button,
+                self.lock_button,
+                self.cancel_button,
+            ):
+                footer.pack_start(button, False, False, 0)
+            footer.pack_end(self.close_button, False, False, 0)
+            content.pack_start(footer, False, False, 0)
+
+        def set_status(self, text):
+            text = display_text(text)
+            self.status.set_text(text)
+            self.status.set_tooltip_text(text)
+
+        def selected_items(self):
+            model, paths = self.tree.get_selection().get_selected_rows()
+            ids = {model[path][0] for path in paths}
+            return (
+                [item for item in self.session.items if item["id"] in ids]
+                if self.session
+                else []
+            )
+
+        def update_controls(self):
+            idle = not (self.busy or self.closing or self.confirming or self.dialog)
+            selected = self.selected_items()
+            listing = self.stack.get_visible_child_name() == "files"
+            self.new_button.set_sensitive(idle)
+            self.open_button.set_sensitive(idle)
+            self.add_button.set_sensitive(idle and bool(self.session) and listing)
+            self.remove_button.set_sensitive(idle and bool(selected) and listing)
+            self.review_button.set_sensitive(
+                idle
+                and listing
+                and len(selected) == 1
+                and bool(selected[0].get("viewer"))
+            )
+            self.export_button.set_sensitive(
+                idle and bool(self.session and self.session.items)
+            )
+            self.lock_button.set_sensitive(idle and bool(self.owned))
+            self.cancel_button.set_sensitive(
+                self.busy and not self.closing and not self.cancelled.is_set()
+            )
+            self.tree.set_sensitive(idle)
+            self.back_button.set_sensitive(idle)
+            self.close_button.set_sensitive(not self.closing and not self.confirming)
+
+        def refresh(self):
+            self.text_view.get_buffer().set_text("")
+            self.preview_name.set_text("")
+            self.stack.set_visible_child_name("files")
+            self.store.clear()
+            items = self.session.items if self.session else []
+            for item in items:
+                name = display_text(item["name"])
+                viewer = VIEWERS.get(
+                    item.get("viewer"),
+                    "Isolated viewer" if item.get("viewer") else "Unavailable",
+                )
+                self.store.append(
+                    (
+                        item["id"],
+                        name,
+                        format_size(item["size"]),
+                        viewer,
+                        GLib.markup_escape_text(name + " · " + viewer),
+                    )
+                )
+            heading = display_text(self.vault_name)
+            if self.session and self.session.dirty:
+                heading += " · Unexported changes"
+            self.heading.set_text(heading)
+            self.heading.set_tooltip_text(heading)
+            self.summary.set_text(
+                "%d / 32 files · %s / 64 MiB"
+                % (
+                    len(items),
+                    format_size(sum(item["size"] for item in items)),
+                )
+            )
+            self.update_controls()
+
+        def run_dialog(self, dialog):
+            self.dialog = dialog
+            self.update_controls()
+            try:
+                return dialog.run()
+            finally:
+                self.dialog = None
+                dialog.destroy()
+                self.update_controls()
+
+        def confirm_discard(self, action):
+            if not (
+                (self.session and self.session.dirty) or (self.busy and self.mutating)
+            ):
+                return True
+            self.confirming = True
+            dialog = Gtk.MessageDialog(
+                transient_for=self,
+                modal=True,
+                message_type=Gtk.MessageType.WARNING,
+                text="Discard unexported changes?",
+            )
+            dialog.format_secondary_text(
+                "Only an exported encrypted vault keeps your selected files. "
+                "Continuing will clear this RAM session."
+            )
+            dialog.add_buttons(
+                "Keep Session", Gtk.ResponseType.CANCEL, action, Gtk.ResponseType.ACCEPT
+            )
+            dialog.set_default_response(Gtk.ResponseType.CANCEL)
+            try:
+                return self.run_dialog(dialog) == Gtk.ResponseType.ACCEPT
+            finally:
+                self.confirming = False
+                self.update_controls()
+
+        def choose_files(self, action, title, multiple=False):
+            dialog = Gtk.FileChooserDialog(
+                title=title, transient_for=self, action=action
+            )
+            dialog.add_buttons(
+                "Cancel", Gtk.ResponseType.CANCEL, "Choose", Gtk.ResponseType.ACCEPT
+            )
+            dialog.set_local_only(True)
+            dialog.set_preview_widget_active(False)
+            dialog.set_use_preview_label(False)
+            dialog.set_select_multiple(multiple)
+            warning = label("", "status-warning")
+            warning.show()
+            dialog.set_extra_widget(warning)
+            if action == Gtk.FileChooserAction.SAVE:
+                dialog.set_current_name("vault.ph4vault")
+                dialog.set_do_overwrite_confirmation(False)
+            if not multiple:
+                file_filter = Gtk.FileFilter()
+                file_filter.set_name("Encrypted PH4NTXM vaults (.ph4vault)")
+                file_filter.add_pattern("*.ph4vault")
+                dialog.add_filter(file_filter)
+            self.dialog = dialog
+            self.update_controls()
+            try:
+                while not self.closing:
+                    if dialog.run() != Gtk.ResponseType.ACCEPT:
+                        return None
+                    paths = dialog.get_filenames()
+                    if not paths:
+                        continue
+                    if action == Gtk.FileChooserAction.SAVE:
+                        path = paths[0]
+                        if not path.endswith(".ph4vault"):
+                            path += ".ph4vault"
+                        if os.path.lexists(path):
+                            warning.set_text(
+                                "That export already exists. Choose a new filename."
+                            )
+                            dialog.set_current_name(Path(path).stem + "-new.ph4vault")
+                            continue
+                        return path
+                    return paths if multiple else paths[0]
+                return None
+            finally:
+                self.dialog = None
+                dialog.destroy()
+                self.update_controls()
+
+        def ask_password(self, exporting=False):
+            dialog = Gtk.Dialog(
+                title="Encrypt Vault" if exporting else "Unlock Vault",
+                transient_for=self,
+                modal=True,
+                destroy_with_parent=True,
+            )
+            dialog.add_buttons(
+                "Cancel",
+                Gtk.ResponseType.CANCEL,
+                "Encrypt" if exporting else "Unlock",
+                Gtk.ResponseType.ACCEPT,
+            )
+            dialog.set_default_response(Gtk.ResponseType.ACCEPT)
+            box = dialog.get_content_area()
+            box.set_spacing(10)
+            box.set_border_width(16)
+            box.pack_start(
+                label(
+                    "Use at least 12 characters. Keep this password to unlock the exported vault."
+                    if exporting
+                    else "Enter this vault's password to unlock it into private RAM."
+                ),
+                False,
+                False,
+                0,
+            )
+            entries = []
+            for prompt in (
+                ["Password", "Confirm password"] if exporting else ["Password"]
+            ):
+                entry = Gtk.Entry()
+                entry.set_visibility(False)
+                entry.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+                entry.set_input_hints(
+                    Gtk.InputHints.NO_SPELLCHECK | Gtk.InputHints.NO_EMOJI
+                )
+                entry.set_placeholder_text(prompt)
+                entry.set_activates_default(True)
+                entry.set_max_length(1024)
+                box.pack_start(entry, False, False, 0)
+                entries.append(entry)
+            error = label("", "status-warning")
+            box.pack_start(error, False, False, 0)
+            dialog.show_all()
+            self.dialog = dialog
+            self.update_controls()
+            try:
+                while not self.closing:
+                    if dialog.run() != Gtk.ResponseType.ACCEPT:
+                        return None
+                    password = entries[0].get_text()
+                    confirmation = entries[1].get_text() if exporting else None
+                    for entry in entries:
+                        entry.set_text("")
+                    message = None
+                    if not password or len(password.encode("utf-8")) > 1024:
+                        message = "Enter a password of no more than 1024 UTF-8 bytes."
+                    elif exporting and len(password) < 12:
+                        message = "Use at least 12 characters."
+                    elif exporting and password != confirmation:
+                        message = "The passwords did not match. Enter both again."
+                    confirmation = None
+                    if message:
+                        password = None
+                        error.set_text(message)
+                        entries[0].grab_focus()
+                        continue
+                    return password
+                return None
+            finally:
+                for entry in entries:
+                    entry.set_text("")
+                self.dialog = None
+                dialog.destroy()
+                self.update_controls()
+
+        def start_job(self, message, operation, callback, arguments=(), mutating=False):
+            if self.busy:
+                return False
+            self.busy = True
+            self.mutating = mutating
+            self.cancelled = threading.Event()
+            for session in self.owned:
+                session.cancelled = self.cancelled
+            self.spinner.start()
+            self.set_status(message)
+            self.update_controls()
+
+            def worker():
+                nonlocal arguments
+                result, error = None, None
+                try:
+                    if self.backend is None:
+                        self.backend = load_backend()
+                    result = operation(*arguments)
+                except Exception as exc:
+                    if self.backend and isinstance(exc, self.backend.VaultCancelled):
+                        error = "Operation cancelled."
+                    elif self.backend and isinstance(
+                        exc, (self.backend.VaultError, OSError, ValueError)
+                    ):
+                        error = str(exc)
+                    else:
+                        error = "The vault operation could not be completed."
+                finally:
+                    arguments = ()
+                GLib.idle_add(self.job_finished, callback, result, error)
+
+            try:
+                threading.Thread(target=worker, daemon=False).start()
+            except Exception:
+                arguments = ()
+                self.job_finished(
+                    callback, None, "The vault operation could not start."
+                )
+            return False
+
+        def job_finished(self, callback, result, error):
+            self.busy = False
+            self.mutating = False
+            self.spinner.stop()
+            callback(result, error)
+            self.update_controls()
+            if self.closing:
+                self.finish_closing()
+            return False
+
+        def make_session(self):
+            session = self.backend.VaultSession(self.backend.check_ready())
+            session.cancelled = self.cancelled
+            self.owned.append(session)
+            return session
+
+        def close_owned(self, keep=None):
+            for session in list(self.owned):
+                if session is keep:
+                    continue
+                session.close()
+                self.owned.remove(session)
+                if self.session is session:
+                    self.session = None
+
+        def replace_session(self, path=None, password=None):
+            candidate = None
+            try:
+                candidate = self.make_session()
+                if self.cancelled.is_set():
+                    raise self.backend.VaultCancelled("Operation cancelled.")
+                if path is not None:
+                    candidate.open_vault(path, password)
+                if self.cancelled.is_set():
+                    raise self.backend.VaultCancelled("Operation cancelled.")
+                self.close_owned(keep=candidate)
+                return candidate
+            except Exception:
+                if candidate:
+                    candidate.close()
+                    self.owned.remove(candidate)
+                raise
+
+        def session_finished(self, session, error):
+            if session is not None:
+                self.session = session
+            if self.session is None:
+                self.vault_name = "No vault unlocked"
+            self.refresh()
+            self.set_status(
+                error or "Vault ready in private RAM. Add files or review the contents."
+            )
+
+        def on_new(self, _):
+            if self.busy or self.closing or not self.confirm_discard("New Vault"):
+                return
+            previous_name = self.vault_name
+
+            def finished(session, error):
+                self.vault_name = "New vault" if session else previous_name
+                self.session_finished(session, error)
+
+            self.start_job(
+                "Creating a private RAM session…",
+                self.replace_session,
+                finished,
+                mutating=True,
+            )
+
+        def on_open(self, path=None):
+            if self.busy or self.closing:
+                return False
+            if path is None:
+                path = self.choose_files(
+                    Gtk.FileChooserAction.OPEN, "Open an encrypted vault"
+                )
+            if not path or self.closing:
+                return False
+            if not self.confirm_discard("Open Vault"):
+                return False
+            password = self.ask_password()
+            if password is None or self.closing:
+                return False
+            previous_name = self.vault_name
+
+            def finished(session, error):
+                self.vault_name = Path(path).name if session else previous_name
+                self.session_finished(session, error)
+
+            self.start_job(
+                "Unlocking the encrypted vault into private RAM…",
+                self.replace_session,
+                finished,
+                (path, password),
+                mutating=True,
+            )
+            password = None
+            return False
+
+        def files_finished(self, _, error):
+            self.refresh()
+            self.set_status(
+                error or "Vault contents updated. Export to keep an encrypted copy."
+            )
+
+        def on_add(self, _):
+            if self.busy or self.closing or not self.session:
+                return
+            paths = self.choose_files(
+                Gtk.FileChooserAction.OPEN, "Add selected files to this vault", True
+            )
+            if paths and not self.closing:
+                self.start_job(
+                    "Copying selected files into private RAM…",
+                    self.session.add_files,
+                    self.files_finished,
+                    (paths,),
+                    True,
+                )
+
+        def on_remove(self, _):
+            if self.busy or self.closing or not self.session:
+                return
+            ids = [item["id"] for item in self.selected_items()]
+            if ids:
+                self.start_job(
+                    "Removing selected files from this vault…",
+                    self.session.remove_files,
+                    self.files_finished,
+                    (ids,),
+                    True,
+                )
+
+        def on_review(self):
+            if self.busy or self.closing or not self.session:
+                return
+            items = self.selected_items()
+            if len(items) != 1 or not items[0].get("viewer"):
+                return
+            item = items[0]
+
+            def finished(text, error):
+                if error:
+                    self.set_status(error)
+                elif (
+                    text is not None
+                    and not self.closing
+                    and not self.cancelled.is_set()
+                ):
+                    name = display_text(item["name"])
+                    self.preview_name.set_text(name)
+                    self.preview_name.set_tooltip_text(name)
+                    self.text_view.get_buffer().set_text(text.replace("\x00", "�"))
+                    self.stack.set_visible_child_name("text")
+                    self.set_status("Read-only text preview · Private RAM")
+                else:
+                    self.set_status(
+                        "Review cancelled."
+                        if self.cancelled.is_set()
+                        else "The isolated viewer has closed."
+                    )
+
+            self.start_job(
+                "Opening the selected file for isolated review…",
+                self.session.review,
+                finished,
+                (item["id"],),
+            )
+
+        def on_back(self, _):
+            if self.busy or self.closing:
+                return
+            self.text_view.get_buffer().set_text("")
+            self.preview_name.set_text("")
+            self.stack.set_visible_child_name("files")
+            self.set_status("Select one supported file to review.")
+            self.update_controls()
+
+        def on_export(self, _):
+            if self.busy or self.closing or not self.session or not self.session.items:
+                return
+            path = self.choose_files(
+                Gtk.FileChooserAction.SAVE, "Export an encrypted vault"
+            )
+            if not path or self.closing:
+                return
+            password = self.ask_password(exporting=True)
+            if password is None or self.closing:
+                return
+
+            def finished(_, error):
+                if not error:
+                    self.vault_name = Path(path).name
+                self.refresh()
+                self.set_status(
+                    error
+                    or "Encrypted vault exported. Keep its password to unlock it later."
+                )
+
+            self.start_job(
+                "Encrypting and exporting the vault…",
+                self.session.export,
+                finished,
+                (path, password),
+            )
+            password = None
+
+        def on_lock(self, _):
+            if self.busy or self.closing or not self.confirm_discard("Lock"):
+                return
+            self.start_job(
+                "Clearing the private RAM session…",
+                self.close_owned,
+                self.lock_finished,
+            )
+
+        def lock_finished(self, _, error):
+            if self.session is None:
+                self.vault_name = "No vault unlocked"
+            self.refresh()
+            self.set_status(
+                error or "Vault locked. The private RAM session has been cleared."
+            )
+
+        def on_cancel(self, _):
+            if self.busy:
+                self.cancelled.set()
+                self.set_status("Cancelling the current operation…")
+                self.update_controls()
+
+        def finish_closing(self):
+            if self.busy or self.dialog or self.confirming:
+                return
+            if self.owned:
+                self.start_job(
+                    "Closing viewers and clearing private RAM…",
+                    self.close_owned,
+                    self.close_finished,
+                )
+            else:
+                self.destroy()
+
+        def close_finished(self, _, error):
+            if error:
+                self.closing = False
+                self.refresh()
+                self.set_status(error + " Close again to retry cleanup.")
+
+        def on_close(self, *_):
+            if self.closing or self.confirming:
+                return True
+            if self.dialog:
+                self.dialog.response(Gtk.ResponseType.CANCEL)
+                return True
+            if not self.confirm_discard("Discard and Close"):
+                return True
+            self.closing = True
+            self.cancelled.set()
+            self.text_view.get_buffer().set_text("")
+            self.set_status("Closing viewers and clearing private RAM…")
+            self.update_controls()
+            self.finish_closing()
+            return True
+
+    window = VaultWindow()
+    window.show_all()
+
+    def terminate():
+        if window.dialog:
+            window.dialog.response(Gtk.ResponseType.CANCEL)
+            GLib.idle_add(window.on_close)
+        else:
+            window.on_close()
+        return False
+
+    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, terminate)
+    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, terminate)
+    if initial_path:
+        GLib.idle_add(window.on_open, os.path.abspath(initial_path))
+    Gtk.main()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="PH4NTXM Vault")
+    parser.add_argument("vault", nargs="?", help="Encrypted .ph4vault file to unlock")
+    parser.add_argument(
+        "--check", action="store_true", help="Check vault isolation prerequisites"
+    )
+    arguments = parser.parse_args()
+    try:
+        if arguments.check:
+            load_backend().check_ready()
+            print(
+                "PH4NTXM Vault export prerequisites verified. Opening and review also require Airlock KVM."
+            )
+        else:
+            desktop(arguments.vault)
+    except Exception as error:
+        print("PH4NTXM Vault: " + display_text(error), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

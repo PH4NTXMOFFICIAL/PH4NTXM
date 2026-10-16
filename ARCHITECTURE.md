@@ -135,9 +135,11 @@ Archive Airlock reuses the guest infrastructure to list archives and stream one 
 
 Both Airlocks require KVM, private tmpfs storage and disabled swap. Passwords for supported encrypted inputs travel through private channels, outside command arguments, environment variables and logs. Decryption stays in the guest. Failed output is discarded and retries use fresh guests. Archive and document passwords remain separate, and exported raster PDFs are unencrypted.
 
-Media Viewers use offline namespaces, a private bus/home and nested Xephyr display with read-only inputs. A separate process receives fixed-format audio. Transient user services bound memory, swap, tasks and CPU. All three tools budget against actual available RAM and reject managed inventory environments.
+Media Viewers use offline namespaces, a private bus/home and nested Xephyr display with read-only inputs. A separate process receives fixed-format audio. Transient user services bound memory, swap, tasks and CPU. These tools budget against actual available RAM and reject managed inventory environments.
 
-See [Document Airlock](docs/system/session/DOCUMENT-AIRLOCK.md), [Archive Airlock](docs/system/session/ARCHIVE-AIRLOCK.md) and [Media Viewers](docs/system/session/MEDIA-VIEWERS.md) for format support, limits and cleanup.
+[Vault](docs/system/session/VAULT.md) collects selected files in private tmpfs and writes standard age-encrypted ZIP bundles on explicit Export. Manual unlock and review reuse the Airlock guest. A separate, bounded crypto sandbox handles encryption without persisting system configuration or profiles.
+
+See [Document Airlock](docs/system/session/DOCUMENT-AIRLOCK.md), [Archive Airlock](docs/system/session/ARCHIVE-AIRLOCK.md), [Vault](docs/system/session/VAULT.md) and [Media Viewers](docs/system/session/MEDIA-VIEWERS.md) for format support, limits and cleanup.
 
 ## [ OPERATOR VIEWS AND DIAGNOSTICS ]
 

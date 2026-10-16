@@ -103,6 +103,10 @@ gcc
 binutils
 libc6-dev
 rustc
+golang-go
+golang-filippo-age-dev
+golang-golang-x-crypto-dev
+golang-golang-x-sys-dev
 clang
 llvm
 libnetfilter-queue-dev

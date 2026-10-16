@@ -22,6 +22,8 @@ Applications share the PH4NTXM interface and call underlying services or helpers
 
 [Document Airlock](DOCUMENT-AIRLOCK.md) previews and exports raster PDFs from an offline guest. [Archive Airlock](ARCHIVE-AIRLOCK.md) lists archives and opens selected files through isolated viewers. [Media Viewers](MEDIA-VIEWERS.md) play original files read-only in offline sandboxes.
 
+[Vault](VAULT.md) collects selected files in RAM and exports encrypted copies. Existing vaults unlock manually, with confirmation before discarding unexported changes.
+
 The [OpSec Suite](PH4NTXM-OPSEC-SUITE.md) supplies Network, Kernel, Process, Radio, ConnWatch and Shredder. GTK reports support inspection and confirmed actions where available. Terminal workflows remain accessible.
 
 ## [ CHECKS ]
@@ -40,4 +42,5 @@ Trace findings to the relevant helper, service or isolation prerequisite. A disp
 [ph4ntxm-net-guard](../../../config/includes.chroot/usr/local/bin/ph4ntxm-net-guard)\
 [ph4ntxm-document-airlock](../../../config/includes.chroot/usr/local/bin/ph4ntxm-document-airlock)\
 [ph4ntxm-archive-airlock](../../../config/includes.chroot/usr/local/bin/ph4ntxm-archive-airlock)\
-[ph4ntxm-media](../../../config/includes.chroot/usr/local/bin/ph4ntxm-media)
+[ph4ntxm-media](../../../config/includes.chroot/usr/local/bin/ph4ntxm-media)\
+[ph4ntxm-vault](../../../config/includes.chroot/usr/local/bin/ph4ntxm-vault)

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Vault
+Comment=Collect selected files in private RAM and export an encrypted vault
+Exec=/usr/local/bin/ph4ntxm-vault -- %f
+Icon=ph4ntxm-vault
+Terminal=false
+MimeType=application/x-ph4ntxm-vault;
+Categories=Utility;X-PH4NTXMApps;
+StartupNotify=true

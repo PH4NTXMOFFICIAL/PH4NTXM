@@ -5,6 +5,7 @@
 import base64
 import configparser
 import ctypes
+import fcntl
 import importlib.util
 import os
 import socket
@@ -82,6 +83,58 @@ class MediaTests(unittest.TestCase):
                 stream.truncate(media.MAX_IMAGE_BYTES + 1)
             with self.assertRaises(media.MediaError):
                 media.open_files([str(path)], 'image')
+
+    def test_airlock_snapshot_mount(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "image.png"
+            path.write_bytes(b"original image")
+            with path.open("rb") as source:
+                snapshot = media.airlock_snapshot(source.fileno())
+            try:
+                path.write_bytes(b"changed image")
+                self.assertEqual(os.read(snapshot, 32), b"original image")
+                with self.assertRaises(OSError):
+                    os.write(snapshot, b"changed")
+                self.assertEqual(
+                    fcntl.fcntl(snapshot, fcntl.F_GET_SEALS),
+                    fcntl.F_SEAL_WRITE
+                    | fcntl.F_SEAL_GROW
+                    | fcntl.F_SEAL_SHRINK
+                    | fcntl.F_SEAL_SEAL,
+                )
+                self.assertEqual(
+                    media.media_mount(snapshot, "/media/image.png", True),
+                    ["--ro-bind-data", str(snapshot), "/media/image.png"],
+                )
+                self.assertEqual(
+                    media.media_mount(snapshot, "/media/image.png"),
+                    ["--ro-bind", "/proc/self/fd/%d" % snapshot, "/media/image.png"],
+                )
+            finally:
+                os.close(snapshot)
+
+    def test_airlock_handoff_file_limits(self):
+        setup = [
+            sys.executable,
+            "-c",
+            "import os, resource, sys; "
+            "assert resource.getrlimit(resource.RLIMIT_FSIZE) == (134217728, 134217728); "
+            "os.execvp(sys.argv[1], sys.argv[1:])",
+        ]
+        payload = [
+            sys.executable,
+            "-c",
+            "import resource; "
+            "assert resource.getrlimit(resource.RLIMIT_FSIZE) == (8388608, 8388608); "
+            "print('viewer limits restored')",
+        ]
+        result = subprocess.run(
+            media.media_command(setup, payload, True),
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.stdout.strip(), "viewer limits restored")
 
     def test_mount_boundary(self):
         args = media.sandbox(10)
