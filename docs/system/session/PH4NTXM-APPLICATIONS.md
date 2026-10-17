@@ -18,6 +18,8 @@ Applications share the PH4NTXM interface and call underlying services or helpers
 
 [USB Nuke](USB-NUKE.md) arms matching storage-removal triggers without selecting a drive serial. [Panic](PANIC.md) requests the same emergency backend after confirmation.
 
+[Disk access](DISK-ACCESS.md) requires the session password when mounting an unmounted filesystem through the desktop. Unmount to require authentication again. The existing authentication dialog handles the request.
+
 [USB Guard](USB-GUARD.md) optionally preserves existing USB connections and blocks new ones pending review. [Net Guard](NET-GUARD.md) optionally blocks outbound IP access until the exact running process is approved. Enable, Allow and Disable require fresh passwords. Closing either window leaves enforcement running.
 
 [Document Airlock](DOCUMENT-AIRLOCK.md) previews and exports raster PDFs from an offline guest. [Archive Airlock](ARCHIVE-AIRLOCK.md) lists archives and opens selected files through isolated viewers. [Media Viewers](MEDIA-VIEWERS.md) play original files read-only in offline sandboxes.

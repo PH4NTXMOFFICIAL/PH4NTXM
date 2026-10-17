@@ -89,6 +89,7 @@ PH4NTXM Health and Boot Pilot expose failed runtime chains instead of treating m
 - App Airlock isolates offline application execution in namespaces with a private desktop and RAM workspace. It shares the host kernel. Kernel or display-server escapes, host compromise and unsafe exported content remain outside its guarantees.
 - Metadata Cleaner removes supported metadata from explicit copies. Visible content, filenames, steganography and unrecognized metadata remain outside its guarantees. Parsing uses an offline process sandbox rather than the Airlock KVM boundary.
 - Vault exports explicitly selected files as encrypted external copies. Unlocked contents remain readable within the live user session. External copies persist, and protection depends on the vault passphrase and a trusted running host.
+- Desktop disk mount authorization requires the live user's session password. It does not encrypt media or restrict existing mounts, raw-device access, root operations or manual fstab mounts.
 - USB Guard requires explicit activation. Approvals are temporary, the kernel still parses descriptors, and root/kernel compromise can bypass enforcement.
 - Net Guard requires explicit activation and covers outbound live-user IP sockets. Other UIDs, approved IPC proxies and pre-existing privileged packet rings remain outside its process-approval boundary. Approval preserves the existing firewall/Tor policy.
 - RAM seeding supplies synthetic noise, not encryption or concealment of secrets. Memory scrub and file overwrite remain best effort.

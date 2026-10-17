@@ -60,6 +60,8 @@ App Airlock runs applications and scripts offline with selected files in a priva
 
 Review devices and application networking:
 
+Opening an unmounted disk through the desktop requires the session password. After unmounting, the next mount asks again. Mounted files remain accessible.
+
 USB Guard optionally preserves current USB connections and blocks new devices pending approval. Net Guard optionally requires approval for each live-user process execution before outbound IP access. Both require the session password for Enable, Allow and Disable. Approvals are temporary.
 
 Block networking or end the session:

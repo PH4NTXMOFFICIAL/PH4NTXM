@@ -12,6 +12,8 @@ Existing devices retain their actual authorization state, preserving input and b
 
 ## [ RUNTIME ]
 
+USB authorization and [disk mount authentication](DISK-ACCESS.md) are separate. With protection enabled, new USB storage needs hardware approval before its filesystem can be mounted with the session password.
+
 Every Allow requires the session password. The helper verifies service generation, device ID and exact descriptor identity, then rechecks, authorizes temporarily and verifies through one USBGuard IPC connection. Removal or changed identity invalidates the request. Reconnecting requires approval again.
 
 Root controllers, missing interface evidence and audio/video functions have no approval action. Blocking covers declared HID, storage and network functions too. Existing allowed connections have no revocation button.

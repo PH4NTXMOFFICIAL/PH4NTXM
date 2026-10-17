@@ -92,6 +92,7 @@ Run session checks in the live environment. For one-shot services, inspect the c
 [MEDIA VIEWERS](system/session/MEDIA-VIEWERS.md)  
 [WIFI CONTROL](system/session/WIFI-CONTROL.md)  
 [OPERATIONAL TOOLS](system/session/OPERATIONAL-TOOLS.md)  
+[DISK ACCESS](system/session/DISK-ACCESS.md)\
 [USB GUARD](system/session/USB-GUARD.md)\
 [NET GUARD](system/session/NET-GUARD.md)\
 [PH4NTXM OPSEC SUITE](system/session/PH4NTXM-OPSEC-SUITE.md)  

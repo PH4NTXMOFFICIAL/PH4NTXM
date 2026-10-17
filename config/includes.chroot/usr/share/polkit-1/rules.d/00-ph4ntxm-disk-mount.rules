@@ -1,0 +1,14 @@
+polkit.addRule(function(action, subject) {
+    if (subject.user !== "ph4ntxm") {
+        return polkit.Result.NOT_HANDLED;
+    }
+    switch (action.id) {
+        case "org.freedesktop.udisks2.filesystem-mount":
+        case "org.freedesktop.udisks2.filesystem-mount-system":
+        case "org.freedesktop.udisks2.filesystem-mount-other-seat":
+        case "org.freedesktop.udisks2.filesystem-mount-other-user":
+            return polkit.Result.AUTH_SELF;
+        default:
+            return polkit.Result.NOT_HANDLED;
+    }
+});
