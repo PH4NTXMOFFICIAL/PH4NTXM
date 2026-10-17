@@ -143,7 +143,7 @@ SYNACK_RETRIES=$(clamp "$(jitter "$SYNACK_RETRIES_BASE" 1)" 1 10)
 FIN_TIMEOUT=$(clamp "$(jitter "$FIN_TIMEOUT_BASE" 10)" 10 120)
 KEEP_TIME=$(clamp "$(jitter "$KEEP_TIME_BASE" 600)" 300 10000)
 
-RWIN_MIN=$(clamp "$(jitter 4096 2048)" 2048 16384)
+RWIN_MIN=$(clamp "$(jitter 4096 2048)" 4096 16384)
 RWIN_DEF=$(clamp "$(jitter 131072 65536)" 65536 1048576)
 RWIN_MAX=$(clamp "$(jitter 6291456 1048576)" 1048576 16777216)
 
