@@ -56,6 +56,8 @@ Document Airlock converts supported documents into a previewable raster PDF. Arc
 
 Vault keeps explicitly selected files in private RAM and exports encrypted `.ph4vault` copies for manual use in a later session. Metadata Cleaner compares supported metadata before and after offline cleaning, then exports a separate copy.
 
+App Airlock runs applications and scripts offline with selected files in a private RAM workspace. Stop execution before explicitly exporting results.
+
 Review devices and application networking:
 
 USB Guard optionally preserves current USB connections and blocks new devices pending approval. Net Guard optionally requires approval for each live-user process execution before outbound IP access. Both require the session password for Enable, Allow and Disable. Approvals are temporary.

@@ -66,6 +66,7 @@ parole
 ristretto
 webp-pixbuf-loader
 xserver-xephyr
+xterm
 wmctrl
 pulseaudio-utils
 debootstrap

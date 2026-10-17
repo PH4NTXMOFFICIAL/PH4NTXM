@@ -1,0 +1,676 @@
+#!/usr/bin/python3 -I
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+import argparse
+import importlib
+import os
+from pathlib import Path
+import signal
+import sys
+import threading
+import unicodedata
+
+BACKEND_DIR = "/usr/local/lib/ph4ntxm-app-airlock"
+CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
+
+
+def load_backend():
+    if BACKEND_DIR not in sys.path:
+        sys.path.insert(0, BACKEND_DIR)
+    return importlib.import_module("app_airlock")
+
+
+def display_text(value):
+    return "".join(
+        character if unicodedata.category(character) not in {"Cc", "Cf", "Cs"} else " "
+        for character in str(value)
+    )
+
+
+def format_size(size):
+    if size >= 1048576:
+        return "%.1f MiB" % (size / 1048576)
+    if size >= 1024:
+        return "%.1f KiB" % (size / 1024)
+    return "%d B" % size
+
+
+def desktop(paths):
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk, Pango
+
+    def styled(widget, name):
+        widget.get_style_context().add_class(name)
+        return widget
+
+    def label(text, style=None):
+        widget = Gtk.Label(label=text, xalign=0)
+        widget.set_line_wrap(True)
+        widget.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        widget.set_max_width_chars(85)
+        return styled(widget, style) if style else widget
+
+    class AirlockWindow(Gtk.Window):
+        def __init__(self):
+            super().__init__(title="PH4NTXM App Airlock")
+            width, height = 900, 600
+            display = Gdk.Display.get_default()
+            monitor = (
+                (display.get_primary_monitor() or display.get_monitor(0))
+                if display
+                else None
+            )
+            if monitor:
+                area = monitor.get_workarea()
+                width = min(width, max(480, area.width - 40))
+                height = min(height, max(360, area.height - 40))
+            self.set_default_size(width, height)
+            self.set_size_request(min(640, width), min(420, height))
+            self.set_position(Gtk.WindowPosition.CENTER)
+            self.set_icon_name("ph4ntxm-app-airlock")
+            self.set_wmclass("ph4ntxm-app-airlock", "PH4NTXM App Airlock")
+            if Path(CSS_FILE).is_file():
+                provider = Gtk.CssProvider()
+                provider.load_from_path(CSS_FILE)
+                Gtk.StyleContext.add_provider_for_screen(
+                    self.get_screen(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+                )
+            settings = Gtk.Settings.get_default()
+            self.settings = {}
+            if settings:
+                settings.set_property("gtk-recent-files-enabled", False)
+                for name in ("gtk-theme-name", "gtk-icon-theme-name", "gtk-font-name"):
+                    self.settings[name] = settings.get_property(name)
+            styled(self, "ph4ntxm-window")
+            self.backend = None
+            self.session = None
+            self.items = []
+            self.results = []
+            self.workspace_used = False
+            self.running = False
+            self.busy = False
+            self.polling = False
+            self.stop_requested = False
+            self.closing = False
+            self.cleaning = False
+            self.destroyed = False
+            self.dialog = None
+            self.poll_source = None
+            self.build()
+            self.connect("delete-event", self.on_close)
+            self.connect("destroy", self.on_destroy)
+            self.update_controls()
+            GLib.idle_add(self.initialize)
+
+        def button(self, text, callback):
+            widget = Gtk.Button(label=text)
+            widget.connect("clicked", callback)
+            return widget
+
+        def build(self):
+            root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            self.add(root)
+            header = styled(
+                Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5), "top-panel"
+            )
+            header.pack_start(label("PH4NTXM App Airlock", "title"), False, False, 0)
+            header.pack_start(
+                label(
+                    "Offline application execution · Private RAM session", "subtitle"
+                ),
+                False,
+                False,
+                0,
+            )
+            root.pack_start(header, False, False, 0)
+            body = Gtk.ScrolledWindow()
+            body.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+            content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+            content.set_border_width(16)
+            body.add(content)
+            root.pack_start(body, True, True, 0)
+            launch = Gtk.Box(spacing=10)
+            launch.pack_start(label("Application or command"), False, False, 0)
+            self.application_combo = Gtk.ComboBoxText.new_with_entry()
+            for renderer in self.application_combo.get_cells():
+                renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
+                renderer.set_property("max-width-chars", 50)
+            self.application_combo.connect("changed", lambda _: self.update_controls())
+            self.application_entry = self.application_combo.get_child()
+            self.application_entry.set_placeholder_text(
+                "Choose an application or enter a command"
+            )
+            self.application_entry.set_max_length(4096)
+            self.application_entry.connect("changed", lambda _: self.update_controls())
+            self.application_entry.connect("activate", self.on_start)
+            completion = Gtk.EntryCompletion()
+            completion.set_model(self.application_combo.get_model())
+            completion.set_text_column(0)
+            completion.connect("match-selected", self.on_completion_selected)
+            self.application_entry.set_completion(completion)
+            launch.pack_start(self.application_combo, True, True, 0)
+            content.pack_start(launch, False, False, 0)
+            content.pack_start(
+                label(
+                    "Applications have no network access. Only imported files "
+                    "and their private workspace are available.",
+                    "subtitle",
+                ),
+                False,
+                False,
+                0,
+            )
+            actions = Gtk.Box(spacing=8)
+            self.add_button = self.button("Add Files", self.on_add)
+            self.remove_button = self.button("Remove Selected", self.on_remove)
+            self.clear_button = self.button("Clear Workspace", self.on_clear)
+            for widget in (self.add_button, self.remove_button, self.clear_button):
+                actions.pack_start(widget, False, False, 0)
+            content.pack_start(actions, False, False, 0)
+            self.tabs = Gtk.Notebook()
+            self.input_store, self.input_tree = self.file_list("Imported files")
+            self.output_store, self.output_tree = self.file_list("Output files")
+            self.input_tree.get_selection().connect(
+                "changed", lambda _: self.update_controls()
+            )
+            self.output_tree.get_selection().connect(
+                "changed", lambda _: self.update_controls()
+            )
+            content.pack_start(self.tabs, True, True, 0)
+            self.count = label("0 / 32 imported files · 0 B / 64 MiB", "subtitle")
+            content.pack_start(self.count, False, False, 0)
+            content.pack_start(
+                label(
+                    "Select an imported file to pass it to an application. "
+                    "Save results in /workspace and use those paths in commands. "
+                    "Stop before exporting.",
+                    "subtitle",
+                ),
+                False,
+                False,
+                0,
+            )
+            self.state = label("No application running")
+            content.pack_start(self.state, False, False, 0)
+            self.status = label("Checking runtime…", "subtitle")
+            content.pack_start(self.status, False, False, 0)
+            footer = Gtk.Box(spacing=8)
+            self.start_button = self.button("Start", self.on_start)
+            self.stop_button = self.button("Stop", self.on_stop)
+            self.export_button = self.button("Export Selected", self.on_export)
+            self.close_button = self.button("Close", self.on_close)
+            for widget in (self.start_button, self.stop_button, self.export_button):
+                footer.pack_start(widget, False, False, 0)
+            footer.pack_end(self.close_button, False, False, 0)
+            content.pack_start(footer, False, False, 0)
+
+        def file_list(self, title):
+            store = Gtk.ListStore(str, str, str)
+            tree = Gtk.TreeView(model=store)
+            tree.set_enable_search(False)
+            tree.set_tooltip_column(1)
+            for heading, index, expand in (("Filename", 1, True), ("Size", 2, False)):
+                renderer = Gtk.CellRendererText()
+                renderer.set_property("ellipsize", Pango.EllipsizeMode.MIDDLE)
+                column = Gtk.TreeViewColumn(heading, renderer, text=index)
+                column.set_expand(expand)
+                column.set_min_width(200 if expand else 90)
+                column.set_resizable(True)
+                tree.append_column(column)
+            scroll = Gtk.ScrolledWindow()
+            scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+            scroll.set_min_content_height(130)
+            scroll.add(tree)
+            self.tabs.append_page(scroll, Gtk.Label(label=title))
+            return store, tree
+
+        def selected_id(self, tree):
+            model, iterator = tree.get_selection().get_selected()
+            return model[iterator][0] if iterator is not None else None
+
+        def update_controls(self):
+            available = self.session is not None and not self.busy and not self.closing
+            stopped = available and not self.running
+            selected = self.selected_id(self.input_tree)
+            self.application_combo.set_sensitive(stopped)
+            self.add_button.set_sensitive(stopped)
+            self.remove_button.set_sensitive(stopped and selected is not None)
+            self.clear_button.set_sensitive(
+                stopped and bool(self.items or self.results or self.workspace_used)
+            )
+            self.start_button.set_sensitive(
+                stopped
+                and (
+                    self.application_combo.get_active_id() is not None
+                    or bool(self.application_entry.get_text().strip())
+                )
+            )
+            self.stop_button.set_sensitive(available and self.running)
+            self.export_button.set_sensitive(
+                stopped and self.selected_id(self.output_tree) is not None
+            )
+            self.input_tree.set_sensitive(not self.busy and not self.closing)
+            self.output_tree.set_sensitive(stopped)
+            self.close_button.set_sensitive(not self.closing)
+
+        def on_completion_selected(self, completion, model, iterator):
+            self.application_combo.set_active_iter(iterator)
+            return True
+
+        def refresh_list(self, store, tree, items):
+            selected = self.selected_id(tree)
+            store.clear()
+            for item in items:
+                iterator = store.append(
+                    [item["id"], display_text(item["name"]), format_size(item["size"])]
+                )
+                if item["id"] == selected:
+                    tree.get_selection().select_iter(iterator)
+
+        def refresh(self):
+            self.refresh_list(self.input_store, self.input_tree, self.items)
+            self.refresh_list(self.output_store, self.output_tree, self.results)
+            self.count.set_text(
+                "%d / 32 imported files · %s / 64 MiB"
+                % (
+                    len(self.items),
+                    format_size(sum(item["size"] for item in self.items)),
+                )
+            )
+            self.update_controls()
+
+        def run(self, function, message=None, finished=None, quiet=False):
+            if self.busy or self.destroyed:
+                return
+            self.busy = True
+            self.polling = quiet
+            if message is not None:
+                self.status.set_text(message)
+            if not quiet:
+                self.update_controls()
+
+            def work():
+                result = None
+                error = None
+                try:
+                    result = function()
+                except Exception as failure:
+                    error = display_text(str(failure))[:1024] or "The operation failed."
+                GLib.idle_add(done, result, error)
+
+            def done(result, error):
+                if self.destroyed:
+                    return False
+                self.busy = False
+                self.polling = False
+                if error:
+                    self.status.set_text(error)
+                    if self.cleaning:
+                        self.cleaning = False
+                        self.closing = False
+                elif finished:
+                    try:
+                        finished(result)
+                    except Exception as failure:
+                        self.status.set_text(display_text(failure)[:1024])
+                if self.destroyed:
+                    return False
+                self.refresh()
+                if self.closing:
+                    self.cleanup()
+                elif self.stop_requested:
+                    self.stop_requested = False
+                    self.on_stop()
+                return False
+
+            try:
+                threading.Thread(target=work, daemon=False).start()
+            except (RuntimeError, OSError):
+                self.busy = False
+                self.polling = False
+                self.closing = False
+                self.cleaning = False
+                self.status.set_text("The operation could not start. Try again.")
+                self.update_controls()
+
+        def initialize(self):
+            def prepare():
+                backend = load_backend()
+                applications = backend.applications()
+                return backend, backend.Session(), applications
+
+            def ready(value):
+                self.backend, self.session, applications = value
+                for application in applications:
+                    self.application_combo.append(
+                        application["id"], display_text(application["name"])
+                    )
+                self.items = list(self.session.items)
+                self.status.set_text(
+                    "Choose an application or enter a command. "
+                    "Import only needed files."
+                )
+                if paths and not self.closing:
+                    GLib.idle_add(lambda: self.add_paths(paths))
+
+            self.run(prepare, "Checking runtime…", ready)
+            return False
+
+        def chooser(self, title, save=False):
+            dialog = Gtk.FileChooserDialog(
+                title=title,
+                transient_for=self,
+                action=(
+                    Gtk.FileChooserAction.SAVE if save else Gtk.FileChooserAction.OPEN
+                ),
+            )
+            dialog.add_buttons(
+                "Cancel",
+                Gtk.ResponseType.CANCEL,
+                "Export" if save else "Add",
+                Gtk.ResponseType.OK,
+            )
+            dialog.set_local_only(True)
+            dialog.set_select_multiple(not save)
+            self.dialog = dialog
+            return dialog
+
+        def add_paths(self, values):
+            if not self.session or self.busy or self.running or self.closing:
+                return False
+
+            def add():
+                self.session.add(values)
+                return list(self.session.items)
+
+            def added(items):
+                self.items = items
+                self.tabs.set_current_page(0)
+                self.status.set_text("Files imported. Original files remain unchanged.")
+
+            self.run(add, "Copying selected files into private RAM…", added)
+            return False
+
+        def on_add(self, *_):
+            if self.busy or self.running or self.closing or not self.session:
+                return
+            dialog = self.chooser("Import Files")
+            try:
+                if dialog.run() == Gtk.ResponseType.OK:
+                    self.add_paths(dialog.get_filenames())
+            finally:
+                self.dialog = None
+                dialog.destroy()
+
+        def on_remove(self, *_):
+            identifier = self.selected_id(self.input_tree)
+            if not identifier or self.busy or self.running or self.closing:
+                return
+
+            def remove():
+                self.session.remove([identifier])
+                return list(self.session.items)
+
+            def removed(items):
+                self.items = items
+                self.results = [
+                    item for item in self.results if item["id"] != identifier
+                ]
+                self.status.set_text("Imported copy removed.")
+
+            self.run(remove, "Removing the private copy…", removed)
+
+        def session_status(self):
+            snapshot = self.session.snapshot()
+            outputs = []
+            if not snapshot["running"]:
+                try:
+                    outputs = self.session.outputs()
+                except Exception as error:
+                    snapshot = {
+                        **snapshot,
+                        "message": display_text(error)[:1024]
+                        or (
+                            "Workspace results could not be listed. "
+                            "Clear the workspace to continue."
+                        ),
+                    }
+            return snapshot, outputs
+
+        def apply_status(self, value):
+            snapshot, outputs = value
+            was_running = self.running
+            self.running = bool(snapshot["running"])
+            self.state.set_text(
+                "Application running" if self.running else "No application running"
+            )
+            if not self.running:
+                self.results = outputs
+                self.stop_polling()
+                if was_running and outputs:
+                    self.tabs.set_current_page(1)
+            self.status.set_text(
+                display_text(
+                    snapshot.get("message") or snapshot.get("state") or "Ready."
+                )[:1024]
+            )
+            if self.running:
+                self.start_polling()
+
+        def on_start(self, *_):
+            if not self.session or self.busy or self.running or self.closing:
+                return
+            selected = self.selected_id(self.input_tree)
+            application_id = self.application_combo.get_active_id()
+            custom_command = (
+                self.application_entry.get_text() if application_id is None else None
+            )
+            if application_id is None and not custom_command.strip():
+                return
+            settings = dict(self.settings)
+            self.workspace_used = True
+
+            def start():
+                if application_id is not None:
+                    self.session.start(
+                        selected_id=selected,
+                        settings=settings,
+                        application_id=application_id,
+                    )
+                else:
+                    self.session.start(
+                        selected_id=selected,
+                        settings=settings,
+                        custom_command=custom_command,
+                    )
+                return self.session_status()
+
+            def started(value):
+                self.results = []
+                self.apply_status(value)
+
+            self.run(start, "Preparing the isolated application…", started)
+
+        def start_polling(self):
+            if self.poll_source is None and not self.closing:
+                self.poll_source = GLib.timeout_add_seconds(1, self.poll)
+
+        def stop_polling(self):
+            if self.poll_source is not None:
+                GLib.source_remove(self.poll_source)
+                self.poll_source = None
+
+        def poll(self):
+            if self.destroyed or self.closing or not self.running:
+                self.poll_source = None
+                return False
+            if not self.busy:
+                self.run(self.session_status, finished=self.apply_status, quiet=True)
+            return True
+
+        def on_stop(self, *_):
+            if self.polling:
+                self.stop_requested = True
+                return
+            if not self.session or self.busy or not self.running or self.closing:
+                return
+
+            def stop():
+                self.session.stop()
+                return self.session_status()
+
+            self.run(
+                stop,
+                "Stopping the application and its child processes…",
+                self.apply_status,
+            )
+
+        def on_export(self, *_):
+            identifier = self.selected_id(self.output_tree)
+            item = next(
+                (entry for entry in self.results if entry["id"] == identifier), None
+            )
+            if not item or self.busy or self.running or self.closing:
+                return
+            dialog = self.chooser("Export Output File", True)
+            dialog.set_do_overwrite_confirmation(False)
+            dialog.set_current_name(display_text(Path(item["name"]).name))
+            hint = label("Choose a new filename. Existing files stay unchanged.")
+            dialog.set_extra_widget(hint)
+            hint.show()
+            try:
+                while dialog.run() == Gtk.ResponseType.OK:
+                    destination = dialog.get_filename()
+                    if not destination:
+                        continue
+                    if os.path.lexists(destination):
+                        hint.set_text(
+                            "That filename already exists. Choose a new filename."
+                        )
+                        continue
+
+                    def exported(_):
+                        self.status.set_text(
+                            "Output file exported. Treat its content as untrusted."
+                        )
+
+                    self.run(
+                        lambda: self.session.export(identifier, destination),
+                        "Exporting the selected output file…",
+                        exported,
+                    )
+                    break
+            finally:
+                self.dialog = None
+                dialog.destroy()
+
+        def confirm_discard(self, title):
+            if not self.running and not (
+                self.items or self.results or self.workspace_used
+            ):
+                return True
+            dialog = Gtk.MessageDialog(
+                transient_for=self,
+                modal=True,
+                message_type=Gtk.MessageType.QUESTION,
+                buttons=Gtk.ButtonsType.NONE,
+                text=title,
+            )
+            dialog.format_secondary_text(
+                "The application will be stopped and its private workspace cleared. "
+                "Import copies and unexported output will be discarded. "
+                "Originals and exported copies remain unchanged."
+            )
+            dialog.add_buttons(
+                "Cancel", Gtk.ResponseType.CANCEL, "Continue", Gtk.ResponseType.OK
+            )
+            self.dialog = dialog
+            try:
+                return dialog.run() == Gtk.ResponseType.OK
+            finally:
+                self.dialog = None
+                dialog.destroy()
+
+        def on_clear(self, *_):
+            if not self.session or self.busy or self.running or self.closing:
+                return
+            if not self.confirm_discard("Clear this workspace?"):
+                return
+
+            def clear():
+                self.session.clear()
+                return list(self.session.items)
+
+            def cleared(items):
+                self.items = items
+                self.results = []
+                self.workspace_used = False
+                self.state.set_text("No application running")
+                self.status.set_text("Private workspace cleared.")
+
+            self.run(clear, "Clearing the private RAM workspace…", cleared)
+
+        def cleanup(self):
+            if self.busy:
+                return
+            self.stop_polling()
+            self.cleaning = True
+
+            def close():
+                if self.session:
+                    self.session.close()
+
+            def closed(_):
+                self.session = None
+                self.destroy()
+
+            self.run(close, "Stopping the session and clearing private RAM…", closed)
+
+        def on_close(self, *_):
+            if self.closing or self.dialog is not None:
+                return True
+            if not self.confirm_discard("Close App Airlock and clear its workspace?"):
+                return True
+            self.closing = True
+            self.stop_polling()
+            self.update_controls()
+            if not self.busy:
+                self.cleanup()
+            return True
+
+        def on_destroy(self, *_):
+            self.destroyed = True
+            self.stop_polling()
+            if Gtk.main_level():
+                Gtk.main_quit()
+
+    window = AirlockWindow()
+    window.show_all()
+    for number in (signal.SIGINT, signal.SIGTERM):
+        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, number, lambda: window.on_close())
+    Gtk.main()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="PH4NTXM App Airlock")
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("files", nargs="*")
+    args = parser.parse_args()
+    if args.check:
+        try:
+            load_backend().check_ready()
+            print("App Airlock prerequisites are ready.")
+            return 0
+        except Exception as error:
+            print(display_text(error), file=sys.stderr)
+            return 1
+    desktop(args.files)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

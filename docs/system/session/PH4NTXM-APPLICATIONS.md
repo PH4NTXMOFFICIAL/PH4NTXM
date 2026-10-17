@@ -22,6 +22,8 @@ Applications share the PH4NTXM interface and call underlying services or helpers
 
 [Document Airlock](DOCUMENT-AIRLOCK.md) previews and exports raster PDFs from an offline guest. [Archive Airlock](ARCHIVE-AIRLOCK.md) lists archives and opens selected files through isolated viewers. [Media Viewers](MEDIA-VIEWERS.md) play original files read-only in offline sandboxes.
 
+[App Airlock](APP-AIRLOCK.md) runs applications and scripts in an offline private desktop. Explicit imports enter a RAM workspace, and outputs can be exported after execution stops.
+
 [Metadata Cleaner](METADATA-CLEANER.md) inspects metadata and creates cleaned copies in an offline sandbox. Before/After reports and isolated previews support review before explicit Export. Originals remain unchanged.
 
 [Vault](VAULT.md) collects selected files in RAM and exports encrypted copies. Existing vaults unlock manually, with confirmation before discarding unexported changes.
@@ -46,4 +48,5 @@ Trace findings to the relevant helper, service or isolation prerequisite. A disp
 [ph4ntxm-archive-airlock](../../../config/includes.chroot/usr/local/bin/ph4ntxm-archive-airlock)\
 [ph4ntxm-media](../../../config/includes.chroot/usr/local/bin/ph4ntxm-media)\
 [ph4ntxm-vault](../../../config/includes.chroot/usr/local/bin/ph4ntxm-vault)\
-[ph4ntxm-metadata-cleaner](../../../config/includes.chroot/usr/local/bin/ph4ntxm-metadata-cleaner)
+[ph4ntxm-metadata-cleaner](../../../config/includes.chroot/usr/local/bin/ph4ntxm-metadata-cleaner)\
+[ph4ntxm-app-airlock](../../../config/includes.chroot/usr/local/bin/ph4ntxm-app-airlock)

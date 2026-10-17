@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM App Airlock
+Comment=Run applications offline with selected files in a private RAM workspace
+Exec=/usr/local/bin/ph4ntxm-app-airlock -- %F
+Icon=ph4ntxm-app-airlock
+Terminal=false
+Categories=Utility;X-PH4NTXMApps;
+StartupNotify=true

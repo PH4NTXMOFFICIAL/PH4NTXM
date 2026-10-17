@@ -1,0 +1,29 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+SOURCE=/usr/local/src/ph4ntxm-app-airlock
+RUNTIME=/usr/local/lib/ph4ntxm-app-airlock
+HELPERS=/usr/local/libexec/ph4ntxm-app-airlock
+install -d -m 0755 "$RUNTIME" "$HELPERS"
+cc -std=c11 -O2 -Wall -Wextra -Werror -Wpedantic \
+    -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fPIE \
+    "$SOURCE/guard.c" -pie -Wl,-z,relro,-z,now -o "$HELPERS/guard"
+chmod 0755 "$HELPERS/guard"
+python3 -I "$SOURCE/tests/test-guard.py" "$HELPERS/guard"
+python3 -I "$SOURCE/tests/test-app-airlock.py"
+install -m 0644 "$SOURCE/app_airlock.py" "$RUNTIME/app_airlock.py"
+install -m 0755 /usr/bin/bwrap "$HELPERS/bwrap"
+chmod 0755 /usr/local/bin/ph4ntxm-app-airlock
+python3 -I - <<'VERIFY'
+from pathlib import Path
+for name in (
+    "/usr/local/lib/ph4ntxm-app-airlock/app_airlock.py",
+    "/usr/local/bin/ph4ntxm-app-airlock",
+):
+    compile(Path(name).read_text(), name, "exec")
+VERIFY
+update-desktop-database /usr/share/applications
+rm -rf "$SOURCE"
