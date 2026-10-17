@@ -26,7 +26,7 @@ These records do not apply packet delay. [Network Drift](NET-DRIFT.md) changes q
 
 Check the service result, then read the relevant kernel values with `sysctl`. A seed or RTT map alone does not prove all writes completed.
 
-For a failure, use the journal to find the first rejected setting. Do not interpret generated RTT metadata as measured network latency or assume rerunning restores the previous profile.
+For a failure, record the running kernel with `uname -r` and collect `sudo journalctl -b -u ph4ntxm-net-randomization.service --no-pager` before rerunning the script. Identify the first rejected setting. Rerunning can draw different values and does not restore the previous profile. Generated RTT metadata is not measured network latency.
 
 ## [ SOURCE ]
 

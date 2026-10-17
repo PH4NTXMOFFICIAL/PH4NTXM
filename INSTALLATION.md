@@ -20,6 +20,8 @@ git clone https://github.com/PH4NTXMOFFICIAL/PH4NTXM.git
 cd PH4NTXM
 ```
 
+Before building, verify the selected source revision using [DISTRIBUTION.md](DISTRIBUTION.md).
+
 Choose Abyss for the dark navy desktop or Ghost for the light pearl-white desktop with cyan and magenta accents. Both provide the same boot modes and system components.
 
 Build the default Abyss edition from the repository root:
@@ -62,7 +64,7 @@ Cleanup preserves the source under `config/` and `editions/`. Switching the next
 
 ## [ CREATE BOOTABLE USB ]
 
-Use a USB device large enough for the generated ISO. All existing data on the selected device will be erased.
+Verify the ISO checksum using [DISTRIBUTION.md](DISTRIBUTION.md) before writing it to USB. Use a USB device large enough for the generated ISO. All existing data on the selected device will be erased.
 
 Find the USB by its size. If unsure, compare the output before and after plugging it in:
 

@@ -31,7 +31,7 @@ This is a dependency graph, not one serial script. Link release does not establi
 
 ## [ RUNTIME STATE AND READINESS ]
 
-Most generated system state lives under `/run/ph4ntxm`. Private browser and file-handling sessions use the desktop user's `/run/user/UID` directory.
+Most generated system state lives under `/run/ph4ntxm`. Private browser and file-handling sessions use RAM-backed `/run/user/UID` or `/tmp`, depending on the component.
 
 | State | Producer and purpose |
 | --- | --- |
