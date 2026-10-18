@@ -285,7 +285,7 @@ class DeadManWindow(Gtk.ApplicationWindow):
         self.add(root)
         header = add_class(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4), "top-panel")
         header.pack_start(label(TITLE, "title", 1), False, False, 0)
-        header.pack_start(label("Renew before time runs out", "subtitle", 1), False, False, 0)
+        header.pack_start(label("Automatic emergency trigger", "subtitle", 1), False, False, 0)
         root.pack_start(header, False, False, 0)
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         content.set_border_width(16)
