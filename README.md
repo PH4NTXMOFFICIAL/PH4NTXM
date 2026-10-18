@@ -68,6 +68,8 @@ Block networking or end the session:
 
 Lockdown blocks network traffic. Disabling it restores your mode's rules. Panic Button requests emergency termination after confirmation. Armed USB Nuke triggers the same sequence when matching storage is removed.
 
+Dead Man's Switch optionally requests Panic when an authenticated countdown expires. Arm, Renew and Disarm require the session password. The silent timer continues after closing its window or locking the screen.
+
 See the [component pages](docs/README.md) for supported formats, controls, limits and troubleshooting.
 
 ## [ EDITIONS ]

@@ -104,4 +104,5 @@ Run session checks in the live environment. For one-shot services, inspect the c
 [NUKE KERNEL](system/session/NUKE-KERNEL.md)  
 [RAM SCRUB](system/session/RAM-SCRUB.md)  
 [PANIC](system/session/PANIC.md)  
-[USB NUKE](system/session/USB-NUKE.md)
+[USB NUKE](system/session/USB-NUKE.md)\
+[DEAD MAN'S SWITCH](system/session/DEAD-MAN-SWITCH.md)

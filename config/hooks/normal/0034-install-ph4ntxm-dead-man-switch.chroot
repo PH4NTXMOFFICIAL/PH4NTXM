@@ -1,0 +1,24 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+SOURCE=/usr/local/src/ph4ntxm-dead-man-switch
+CONTROL=/usr/local/sbin/ph4ntxm-dead-man-switch-control
+WINDOW=/usr/local/bin/ph4ntxm-dead-man-switch
+MODULE=/usr/lib/ph4ntxm/dead_man_switch.py
+UNIT=/etc/systemd/system/ph4ntxm-dead-man-switch.service
+
+chown root:root "$CONTROL" "$WINDOW" "$MODULE" "$UNIT"
+chmod 0755 "$CONTROL" "$WINDOW"
+chmod 0644 "$MODULE" "$UNIT"
+test -r /usr/share/icons/Lyra-blue-dark/apps/scalable/ph4ntxm-dead-man-switch.svg
+python3 -B -I "$SOURCE/tests/test_dead_man_switch.py"
+python3 -B -I "$SOURCE/tests/test-dead-man-switch-gui.py"
+visudo -c -f /etc/sudoers.d/ph4ntxm
+systemctl enable ph4ntxm-dead-man-switch.service
+systemctl is-enabled --quiet ph4ntxm-dead-man-switch.service
+update-desktop-database
+gtk-update-icon-cache -f /usr/share/icons/Lyra-blue-dark
+rm -rf "$SOURCE"

@@ -171,4 +171,6 @@ The first emergency initramfs reconstructs the memory map and loads the next ker
 
 Panic Button requires confirmation. USB Nuke triggers the same backend on any matching whole USB storage removal, including boot media. A shared lock and per-attempt tokens protect Arm, Disarm and restoration from stale callbacks.
 
+[Dead Man's Switch](docs/system/session/DEAD-MAN-SWITCH.md) keeps an optional root-owned countdown in RAM using boot time, including suspension. Fresh password authorization controls Arm, Renew and Disarm. Expiry requests Panic without confirmation, notifications or tray indicators. Systemd restarts failed or frozen userspace monitoring without resetting the deadline.
+
 See [Nuke Kernel](docs/system/session/NUKE-KERNEL.md), [Panic](docs/system/session/PANIC.md), [USB Nuke](docs/system/session/USB-NUKE.md) and [THREAT_MODEL.md](THREAT_MODEL.md).

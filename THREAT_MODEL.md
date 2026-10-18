@@ -68,7 +68,7 @@ Mitigation: Persona-aligned Firefox ESR in Linux/Windows and isolated Tor Browse
 Physical:
 
 Threat: Memory dumps and device capture during operation.  
-Mitigation: Armed USB removal trigger, Panic Button, an optional emergency password entered in the screen lock, mandatory nuke path, best-effort RAM overwrite and final shutdown scrub. These controls cannot guarantee complete recovery resistance against cold-boot acquisition, DMA, firmware capture, sudden power loss or storage outside the live environment.
+Mitigation: Armed USB removal trigger, Panic Button, an optional emergency password entered in the screen lock, an optional Dead Man's Switch countdown, mandatory nuke path, best-effort RAM overwrite and final shutdown scrub. The countdown runs as root and has a service watchdog. It cannot execute during suspension or guarantee recovery from a frozen kernel, unavailable PID 1 or root compromise. These controls cannot guarantee complete recovery resistance against cold-boot acquisition, DMA, firmware capture, sudden power loss or storage outside the live environment.
 
 ## [ FAILURE POLICY ]
 

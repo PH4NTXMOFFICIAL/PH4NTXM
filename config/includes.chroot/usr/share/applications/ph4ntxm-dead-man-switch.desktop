@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Dead Man's Switch
+Comment=Arm and manage an automatic emergency countdown
+Exec=/usr/local/bin/ph4ntxm-dead-man-switch
+Icon=ph4ntxm-dead-man-switch
+Terminal=false
+Categories=System;X-PH4NTXMApps;
+StartupNotify=false

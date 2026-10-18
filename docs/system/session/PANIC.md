@@ -2,7 +2,7 @@
 
 ## [ OVERVIEW ]
 
-Requests emergency containment and termination through the singleton Panic service. Manual confirmation and armed [USB Nuke](USB-NUKE.md) dispatches reach the same backend.
+Requests emergency containment and termination through the singleton Panic service. Manual confirmation, armed [USB Nuke](USB-NUKE.md), the optional emergency password and [Dead Man's Switch](DEAD-MAN-SWITCH.md) reach the same backend.
 
 ## [ STARTUP ]
 
