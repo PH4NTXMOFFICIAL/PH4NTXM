@@ -68,7 +68,7 @@ Mitigation: Persona-aligned Firefox ESR in Linux/Windows and isolated Tor Browse
 Physical:
 
 Threat: Memory dumps and device capture during operation.  
-Mitigation: Armed USB removal trigger, Panic Button, mandatory nuke path, best-effort RAM overwrite and final shutdown scrub. These controls cannot guarantee complete recovery resistance against cold-boot acquisition, DMA, firmware capture, sudden power loss or storage outside the live environment.
+Mitigation: Armed USB removal trigger, Panic Button, an optional emergency password entered in the screen lock, mandatory nuke path, best-effort RAM overwrite and final shutdown scrub. These controls cannot guarantee complete recovery resistance against cold-boot acquisition, DMA, firmware capture, sudden power loss or storage outside the live environment.
 
 ## [ FAILURE POLICY ]
 

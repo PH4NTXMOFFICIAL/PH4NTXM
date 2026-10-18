@@ -1170,3 +1170,24 @@ frame > border.flat,
     outline-width: 1px;
     outline-offset: -3px;
 }
+
+#screen #login_window.keycap #user_image_border {
+    min-width: 80px;
+    min-height: 80px;
+    background-image: url("file:///usr/share/backgrounds/ph4ntxm-logo.png");
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+#screen #login_window.keycap #user_image {
+    opacity: 0;
+}
+
+overlay#screen.lightdm-gtk-greeter > image {
+    background-image: url("file:///usr/share/backgrounds/ph4ntxm-abyss-login.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    -gtk-icon-transform: scale(0);
+}

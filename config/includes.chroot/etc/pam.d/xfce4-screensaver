@@ -1,0 +1,4 @@
+auth [success=done default=ignore] pam_unix.so
+auth requisite pam_ph4ntxm_emergency.so
+auth requisite pam_deny.so
+account include common-account

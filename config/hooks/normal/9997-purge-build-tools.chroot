@@ -122,6 +122,7 @@ apt-mark manual \
     task-xfce-desktop \
     lightdm \
     lightdm-gtk-greeter \
+    xfce4-screensaver \
     xfce4-goodies \
     firefox-esr \
     gnupg \
@@ -143,6 +144,7 @@ apt-mark manual \
     || true
 
 PURGE_PACKAGES="
+libpam0g-dev
 libusbguard-dev
 libqb-dev
 llvm-18-dev

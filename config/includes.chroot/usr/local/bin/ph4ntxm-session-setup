@@ -17,7 +17,11 @@ from gi.repository import Gdk, GLib, Gtk
 
 
 def valid_pair(password, confirmation):
-    return 6 <= len(password) <= 256 and password == confirmation and not any(
+    try:
+        encoded_length = len(password.encode('utf-8'))
+    except UnicodeError:
+        return False
+    return 6 <= len(password) <= 256 and encoded_length <= 511 and password == confirmation and not any(
         ord(c) < 32 or ord(c) == 127 for c in password
     )
 
@@ -69,6 +73,7 @@ class SetupWindow(Gtk.Window):
         self.set_decorated(False)
         self.set_deletable(False)
         self.connect('delete-event', lambda *_: True)
+        self.connect('destroy', self.clear_passwords)
         add_class(self, 'setup-background')
         scroll = Gtk.ScrolledWindow()
         scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -93,6 +98,16 @@ class SetupWindow(Gtk.Window):
         card.pack_start(detail, False, False, 0)
         self.password = self.add_entry(card, 'Session password')
         self.confirmation = self.add_entry(card, 'Confirm password')
+        self.emergency_enabled = Gtk.CheckButton(label='Enable emergency password')
+        self.emergency_enabled.connect('toggled', self.toggle_emergency)
+        card.pack_start(self.emergency_enabled, False, False, 0)
+        self.emergency_fields = Gtk.Revealer()
+        self.emergency_fields.set_transition_type(Gtk.RevealerTransitionType.NONE)
+        emergency_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        self.emergency_fields.add(emergency_box)
+        self.emergency_password = self.add_entry(emergency_box, 'Emergency password')
+        self.emergency_confirmation = self.add_entry(emergency_box, 'Confirm emergency password')
+        card.pack_start(self.emergency_fields, False, False, 0)
         reveal = Gtk.CheckButton(label='Show password')
         self.reveal = reveal
         reveal.connect('toggled', self.toggle_visibility)
@@ -117,10 +132,11 @@ class SetupWindow(Gtk.Window):
         self.start.connect('clicked', self.submit)
         card.pack_start(self.start, False, False, 0)
         foot = add_class(Gtk.Label(label='A new boot starts a new session and password setup.'), 'subtitle')
+        self.foot = foot
         foot.set_line_wrap(True)
         foot.set_max_width_chars(48)
         card.pack_start(foot, False, False, 0)
-        for entry in (self.password, self.confirmation):
+        for entry in self.password_entries():
             entry.connect('changed', self.validate)
             entry.connect('activate', self.submit)
         self.password.grab_focus()
@@ -138,28 +154,72 @@ class SetupWindow(Gtk.Window):
         card.pack_start(box, False, False, 0)
         return entry
 
+    def password_entries(self):
+        return (self.password, self.confirmation, self.emergency_password, self.emergency_confirmation)
+
+    def clear_passwords(self, *_):
+        for entry in self.password_entries():
+            entry.set_text('')
+
+    def toggle_emergency(self, toggle):
+        enabled = toggle.get_active()
+        self.emergency_fields.set_reveal_child(enabled)
+        if enabled:
+            self.foot.set_text('Emergency password triggers Panic/Nuke at screen unlock. No confirmation.')
+            self.emergency_password.grab_focus()
+        else:
+            self.foot.set_text('A new boot starts a new session and password setup.')
+            self.emergency_password.set_text('')
+            self.emergency_confirmation.set_text('')
+        self.validate()
+
     def toggle_visibility(self, toggle):
-        for entry in (self.password, self.confirmation):
+        for entry in self.password_entries():
             entry.set_visibility(toggle.get_active())
 
     def validate(self, *_):
         password, confirmation = self.password.get_text(), self.confirmation.get_text()
-        valid = valid_pair(password, confirmation)
-        self.start.set_sensitive(valid and not self.busy)
+        emergency_password = self.emergency_password.get_text()
+        emergency_confirmation = self.emergency_confirmation.get_text()
+        normal_valid = valid_pair(password, confirmation)
+        emergency_valid = not self.emergency_enabled.get_active() or (
+            valid_pair(emergency_password, emergency_confirmation) and emergency_password != password
+        )
+        self.start.set_sensitive(normal_valid and emergency_valid and not self.busy)
         if not self.busy:
-            if valid:
-                message = 'Passwords match. You can start PH4NTXM.'
-            elif confirmation and password != confirmation:
-                message = 'The passwords do not match yet.'
+            if not normal_valid:
+                if confirmation and password != confirmation:
+                    message = 'The passwords do not match yet.'
+                elif len(password.encode('utf-8', errors='replace')) > 511:
+                    message = 'Password is too long. Use fewer characters.'
+                else:
+                    message = 'Use 6 to 256 characters without control characters.'
+            elif not emergency_valid:
+                if emergency_password == password:
+                    message = 'Use a different emergency password.'
+                elif emergency_confirmation and emergency_password != emergency_confirmation:
+                    message = 'The emergency passwords do not match yet.'
+                elif len(emergency_password.encode('utf-8', errors='replace')) > 511:
+                    message = 'Password is too long. Use fewer characters.'
+                else:
+                    message = 'Use 6 to 256 characters without control characters for the emergency password.'
             else:
-                message = 'Use at least 6 characters.'
+                message = 'Passwords match. You can start PH4NTXM.'
             self.feedback.set_text(message)
 
     @staticmethod
-    def broker_exchange(password, confirmation):
-        request = json.dumps({'password': password, 'confirmation': confirmation}, ensure_ascii=False)
-        sys.stdout.buffer.write(request.encode() + b'\n')
-        sys.stdout.buffer.flush()
+    def broker_exchange(password, confirmation, emergency_password, emergency_confirmation):
+        request = json.dumps({
+            'password': password,
+            'confirmation': confirmation,
+            'emergency_password': emergency_password,
+            'emergency_confirmation': emergency_confirmation,
+        }, ensure_ascii=False)
+        try:
+            sys.stdout.buffer.write(request.encode() + b'\n')
+            sys.stdout.buffer.flush()
+        finally:
+            request = password = confirmation = emergency_password = emergency_confirmation = ''
         reply = sys.stdin.buffer.readline(4097)
         if not reply or len(reply) > 4096 or not reply.endswith(b'\n'):
             return {'ok': False, 'fatal': True}
@@ -167,6 +227,13 @@ class SetupWindow(Gtk.Window):
 
     def submit(self, *_):
         password, confirmation = self.password.get_text(), self.confirmation.get_text()
+        if self.emergency_enabled.get_active():
+            emergency_password = self.emergency_password.get_text()
+            emergency_confirmation = self.emergency_confirmation.get_text()
+            if not valid_pair(emergency_password, emergency_confirmation) or emergency_password == password:
+                return
+        else:
+            emergency_password = emergency_confirmation = ''
         if self.busy or not valid_pair(password, confirmation):
             return
         self.busy = True
@@ -174,16 +241,19 @@ class SetupWindow(Gtk.Window):
         self.spinner.start()
         self.reveal.set_sensitive(False)
         self.start.set_sensitive(False)
-        self.password.set_sensitive(False)
-        self.confirmation.set_sensitive(False)
-        self.password.set_text('')
-        self.confirmation.set_text('')
+        self.emergency_enabled.set_sensitive(False)
+        for entry in self.password_entries():
+            entry.set_sensitive(False)
+        self.clear_passwords()
         self.feedback.set_text('Preparing your session…')
         def worker():
+            nonlocal password, confirmation, emergency_password, emergency_confirmation
             try:
-                result = self.exchange(password, confirmation)
+                result = self.exchange(password, confirmation, emergency_password, emergency_confirmation)
             except (OSError, ValueError):
                 result = {'ok': False, 'fatal': True}
+            finally:
+                password = confirmation = emergency_password = emergency_confirmation = ''
             GLib.idle_add(self.finish, result)
         threading.Thread(target=worker, daemon=True).start()
 
@@ -191,6 +261,7 @@ class SetupWindow(Gtk.Window):
         self.spinner.stop()
         self.spinner.set_opacity(0)
         if result.get('ok') is True:
+            self.clear_passwords()
             self.completed = True
             Gtk.main_quit()
         elif result.get('fatal'):
@@ -198,8 +269,9 @@ class SetupWindow(Gtk.Window):
         else:
             self.busy = False
             self.reveal.set_sensitive(True)
-            self.password.set_sensitive(True)
-            self.confirmation.set_sensitive(True)
+            self.emergency_enabled.set_sensitive(True)
+            for entry in self.password_entries():
+                entry.set_sensitive(True)
             self.feedback.set_text(result.get('error', 'The password could not be set. Please try again.'))
             self.password.grab_focus()
         return False

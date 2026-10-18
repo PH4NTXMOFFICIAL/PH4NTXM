@@ -24,7 +24,7 @@ Every boot creates a disposable session for your selected mode. The Adaptive Ide
 
 At shutdown, Nuke blocks networking, ends the live user's programs and attempts RAM scrubbing before powering off. The session is discarded. The next boot creates a new one.
 
-The setup screen asks you to choose and confirm a session password before opening the desktop. Use it for screen unlock and administrator actions. Emergency protection remains available without a password prompt. The password is set again on the next boot.
+The setup screen asks you to choose and confirm a session password for screen unlock and administrator actions. An optional, different emergency password immediately requests Panic when entered at screen unlock, without confirmation. It has no special effect in other password prompts. Password setup repeats on each boot.
 
 ## [ BOOT MODES ]
 

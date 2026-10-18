@@ -47,6 +47,8 @@ Seeds and sensitive session records use restrictive permissions. Many consumers 
 
 A one-shot can finish successfully without leaving a process running. A guardian can be running while enforcement is degraded. Readiness consumers therefore inspect profile, content and freshness as appropriate. Firewall/Tor consumers commonly reject records older than six seconds or dated in the future. Lockdown's UI status JSON records control state and is not equivalent to a fresh ruleset verification.
 
+Session setup optionally stores a root-only emergency password hash in `/run/ph4ntxm-session-auth`. Only XFCE Screensaver's dedicated PAM service checks it after normal authentication fails. An exact match immediately requests Panic and denies unlock. Login, sudo and guard authentication remain separate.
+
 ## [ LINKED IDENTITY AND HARDWARE VIEWS ]
 
 Linux and Windows identity initialization validates the existing boot machine ID and derives a new seed when one is absent. The catalog selector chooses a compatible system entry. Hostname and physical-interface MAC values follow that seed. Lone Wolf uses an independent seed and per-interface locally administered MAC records.

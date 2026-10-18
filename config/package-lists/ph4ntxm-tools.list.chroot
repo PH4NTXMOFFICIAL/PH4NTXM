@@ -155,6 +155,9 @@ gtk2-engines-murrine
 task-xfce-desktop
 lightdm
 lightdm-gtk-greeter
+xfce4-screensaver
+libpam0g-dev
+libcrypt-dev
 xfce4-goodies
 ttf-mscorefonts-installer
 lshw

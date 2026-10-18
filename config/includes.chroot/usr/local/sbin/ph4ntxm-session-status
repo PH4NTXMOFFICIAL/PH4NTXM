@@ -43,7 +43,7 @@ def allowed(action, path):
     return action == "nonempty" and path in CHECKABLE
 
 
-def read_protected(path):
+def read_protected(path, private=False):
     fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
     try:
         for index, part in enumerate(path.split("/")[1:]):
@@ -59,6 +59,8 @@ def read_protected(path):
                 raise ValueError("Untrusted status file")
         if not stat.S_ISREG(info.st_mode) or info.st_size > 65536:
             raise ValueError("Invalid status file")
+        if private and (stat.S_IMODE(info.st_mode) != 0o600 or info.st_nlink != 1):
+            raise ValueError("Untrusted private status file")
         return os.read(fd, 65537)
     finally:
         os.close(fd)
@@ -69,6 +71,11 @@ def main(argv):
         return 1
     if argv == ["auth-ready"]:
         if read_protected("/run/ph4ntxm-session-auth/ready") != b"ready\n":
+            return 1
+        emergency = read_protected("/run/ph4ntxm-session-auth/emergency", private=True)
+        if emergency != b"disabled\n" and not re.fullmatch(
+            rb"\$6\$rounds=100000\$[./0-9A-Za-z]{16}\$[./0-9A-Za-z]{86}\n", emergency
+        ):
             return 1
         for line in read_protected("/etc/shadow").decode().splitlines():
             fields = line.split(":")
