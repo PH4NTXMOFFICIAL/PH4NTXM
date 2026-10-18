@@ -14,11 +14,13 @@ Incomplete checks appear as pending under Verifying Boot for the first 30 second
 
 Protection refreshes every two seconds. Identity checks combine generated state, machine-ID consistency, fonts, clock and browser policy with service results. A completed one-shot must have exited successfully and settled inactive/dead or active/exited. Continuous services are assessed by role.
 
-Network checks cover derived MACs, DHCP, resolver and protection state. Normal modes inspect packet-engine/firewall, Drift and Ghost Stack. Lone Wolf checks its guardian, fresh Tor readiness and local listeners. While its protected path remains available, Tor bootstrap stays pending beyond the grace period, showing Waiting for Network or Connecting to Tor according to the IPv4 default route.
+Network checks cover derived MACs, DHCP, resolver and protection state. Normal modes inspect packet-engine/firewall, Drift and Ghost Stack. Lone Wolf checks its guardian, selected Tor connection, fresh Tor readiness and local listeners. While its protected path remains available, Tor bootstrap stays pending beyond the grace period, showing Waiting for Network or Connecting to Tor according to the IPv4 default route.
 
 System checks cover RAM seeding, disabled swap, thermal guard, ConnWatch and loaded/locked Nuke state. Continue requires all feature checks and closes Pilot. Browser launch additionally requires its launcher gates. Lone Wolf Lockdown can permit Continue while restricting Tor Browser. Both actions recheck before proceeding.
 
 The browser button opens Firefox ESR for Linux/Windows or the Tor Browser wrapper for Lone Wolf. Pilot remains open during asynchronous launch verification and displays failures. Tor wrapper acknowledgement allows up to 15 seconds and establishes launch-gate acceptance, not full browser readiness. Firefox is checked briefly for startup failure. Successful forwarding to an existing instance is accepted.
+
+In Lone Wolf, Tor Connection selects Direct Tor or up to eight IPv4 obfs4 bridges. Each boot starts without a selection. Apply requires a fresh session password and restarts system Tor. Accepted settings are distinct from successful bootstrap.
 
 Detailed Report opens GTK Health. Wi-Fi refreshes every five seconds, with background scans and connection requests through [Wi-Fi Control](WIFI-CONTROL.md). Missing wireless hardware does not impose a connection requirement on wired-only systems.
 

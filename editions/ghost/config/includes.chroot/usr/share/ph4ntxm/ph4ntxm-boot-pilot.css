@@ -68,3 +68,24 @@ window {
     background: #f3f6f8;
     border-color: @ph4ntxm_app_outline;
 }
+
+dialog.tor-connection {
+    background: #f3f6f8;
+    color: #163042;
+}
+
+dialog.tor-connection headerbar {
+    background: #ffffff;
+    color: #163042;
+}
+
+dialog.tor-connection label:not(.subtitle) {
+    color: #163042;
+}
+
+dialog.tor-connection entry,
+dialog.tor-connection textview,
+dialog.tor-connection textview text {
+    background: #ffffff;
+    color: #163042;
+}

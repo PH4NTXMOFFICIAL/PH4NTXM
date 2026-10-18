@@ -1,0 +1,27 @@
+[Unit]
+Description=PH4NTXM Tor Connection Preparation
+DefaultDependencies=no
+Requires=ph4ntxm-mode.service
+After=ph4ntxm-mode.service
+Before=ph4ntxm-lonewolf.service tor@default.service network-pre.target
+ConditionPathExists=/run/ph4ntxm/mode-lonewolf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ph4ntxm-tor-connection-control initialize
+RemainAfterExit=yes
+UMask=0077
+RuntimeDirectory=ph4ntxm-tor-connection
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/run/ph4ntxm /run/ph4ntxm-tor-connection
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET
+LockPersonality=yes
+RestrictRealtime=yes

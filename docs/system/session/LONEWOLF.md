@@ -14,7 +14,7 @@ Physical adapters remain blocked while the independent seed, per-interface MACs,
 
 `lonewolf_seed` drives the selected identity and compatible hardware data. The MAC layout uses one saved address file per physical interface, unlike the normal modes' single prefix record. Hardware, CPU/GPU, core and screen stages share this independent session state.
 
-Network setup disables IPv6 and installs the dedicated Tor policy. Ordinary application TCP is redirected through the transparent proxy, while local DNS reaches Tor through dnsmasq. Arbitrary application UDP is blocked, with explicit DHCP handling for connection setup.
+Network setup disables IPv6 and installs the dedicated Tor policy. Tor waits for an authenticated Direct Tor or obfs4 choice in Boot Pilot at each boot. Bridge mode restricts Tor egress to selected public IPv4 endpoints without automatic direct fallback. Connection settings remain in RAM. Ordinary application TCP is redirected through the transparent proxy, while local DNS reaches Tor through dnsmasq. Arbitrary application UDP is blocked, with explicit DHCP handling for connection setup.
 
 The firewall guard publishes current source/profile readiness and falls back to restrictive policy on validation failures. Link Unblock checks the prepared firewall and identity before raising adapters. Tor bootstrap happens after connectivity becomes available. Requiring it before link release would prevent that bootstrap.
 
@@ -26,7 +26,7 @@ Normal-mode packet transformation, Unbound, Network Drift and Ghost Stack are no
 
 For incomplete startup, distinguish physical connection setup, validated firewall readiness, Tor bootstrap, DNS listeners and browser verification. An active Tor process alone is insufficient.
 
-Use Boot Pilot and Health to identify the failed gate, then inspect the corresponding service and readiness record.
+Use Boot Pilot and Health to identify the failed gate, then inspect the corresponding service and readiness record. See [Tor Connection](TOR-CONNECTION.md) for bridge setup and limits.
 
 ## [ SOURCE ]
 

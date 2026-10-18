@@ -74,7 +74,7 @@ Mitigation: Armed USB removal trigger, Panic Button, an optional emergency passw
 
 Physical network links remain blocked until identity, firewall, packet-processing, clock, and crashkernel readiness gates succeed.  
 Linux and Windows require native Packet Transformation Engine provenance for IP egress. Raw DHCP, ARP, and EAPOL cross a separate strict TC/eBPF contract. Every other unmarked physical-egress frame is dropped.  
-Lone Wolf does not allow application clearnet fallback when Tor is unavailable.  
+Lone Wolf waits for an authenticated connection choice at each boot and does not allow application clearnet fallback when Tor is unavailable. Selected obfs4 mode restricts Tor egress to the configured public IPv4 bridge endpoints and never automatically switches to direct Tor. Bridges do not guarantee censorship resistance or defeat traffic correlation.\
 Unexpected firewall state activates Lockdown before restoration.  
 PH4NTXM Health and Boot Pilot expose failed runtime chains instead of treating missing state as healthy.
 

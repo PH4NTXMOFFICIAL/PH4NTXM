@@ -99,9 +99,9 @@ See [Packet Transformation Engine](docs/system/session/PACKET-TRANSFORMATION-ENG
 
 Lone Wolf disables IPv6 and uses its own sysctl, DHCP, firewall and DNS stages. DHCP omits hostname/vendor-class advertisement while preserving the prepared MAC. It does not use the normal packet worker, Network Drift or Ghost Stack.
 
-The dedicated NAT policy redirects application DNS to local port 53 and ordinary application TCP to Tor's transparent port 9040. Tor's account has its own controlled external TCP path. DHCP has explicit connection-setup exceptions. Arbitrary application UDP is blocked. OnionShare uses system Tor through a restricted Unix control broker instead of starting bundled Tor.
+The dedicated NAT policy redirects application DNS to local port 53 and ordinary application TCP to Tor's transparent port 9040. Tor's account has its own controlled external TCP path. Each boot waits for an authenticated Direct Tor or obfs4 choice. Bridge mode limits that path to the selected public IPv4 endpoints, with RAM-only configuration and no automatic direct fallback. DHCP has explicit connection-setup exceptions. Arbitrary application UDP is blocked. OnionShare uses system Tor through a restricted Unix control broker instead of starting bundled Tor.
 
-The DNS bridge exposes local TCP/UDP 53 and forwards to Tor DNSPort 5353 without dnsmasq caching. Readiness also requires transparent/SOCKS listeners and an authenticated control-socket reply reporting bootstrap 100 with `TAG=done`. The bridge refreshes `tor-ready` while those checks pass and removes it on failure.
+The DNS bridge exposes local TCP/UDP 53 and forwards to Tor DNSPort 5353 without dnsmasq caching. Readiness also requires transparent/SOCKS listeners, current connection configuration and authenticated control-socket replies matching that configuration and reporting bootstrap 100 with `TAG=done`. The bridge refreshes `tor-ready` while those checks pass and removes it on failure.
 
 The firewall guardian checks the policy independently. Its process can be active under emergency default-drop rules while ordinary Lone Wolf readiness is absent. Browser launch requires the ready profile, not just a running guardian or Tor process.
 

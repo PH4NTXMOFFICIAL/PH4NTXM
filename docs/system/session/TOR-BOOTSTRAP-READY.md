@@ -8,7 +8,7 @@ Checks Tor bootstrap completion through its local control socket.
 
 The checker is intended to run as `debian-tor`. A different effective UID fails. It talks to Tor's local Unix control socket and does not send a public connectivity probe.
 
-Before connecting, it checks the cookie and socket with `lstat`. Both must belong to the Tor user and group, neither may be a symlink, and their file types and permission masks must match the expected protected layout.
+Before connecting, it validates current-boot connection metadata and the protected runtime configuration. It checks the cookie and socket with `lstat`. Both must belong to the Tor user and group, neither may be a symlink, and their file types and permission masks must match the expected protected layout.
 
 ## [ RUNTIME ]
 
@@ -18,7 +18,7 @@ The socket timeout is three seconds. Replies are parsed as ASCII with CRLF frami
 
 Authentication must end with the expected successful response. The bootstrap reply must have the expected structure and describe `BOOTSTRAP` with both `PROGRESS=100` and `TAG=done`. A merely running Tor process, a percentage below 100 or an unrelated successful control command is insufficient.
 
-After checking, the client sends `QUIT` and returns success. Permission, connection, parsing and incomplete-bootstrap failures return a nonzero result. It does not write the shared Tor readiness record itself.
+The checker also compares effective `UseBridges`, `DisableNetwork`, bridge lines and transport configuration through `GETCONF`, then revalidates current connection metadata. After checking, the client sends `QUIT` and returns success. Permission, connection, parsing and incomplete-bootstrap failures return a nonzero result. It does not write the shared Tor readiness record itself.
 
 The [DNS bridge](LONEWOLF-DNS-BRIDGE.md) calls this checker alongside listener checks and owns publication and refresh of `tor-ready`. Separating these roles prevents a one-time control reply from becoming an indefinitely valid session marker.
 

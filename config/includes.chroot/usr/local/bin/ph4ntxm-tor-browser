@@ -67,6 +67,12 @@ RUNTIME_MODE=$(stat -c '%a' "$RUNTIME_BASE")
 [[ "$RUNTIME_MODE" =~ ^[0-7]{3,4}$ ]] || fail 'INVALID RUNTIME DIRECTORY PERMISSIONS'
 (((8#$RUNTIME_MODE & 0022) == 0)) || fail 'UNSAFE RUNTIME DIRECTORY PERMISSIONS'
 
+if protected_file "$MODE_FILE" \
+    && [[ "$(cat "$MODE_FILE")" == lonewolf ]] \
+    && /usr/local/sbin/ph4ntxm-tor-connection-control snapshot 2>/dev/null | grep -Fq '"mode":"pending"'; then
+    fail 'CHOOSE TOR CONNECTION IN BOOT PILOT'
+fi
+
 for required_file in "$MODE_FILE" "$BROWSER_READY" "$FIREWALL_READY" "$TOR_READY" "$LONEWOLF_MANIFEST" "$BROWSER_MANIFEST"; do
     protected_file "$required_file" || fail 'TRUSTED READINESS STATE IS UNAVAILABLE'
 done

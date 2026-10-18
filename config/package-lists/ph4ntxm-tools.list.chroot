@@ -48,6 +48,7 @@ libusbguard-dev
 cryptsetup
 
 tor
+obfs4proxy
 dnsmasq-base
 proxychains4
 wireguard-tools

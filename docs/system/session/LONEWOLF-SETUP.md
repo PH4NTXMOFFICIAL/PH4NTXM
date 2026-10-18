@@ -14,6 +14,8 @@ It requests that Unbound stop and be runtime-masked, then applies the separate l
 
 IPv6 is disabled globally, by default and on current interfaces. Per-interface writes are read back. The dedicated policy and manifest must be regular files rather than symlinks, and the source digest must match its expected SHA-256 value.
 
+Connection preparation first creates a pending RAM configuration that blocks Tor egress. Setup renders the selected policy from the verified source, with only approved bridge endpoints allowed in obfs4 mode.
+
 The resolver file is replaced through a temporary file with `nameserver 127.0.0.1` and `options edns0`. Rules then pass `nft -c` before being loaded. Conntrack cleanup is best effort. A later nftables error does not roll the resolver file back.
 
 The NAT output path redirects ordinary application DNS to local port 53 and other TCP to Tor's transparent port 9040. Loopback and the Tor account have separate handling to avoid redirecting Tor into itself.

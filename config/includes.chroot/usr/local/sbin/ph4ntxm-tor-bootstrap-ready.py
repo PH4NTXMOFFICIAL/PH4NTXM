@@ -14,6 +14,9 @@ import sys
 COOKIE = "/run/tor/control.authcookie"
 CONTROL = "/run/tor/control"
 
+sys.path.insert(0, "/usr/lib/ph4ntxm")
+from tor_connection import ConnectionError, TORRC, verify
+
 
 def read_reply(channel):
     lines = []
@@ -57,8 +60,36 @@ def command(channel, request):
     return read_reply(channel)
 
 
+def connection_matches(channel):
+    verify()
+    expected = {}
+    for line in TORRC.read_text(encoding="ascii").splitlines():
+        key, value = line.split(" ", 1)
+        if key in {"UseBridges", "DisableNetwork", "Bridge", "ClientTransportPlugin"}:
+            expected.setdefault(key, []).append(shlex.split(value))
+    code, lines = command(
+        channel, "GETCONF UseBridges DisableNetwork Bridge ClientTransportPlugin"
+    )
+    if code != 250:
+        return False
+    actual = {}
+    for line in lines:
+        key, separator, value = line.partition("=")
+        if key not in {"UseBridges", "DisableNetwork", "Bridge", "ClientTransportPlugin"}:
+            return False
+        if separator:
+            actual.setdefault(key, []).append(shlex.split(value))
+        elif key not in {"Bridge", "ClientTransportPlugin"}:
+            return False
+    if actual != expected:
+        return False
+    verify()
+    return True
+
+
 def main():
     try:
+        verify()
         tor_account = pwd.getpwnam("debian-tor")
         tor_uid = tor_account.pw_uid
         tor_gid = tor_account.pw_gid
@@ -107,8 +138,10 @@ def main():
             values = dict(item.split("=", 1) for item in fields[2:] if "=" in item)
             if values.get("PROGRESS") != "100" or values.get("TAG") != "done":
                 return 1
+            if not connection_matches(stream):
+                return 1
             command(stream, "QUIT")
-    except (KeyError, OSError, UnicodeError, ValueError):
+    except (ConnectionError, KeyError, OSError, UnicodeError, ValueError):
         return 1
     return 0
 

@@ -66,6 +66,7 @@ Run session checks in the live environment. For one-shot services, inspect the c
 [UNBOUND RANDOMIZATION](system/session/UNBOUND-RANDOMIZATION.md)  
 [LONE WOLF DNS BRIDGE](system/session/LONEWOLF-DNS-BRIDGE.md)  
 [TOR BOOTSTRAP READY](system/session/TOR-BOOTSTRAP-READY.md)  
+[TOR CONNECTION](system/session/TOR-CONNECTION.md)\
 [NFT RULES](system/session/NFT-RULES.md)  
 [LONE WOLF SETUP](system/session/LONEWOLF-SETUP.md)  
 [PACKET TRANSFORMATION ENGINE](system/session/PACKET-TRANSFORMATION-ENGINE.md)  

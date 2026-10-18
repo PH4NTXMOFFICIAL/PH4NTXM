@@ -132,6 +132,13 @@ case "$1" in
             force_physical_links_down
             exit 1
         fi
+        policy_tmp=""
+        if [ "$profile" = lonewolf ]; then
+            policy_tmp=$(mktemp /run/ph4ntxm/.tor-policy.XXXXXX)
+            trap 'rm -f "$policy_tmp"' EXIT
+            /usr/local/sbin/ph4ntxm-tor-connection-control render >"$policy_tmp"
+            rules=$policy_tmp
+        fi
         nft -c -f "$rules"
         nft -f "$rules"
         conntrack -F >/dev/null 2>&1 || true

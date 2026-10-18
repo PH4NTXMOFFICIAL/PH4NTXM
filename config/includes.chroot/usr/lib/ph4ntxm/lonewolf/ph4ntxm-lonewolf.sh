@@ -40,6 +40,9 @@ printf "nameserver 127.0.0.1\noptions edns0\n" >"$resolv_tmp"
 chmod 0644 "$resolv_tmp"
 mv -f "$resolv_tmp" /etc/resolv.conf
 
-/usr/sbin/nft -c -f "$RULES"
-/usr/sbin/nft -f "$RULES"
+policy_tmp=$(mktemp /run/ph4ntxm/.tor-policy.XXXXXX)
+trap 'rm -f "$policy_tmp"' EXIT
+/usr/local/sbin/ph4ntxm-tor-connection-control render >"$policy_tmp"
+/usr/sbin/nft -c -f "$policy_tmp"
+/usr/sbin/nft -f "$policy_tmp"
 /usr/sbin/conntrack -F >/dev/null 2>&1 || true

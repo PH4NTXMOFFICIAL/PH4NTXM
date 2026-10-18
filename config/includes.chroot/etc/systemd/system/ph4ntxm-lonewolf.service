@@ -1,8 +1,8 @@
 [Unit]
 Description=PH4NTXM Lone Wolf Enforcement
 DefaultDependencies=no
-Requires=systemd-sysctl.service ph4ntxm-mode.service
-After=systemd-sysctl.service ph4ntxm-mode.service
+Requires=systemd-sysctl.service ph4ntxm-mode.service ph4ntxm-tor-connection.service
+After=systemd-sysctl.service ph4ntxm-mode.service ph4ntxm-tor-connection.service
 Before=network-pre.target
 Before=tor.service tor@default.service
 ConditionPathExists=/run/ph4ntxm/mode-lonewolf

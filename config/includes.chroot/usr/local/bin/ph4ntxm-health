@@ -675,7 +675,11 @@ if [[ "$MODE" == "lonewolf" ]]; then
         print_line "Tor DNS Bridge:" "Active" "$GREEN"
     else
         critical_error
-        print_line "Tor DNS Bridge:" "Circuit not ready" "$RED"
+        if /usr/local/sbin/ph4ntxm-tor-connection-control snapshot 2>/dev/null | grep -Fq '"mode":"pending"'; then
+            print_line "Tor DNS Bridge:" "Choose Tor Connection in Boot Pilot" "$RED"
+        else
+            print_line "Tor DNS Bridge:" "Circuit not ready" "$RED"
+        fi
     fi
 elif systemctl is-active --quiet unbound 2>/dev/null; then
     print_line "DNS Resolver:" "Active" "$GREEN"

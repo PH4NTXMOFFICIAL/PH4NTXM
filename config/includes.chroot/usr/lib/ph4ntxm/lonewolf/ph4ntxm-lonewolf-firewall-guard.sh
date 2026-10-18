@@ -32,6 +32,9 @@ READY_FILE=/run/ph4ntxm/firewall-ready
 ACTIVE_PROFILE=unavailable
 ACTIVE_SOURCE_HASH=""
 EXPECTED_HASH=""
+ACTIVE_POLICY_HASH=""
+POLICY_FILE=""
+CONNECTION_CONTROL=/usr/local/sbin/ph4ntxm-tor-connection-control
 exec 9>"$LOCK_FILE"
 
 safe() { "$@" >/dev/null 2>&1 || true; }
@@ -82,7 +85,12 @@ manifest_hash() {
     printf '%s\n' "$value"
 }
 
-trap clear_ready EXIT INT TERM HUP
+cleanup() {
+    clear_ready
+    [[ -z "$POLICY_FILE" ]] || rm -f "$POLICY_FILE"
+}
+
+trap cleanup EXIT INT TERM HUP
 
 select_profile() {
     if [[ ! -e "$STATUS_FILE" ]]; then
@@ -109,6 +117,13 @@ validate_profile() {
     expected=$(manifest_hash "$DESIRED_PROFILE") || return 1
     actual=$($SHA256 "$DESIRED_RULES" | awk '{print $1}') || return 1
     [[ "$actual" == "$expected" ]] || return 1
+    if [[ "$DESIRED_PROFILE" == lonewolf ]]; then
+        [[ -z "$POLICY_FILE" ]] || rm -f "$POLICY_FILE"
+        POLICY_FILE=$(mktemp /run/ph4ntxm/.tor-policy.XXXXXX) || return 1
+        "$CONNECTION_CONTROL" render >"$POLICY_FILE" || return 1
+        DESIRED_RULES=$POLICY_FILE
+    fi
+    DESIRED_POLICY_HASH=$($SHA256 "$DESIRED_RULES" | awk '{print $1}') || return 1
     $NFT -c -f "$DESIRED_RULES"
 }
 
@@ -164,6 +179,7 @@ apply_profile() {
     EXPECTED_HASH="$($NFT -s list ruleset | $SHA256 | awk '{print $1}')" || return 1
     [[ "$EXPECTED_HASH" =~ ^[0-9a-f]{64}$ ]] || return 1
     ACTIVE_PROFILE="$DESIRED_PROFILE"
+    ACTIVE_POLICY_HASH=$DESIRED_POLICY_HASH
     ACTIVE_SOURCE_HASH=$(manifest_hash "$ACTIVE_PROFILE") || return 1
     publish_ready
 }
@@ -189,10 +205,12 @@ while true; do
     CURRENT="$($NFT -s list ruleset 2>/dev/null | $SHA256 | awk '{print $1}')" || CURRENT=""
     CURRENT_SOURCE=""
     ACTUAL_SOURCE=""
+    CURRENT_POLICY=""
     case "$ACTIVE_PROFILE" in
         lonewolf)
             CURRENT_SOURCE=$(manifest_hash lonewolf 2>/dev/null) || CURRENT_SOURCE=""
             ACTUAL_SOURCE=$($SHA256 "$LONEWOLF_FILE" 2>/dev/null | awk '{print $1}') || ACTUAL_SOURCE=""
+            CURRENT_POLICY=$("$CONNECTION_CONTROL" policy-hash 2>/dev/null) || CURRENT_POLICY=""
             ;;
         lockdown)
             CURRENT_SOURCE=$(manifest_hash lockdown 2>/dev/null) || CURRENT_SOURCE=""
@@ -203,7 +221,8 @@ while true; do
     if [[ "$ACTIVE_PROFILE" == emergency ]] \
         || [[ "$DESIRED_PROFILE" != "$ACTIVE_PROFILE" ]] \
         || [[ -z "$CURRENT" || "$CURRENT" != "$EXPECTED_HASH" ]] \
-        || [[ -z "$CURRENT_SOURCE" || "$CURRENT_SOURCE" != "$ACTUAL_SOURCE" ]]; then
+        || [[ -z "$CURRENT_SOURCE" || "$CURRENT_SOURCE" != "$ACTUAL_SOURCE" ]] \
+        || { [[ "$ACTIVE_PROFILE" == lonewolf ]] && [[ -z "$CURRENT_POLICY" || "$CURRENT_POLICY" != "$ACTIVE_POLICY_HASH" ]]; }; then
         clear_ready
         apply_lockdown || true
         enforce_desired || true

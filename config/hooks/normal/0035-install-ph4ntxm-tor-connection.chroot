@@ -1,0 +1,20 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+SOURCE=/usr/local/src/ph4ntxm-tor-connection
+CONTROL=/usr/local/sbin/ph4ntxm-tor-connection-control
+MODULE=/usr/lib/ph4ntxm/tor_connection.py
+UNIT=/etc/systemd/system/ph4ntxm-tor-connection.service
+
+chown root:root "$CONTROL" "$MODULE" "$UNIT" /etc/apparmor.d/local/system_tor
+chmod 0755 "$CONTROL"
+chmod 0644 "$MODULE" "$UNIT" /etc/apparmor.d/local/system_tor
+test -x /usr/bin/obfs4proxy
+python3 -B -I "$SOURCE/tests/test_tor_connection.py"
+python3 -B -I "$SOURCE/tests/test-boot-pilot-tor.py"
+visudo -c -f /etc/sudoers.d/ph4ntxm
+apparmor_parser --skip-kernel-load /etc/apparmor.d/system_tor
+rm -rf "$SOURCE"

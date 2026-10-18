@@ -16,7 +16,9 @@ Before applying a profile, the guard compares its source digest with the manifes
 
 Successful application publishes `/run/ph4ntxm/firewall-ready` atomically. Its fields are `PROFILE`, `SOURCE_SHA256`, `RULESET_SHA256` and `UPTIME_SECONDS`, allowing consumers to compare the source, current profile and recent guardian activity.
 
-Every two seconds, the loop checks requested profile, live rules and the source/manifest relationship. Unexpected changes remove readiness and enter restrictive recovery before another validated profile is applied.
+The selected Tor connection renders a restricted policy from the verified source. Pending or failed configuration blocks Tor egress. obfs4 allows only its approved endpoints, and Lockdown restoration preserves that selection.
+
+Every two seconds, the loop checks requested profile, live rules, connection-policy digest and the source/manifest relationship. Unexpected changes remove readiness and enter restrictive recovery before another validated profile is applied.
 
 If a trusted Lockdown policy cannot be loaded, an inline emergency ruleset defaults to dropping traffic. That emergency path deliberately leaves readiness absent. If emergency installation also fails, the guardian reports the active profile as unavailable and keeps readiness absent. Later iterations can recover when a valid source and profile become available.
 

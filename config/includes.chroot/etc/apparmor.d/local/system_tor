@@ -1,0 +1,8 @@
+/usr/local/sbin/ph4ntxm-tor-connection-control rix,
+/usr/bin/python3{,.13} rix,
+/usr/lib/ph4ntxm/tor_connection.py r,
+/usr/lib/ph4ntxm/lonewolf/lonewolf.nft r,
+/run/ph4ntxm/mode r,
+/run/ph4ntxm-tor-connection/ r,
+/run/ph4ntxm-tor-connection/{torrc,snapshot.json,expectation.json,state.json} r,
+/proc/sys/kernel/random/boot_id r,

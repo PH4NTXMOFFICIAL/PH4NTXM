@@ -24,6 +24,7 @@ SS = "/usr/bin/ss"
 IP = "/usr/sbin/ip"
 SUDO = "/usr/bin/sudo"
 WIFI_CONTROL = "/usr/local/sbin/ph4ntxm-wifi-control"
+TOR_CONTROL = "/usr/local/sbin/ph4ntxm-tor-connection-control"
 
 
 def harden_process():
@@ -88,6 +89,98 @@ def run_json(command, timeout=15, input_data=None):
         return {"ok": False, "error": "Wi-Fi operation timed out"}
     except OSError:
         return {"ok": False, "error": "Wi-Fi control is unavailable"}
+
+
+def tor_control(action="snapshot", input_data=None):
+    command = [TOR_CONTROL, action]
+    if action == "apply":
+        command = [SUDO, "-k", "-S", "-p", "", "--", *command]
+    try:
+        result = subprocess.run(
+            command,
+            input=input_data,
+            stdin=subprocess.DEVNULL if input_data is None else None,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=90 if action == "apply" else 5,
+            check=False,
+        )
+        input_data = ""
+        try:
+            payload = json.loads(result.stdout)
+        except (TypeError, ValueError):
+            if result.returncode != 0 and action == "apply":
+                return {
+                    "ok": False,
+                    "error": "Authorization cancelled or Tor connection request failed",
+                }
+            raise ValueError()
+        if not isinstance(payload, dict):
+            raise ValueError()
+        if result.returncode != 0 or payload.get("ok") is not True:
+            message = payload.get("error")
+            return {
+                "ok": False,
+                "error": (
+                    message[:240] if isinstance(message, str) and message
+                    else "Authorization cancelled or Tor connection request failed"
+                ),
+            }
+        if action == "snapshot":
+            generation = payload.get("generation")
+            if (
+                not isinstance(generation, str)
+                or not generation
+                or len(generation) > 128
+                or payload.get("mode") not in {"pending", "direct", "obfs4"}
+                or payload.get("phase") not in {
+                    "waiting", "configuring", "connecting", "error"
+                }
+                or type(payload.get("bridge_count")) is not int
+                or not 0 <= payload["bridge_count"] <= 8
+                or not isinstance(payload.get("error", ""), str)
+            ):
+                raise ValueError()
+            state = {
+                key: payload.get(key, "")
+                for key in (
+                    "ok", "generation", "mode", "phase", "bridge_count", "error"
+                )
+            }
+            state["error"] = state["error"][:240]
+            return state
+        return {"ok": True}
+    except subprocess.TimeoutExpired:
+        return {
+            "ok": False,
+            "error": "Tor connection request timed out. Check its status before retrying.",
+        }
+    except (OSError, subprocess.SubprocessError, TypeError, ValueError):
+        return {"ok": False, "error": "Tor connection control is unavailable"}
+    finally:
+        input_data = ""
+
+
+def tor_connection_feature(state, ready=False, waiting_network=False):
+    check = feature("Tor Connection", False)
+    if not state.get("ok"):
+        check["detail"] = state.get("error", "Tor connection status unavailable")
+        return check
+    mode = state["mode"]
+    selection = "Direct Tor" if mode == "direct" else "obfs4 Bridge"
+    if mode == "pending":
+        check.update(state="pending", detail="Choose Direct Tor or an obfs4 bridge")
+    elif state["phase"] == "error":
+        check["detail"] = f"{selection}: {state.get('error') or 'Configuration error'}"
+    elif state["phase"] == "configuring":
+        check.update(state="pending", detail=f"{selection} · Applying configuration…")
+    elif ready:
+        check.update(state="pass", detail=selection)
+    else:
+        detail = "Waiting for Network" if waiting_network else "Connecting to Tor…"
+        check.update(state="pending", detail=f"{selection} · {detail}")
+    return check
 
 
 def active(unit):
@@ -500,7 +593,7 @@ def identity_features(mode):
     ]
 
 
-def network_features(mode):
+def network_features(mode, tor_state=None):
     lonewolf = mode == "lonewolf"
     prefix = "ph4ntxm-lonewolf" if lonewolf else "ph4ntxm"
     net_ok = completed(f"{prefix}-net-randomization.service")
@@ -590,9 +683,21 @@ def network_features(mode):
                 )
                 dns_check["state"] = "pending"
                 dns_check["detail"] = "Waiting for Tor"
+        if tor_state is None:
+            tor_state = tor_control()
+        connection_check = tor_connection_feature(
+            tor_state, tor_ok, tor_check["detail"] == "Waiting for Network"
+        )
+        if tor_state.get("ok") and (
+            tor_state["mode"] == "pending"
+            or tor_state["phase"] in {"configuring", "error"}
+        ):
+            tor_check.update(state="pending", detail="Waiting for Tor Connection")
+            dns_check.update(state="pending", detail="Waiting for Tor")
         checks.extend(
             [
                 feature("Firewall Protection", firewall_ok),
+                connection_check,
                 tor_check,
                 dns_check,
             ]
@@ -642,11 +747,11 @@ def system_features():
     ]
 
 
-def collect():
+def collect(tor_state=None):
     mode = read(f"{STATE_DIR}/mode", "unknown")
     return [
         {"name": "Identity Protection", "checks": identity_features(mode)},
-        {"name": "Network Protection", "checks": network_features(mode)},
+        {"name": "Network Protection", "checks": network_features(mode, tor_state)},
         {"name": "System Protection", "checks": system_features()},
     ]
 
@@ -1009,6 +1114,247 @@ class WifiDialog(Gtk.Dialog):
         return False
 
 
+class TorConnectionDialog(Gtk.Dialog):
+    def __init__(self, parent):
+        Gtk.Dialog.__init__(
+            self, title="Tor Connection", transient_for=parent, modal=True
+        )
+        self.get_style_context().add_class("tor-connection")
+        self.parent_pilot = parent
+        state = parent.tor_state
+        self.generation = state.get("generation") if state.get("ok") else None
+        self.submitting = False
+        self.stale = False
+        self.closed = False
+        self.set_default_size(520, 400)
+        self.set_resizable(True)
+        self.set_destroy_with_parent(True)
+        self.set_icon_name("tor-browser")
+        self.connect("response", self.on_response)
+        self.connect("delete-event", self.on_delete)
+        self.connect("destroy", self.on_destroy)
+        content = self.get_content_area()
+        content.set_spacing(8)
+        content.set_border_width(16)
+        intro = Gtk.Label(
+            label="Choose how system Tor connects for this live session."
+        )
+        intro.set_halign(Gtk.Align.START)
+        intro.set_line_wrap(True)
+        intro.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        intro.set_max_width_chars(58)
+        intro.get_style_context().add_class("subtitle")
+        content.pack_start(intro, False, False, 0)
+        self.unselected = Gtk.RadioButton()
+        self.direct = Gtk.RadioButton.new_with_label_from_widget(
+            self.unselected, "Direct Tor"
+        )
+        self.bridge = Gtk.RadioButton.new_with_label_from_widget(
+            self.unselected, "obfs4 Bridge"
+        )
+        content.pack_start(self.direct, False, False, 0)
+        content.pack_start(self.bridge, False, False, 0)
+        self.bridge_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        bridge_label = Gtk.Label(
+            label=(
+                "Paste up to 8 IPv4 obfs4 bridge lines. "
+                "Changing or retrying bridges requires a fresh paste."
+            )
+        )
+        bridge_label.set_halign(Gtk.Align.START)
+        bridge_label.set_line_wrap(True)
+        bridge_label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        bridge_label.set_max_width_chars(58)
+        bridge_label.get_style_context().add_class("subtitle")
+        self.bridge_box.pack_start(bridge_label, False, False, 0)
+        self.bridges = Gtk.TextView()
+        self.bridges.set_wrap_mode(Gtk.WrapMode.CHAR)
+        self.bridges.set_accepts_tab(False)
+        self.bridges.get_accessible().set_name("obfs4 bridge lines")
+        self.buffer = self.bridges.get_buffer()
+        self.buffer.connect("insert-text", self.on_insert)
+        self.buffer.connect("changed", lambda _: self.update_apply_button())
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_min_content_height(120)
+        scroll.set_shadow_type(Gtk.ShadowType.IN)
+        scroll.add(self.bridges)
+        self.bridge_box.pack_start(scroll, False, False, 0)
+        self.bridge_box.show_all()
+        self.bridge_box.set_no_show_all(True)
+        content.pack_start(self.bridge_box, False, False, 0)
+        password_label = Gtk.Label(label="Session Password (required for every change)")
+        password_label.set_halign(Gtk.Align.START)
+        content.pack_start(password_label, False, False, 0)
+        self.password_entry = Gtk.Entry()
+        self.password_entry.set_visibility(False)
+        self.password_entry.set_invisible_char("•")
+        self.password_entry.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+        self.password_entry.set_max_length(1024)
+        self.password_entry.connect("changed", lambda _: self.update_apply_button())
+        self.password_entry.connect("activate", lambda _: self.begin_apply())
+        content.pack_start(self.password_entry, False, False, 0)
+        self.status_label = Gtk.Label()
+        self.status_label.set_halign(Gtk.Align.START)
+        self.status_label.set_line_wrap(True)
+        self.status_label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        self.status_label.set_max_width_chars(58)
+        self.status_label.get_style_context().add_class("subtitle")
+        content.pack_start(self.status_label, False, False, 0)
+        self.cancel_button = self.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        self.apply_button = self.add_button("Apply", Gtk.ResponseType.APPLY)
+        self.apply_button.get_style_context().add_class("suggested-action")
+        if state.get("ok") and state["mode"] in {"direct", "obfs4"}:
+            (self.direct if state["mode"] == "direct" else self.bridge).set_active(True)
+        self.direct.connect("toggled", self.on_choice)
+        self.bridge.connect("toggled", self.on_choice)
+        self.bridge_box.set_visible(self.bridge.get_active())
+        self.status_label.set_text(
+            "Choose a connection and enter your session password."
+            if self.generation is not None
+            else state.get("error", "Checking Tor connection…")
+        )
+        self.update_apply_button()
+
+    def bridge_text(self):
+        return self.buffer.get_text(*self.buffer.get_bounds(), False)
+
+    def selected_mode(self):
+        if self.direct.get_active():
+            return "direct"
+        if self.bridge.get_active():
+            return "obfs4"
+        return None
+
+    def on_choice(self, _button):
+        self.password_entry.set_text("")
+        self.bridge_box.set_visible(self.bridge.get_active())
+        if self.direct.get_active():
+            self.buffer.set_text("")
+        self.update_apply_button()
+
+    def on_insert(self, buffer, position, text, _length):
+        current = self.bridge_text()
+        offset = position.get_offset()
+        proposed = current[:offset] + text + current[offset:]
+        if (
+            len(proposed.encode("utf-8")) > 8192
+            or sum(bool(line.strip()) for line in proposed.splitlines()) > 8
+        ):
+            buffer.stop_emission_by_name("insert-text")
+            self.status_label.set_text("Use at most 8 nonempty bridge lines and 8 KiB of text.")
+
+    def update_apply_button(self):
+        if not hasattr(self, "apply_button"):
+            return
+        mode = self.selected_mode()
+        password = self.password_entry.get_text()
+        valid = bool(
+            mode
+            and password
+            and "\n" not in password
+            and "\r" not in password
+            and self.generation is not None
+            and not self.stale
+            and not self.submitting
+            and not self.parent_pilot.tor_action_active
+        )
+        password = ""
+        if valid and mode == "obfs4":
+            text = self.bridge_text()
+            valid = (
+                bool(text.strip())
+                and len(text.encode("utf-8")) <= 8192
+                and sum(bool(line.strip()) for line in text.splitlines()) <= 8
+            )
+            text = ""
+        self.apply_button.set_sensitive(valid)
+
+    def update_state(self, state):
+        if self.closed or self.submitting or not state.get("ok"):
+            return
+        if self.generation is None:
+            self.generation = state["generation"]
+            self.status_label.set_text(
+                "Choose a connection and enter your session password."
+            )
+        elif self.generation != state["generation"]:
+            self.stale = True
+            self.password_entry.set_text("")
+            self.buffer.set_text("")
+            self.status_label.set_text(
+                "The connection changed. Close and reopen this window "
+                "before applying another choice."
+            )
+        self.update_apply_button()
+
+    def set_busy(self, busy):
+        self.set_deletable(not busy)
+        self.direct.set_sensitive(not busy)
+        self.bridge.set_sensitive(not busy)
+        self.bridges.set_sensitive(not busy)
+        self.password_entry.set_sensitive(not busy)
+        self.cancel_button.set_sensitive(not busy)
+        self.update_apply_button()
+
+    def begin_apply(self):
+        if not self.apply_button.get_sensitive() or self.closed:
+            return
+        state = self.parent_pilot.tor_state
+        if not state.get("ok") or state.get("generation") != self.generation:
+            self.stale = True
+            self.password_entry.set_text("")
+            self.status_label.set_text(
+                "The connection changed. Close and reopen this window "
+                "before applying another choice."
+            )
+            self.update_apply_button()
+            return
+        mode = self.selected_mode()
+        bridges = self.bridge_text() if mode == "obfs4" else ""
+        password = self.password_entry.get_text()
+        self.submitting = True
+        self.password_entry.set_text("")
+        self.buffer.set_text("")
+        self.set_busy(True)
+        self.status_label.set_text("Authorizing and applying connection settings…")
+        self.parent_pilot.apply_tor_connection(self, mode, bridges, password)
+        bridges = ""
+        password = ""
+
+    def finish_result(self, result):
+        if self.closed:
+            return
+        self.submitting = False
+        if result.get("ok"):
+            self.destroy()
+            return
+        self.set_busy(False)
+        self.status_label.set_text(
+            result.get("error", "Unable to apply Tor connection settings")
+        )
+        self.password_entry.grab_focus()
+
+    def on_response(self, _dialog, response):
+        if response == Gtk.ResponseType.APPLY:
+            self.stop_emission_by_name("response")
+            self.begin_apply()
+        elif self.submitting:
+            self.stop_emission_by_name("response")
+        else:
+            self.destroy()
+
+    def on_delete(self, _dialog, _event):
+        return self.submitting
+
+    def on_destroy(self, _dialog):
+        self.closed = True
+        self.password_entry.set_text("")
+        self.buffer.set_text("")
+        if self.parent_pilot.tor_dialog is self:
+            self.parent_pilot.tor_dialog = None
+
+
 class BootPilot(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self, title="PH4NTXM Boot Pilot")
@@ -1041,6 +1387,12 @@ class BootPilot(Gtk.Window):
         self.wifi_callbacks = []
         self.auto_wifi_shown = False
         self.wifi_dialog = None
+        self.tor_dialog = None
+        self.tor_action_active = False
+        self.tor_connection_ready = False
+        self.tor_request_revision = 0
+        self.tor_state = {"ok": False, "error": "Checking Tor connection…"}
+        self.tor_action_error = ""
         self.wifi_state = {
             "ok": False,
             "error": "Checking wireless status…",
@@ -1065,6 +1417,10 @@ class BootPilot(Gtk.Window):
         provider.load_from_data(
             b"""
             window { background: #0d1117; color: #d7e0ea; }
+            dialog.tor-connection { background: #0d1117; color: #d7e0ea; }
+            dialog.tor-connection headerbar { background: #121a24; color: #d7e0ea; }
+            dialog.tor-connection label:not(.subtitle) { color: #d7e0ea; }
+            dialog.tor-connection entry, dialog.tor-connection textview, dialog.tor-connection textview text { background: #0d1117; color: #d7e0ea; }
             .top-panel { background: #121a24; padding: 20px 22px; border-bottom: 1px solid #263241; }
             .title { font-size: 24px; font-weight: 700; }
             .subtitle { color: #90a4b8; font-size: 13px; }
@@ -1173,6 +1529,26 @@ class BootPilot(Gtk.Window):
         self.wifi_button.connect("clicked", self.show_wifi_dialog)
         wifi_panel.pack_end(self.wifi_button, False, False, 0)
         content.pack_start(wifi_panel, False, False, 0)
+        if read(f"{STATE_DIR}/mode", "unknown") == "lonewolf":
+            tor_panel = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            tor_panel.get_style_context().add_class("wifi-panel")
+            tor_labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            tor_title = Gtk.Label(label="Tor Connection")
+            tor_title.set_halign(Gtk.Align.START)
+            tor_title.get_style_context().add_class("wifi-title")
+            tor_labels.pack_start(tor_title, False, False, 0)
+            self.tor_subtitle = Gtk.Label(label="Checking connection choice…")
+            self.tor_subtitle.set_halign(Gtk.Align.START)
+            self.tor_subtitle.set_line_wrap(True)
+            self.tor_subtitle.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+            self.tor_subtitle.set_max_width_chars(48)
+            self.tor_subtitle.get_style_context().add_class("subtitle")
+            tor_labels.pack_start(self.tor_subtitle, False, False, 0)
+            tor_panel.pack_start(tor_labels, True, True, 0)
+            self.tor_button = Gtk.Button(label="Choose Connection")
+            self.tor_button.connect("clicked", self.show_tor_dialog)
+            tor_panel.pack_end(self.tor_button, False, False, 0)
+            content.pack_start(tor_panel, False, False, 0)
         content.pack_start(self.sections, True, True, 0)
         viewport.add(content)
         scroll.add(viewport)
@@ -1217,6 +1593,84 @@ class BootPilot(Gtk.Window):
         controls.pack_end(refresh, False, False, 0)
         controls.pack_end(report, False, False, 0)
         root.pack_end(controls, False, False, 0)
+
+    def update_tor_panel(self):
+        if not hasattr(self, "tor_button"):
+            return
+        check = tor_connection_feature(self.tor_state, self.tor_connection_ready)
+        detail = (
+            "Applying connection settings…" if self.tor_action_active
+            else check["detail"]
+        )
+        self.tor_subtitle.set_text(self.tor_action_error or detail)
+        self.tor_button.set_label(
+            "Choose Connection" if self.tor_state.get("mode") in {None, "pending"}
+            else "Change Connection"
+        )
+        self.tor_button.set_sensitive(not self.tor_action_active)
+
+    def show_tor_dialog(self, _button=None):
+        if self.closed or read(f"{STATE_DIR}/mode", "unknown") != "lonewolf":
+            return
+        if self.tor_dialog is not None:
+            self.tor_dialog.present()
+            return
+        if self.tor_action_active:
+            return
+        self.tor_dialog = TorConnectionDialog(self)
+        self.tor_dialog.show_all()
+        self.tor_dialog.bridge_box.set_visible(self.tor_dialog.bridge.get_active())
+
+    def apply_tor_connection(self, dialog, mode, bridges, password):
+        if self.tor_action_active or read(f"{STATE_DIR}/mode", "unknown") != "lonewolf":
+            dialog.finish_result(
+                {"ok": False, "error": "Tor connection changes are unavailable"}
+            )
+            return
+        request = {"generation": dialog.generation, "mode": mode, "bridges": bridges}
+        input_data = password + "\n" + json.dumps(request, separators=(",", ":")) + "\n"
+        request["bridges"] = ""
+        bridges = ""
+        password = ""
+        self.tor_action_active = True
+        self.boot_refresh_callback = None
+        self.boot_refresh_pending = False
+        self.tor_request_revision += 1
+        self.tor_action_error = ""
+        self.tor_connection_ready = False
+        self.boot_settled = False
+        self.browser_ready = False
+        self.update_browser_controls()
+        self.update_tor_panel()
+
+        def worker(payload=input_data):
+            try:
+                result = tor_control("apply", payload)
+            except Exception:
+                result = {"ok": False, "error": "Tor connection request failed"}
+            finally:
+                payload = ""
+            GLib.idle_add(self.apply_tor_result, dialog, mode, result)
+
+        threading.Thread(target=worker, name="ph4ntxm-tor-connection", daemon=True).start()
+        input_data = ""
+
+    def apply_tor_result(self, dialog, mode, result):
+        self.tor_action_active = False
+        self.tor_request_revision += 1
+        if self.closed:
+            return False
+        if result.get("ok"):
+            self.tor_state = dict(self.tor_state, mode=mode, phase="configuring", error="")
+            self.tor_action_error = (
+                "Connection setup accepted. Protection checks are continuing…"
+            )
+        else:
+            self.tor_action_error = result.get("error", "Tor connection request failed")
+        self.update_tor_panel()
+        dialog.finish_result(result)
+        self.refresh()
+        return False
 
     def initial_wifi_refresh(self):
         mode = read(f"{STATE_DIR}/mode", "unknown")
@@ -1388,10 +1842,15 @@ class BootPilot(Gtk.Window):
 
     def update_browser_controls(self):
         self.browser_button.set_sensitive(
-            self.boot_settled and self.browser_ready and not self.browser_launching
+            self.boot_settled
+            and self.browser_ready
+            and not self.browser_launching
+            and not self.tor_action_active
         )
         self.continue_button.set_sensitive(
-            self.boot_settled and not self.browser_launching
+            self.boot_settled
+            and not self.browser_launching
+            and not self.tor_action_active
         )
         message = self.browser_launch_error
         if self.browser_launching:
@@ -1522,9 +1981,14 @@ class BootPilot(Gtk.Window):
             return
         self.boot_refresh_active = True
 
+        revision = self.tor_request_revision
+
         def worker():
+            tor_state = None
             try:
-                groups = collect()
+                if read(f"{STATE_DIR}/mode", "unknown") == "lonewolf":
+                    tor_state = tor_control()
+                groups = collect(tor_state)
                 browser_status = browser_launch_status(
                     read(f"{STATE_DIR}/mode", "unknown")
                 )
@@ -1533,14 +1997,31 @@ class BootPilot(Gtk.Window):
                 check["detail"] = "Unavailable"
                 groups = [{"name": "Boot Verification", "checks": [check]}]
                 browser_status = False, "Browser readiness is unavailable."
-            GLib.idle_add(self.apply_boot_state, groups, browser_status)
+            GLib.idle_add(
+                self.apply_boot_state, groups, browser_status, tor_state, revision
+            )
 
         threading.Thread(target=worker, name="ph4ntxm-boot-state", daemon=True).start()
 
-    def apply_boot_state(self, groups, browser_status):
+    def apply_boot_state(self, groups, browser_status, tor_state=None, revision=None):
         self.boot_refresh_active = False
         if self.closed:
             return False
+        if revision is not None and revision != self.tor_request_revision:
+            self.refresh()
+            return False
+        if self.tor_action_active:
+            return False
+        if tor_state is not None:
+            self.tor_connection_ready = any(
+                check["label"] == "Tor Connection" and check["state"] == "pass"
+                for group in groups for check in group["checks"]
+            )
+            self.tor_action_error = ""
+            self.tor_state = tor_state
+            self.update_tor_panel()
+            if self.tor_dialog is not None:
+                self.tor_dialog.update_state(tor_state)
         if self.boot_refresh_pending:
             self.boot_refresh_pending = False
             self.refresh()
@@ -1551,7 +2032,10 @@ class BootPilot(Gtk.Window):
                 check["detail"]
                 for group in groups
                 for check in group["checks"]
-                if check["label"] == "Tor Routing" and check["state"] == "pending"
+                if (
+                    check["label"] == "Tor Connection"
+                    or check["label"] == "Tor Routing" and check["state"] == "pending"
+                )
             ),
             "",
         )
@@ -1573,7 +2057,28 @@ class BootPilot(Gtk.Window):
                         check["detail"] = "Checking…"
         elif self.boot_settled:
             title = "Boot Ready"
-        connecting = connection_detail == "Connecting to Tor…"
+        connection_check = next(
+            (
+                check for group in groups for check in group["checks"]
+                if check["label"] == "Tor Connection"
+            ),
+            None,
+        )
+        if (
+            connection_check
+            and connection_check["state"] == "pending"
+            and state == "warn"
+        ):
+            title = (
+                "Choose Tor Connection"
+                if tor_state and tor_state.get("mode") == "pending"
+                else "Connecting to Tor"
+            )
+            subtitle = connection_detail
+        connecting = (
+            "Connecting to Tor…" in connection_detail
+            or "Applying configuration…" in connection_detail
+        )
         self.connection_label.set_text(connection_detail)
         self.connection_status.set_visible(bool(connection_detail))
         self.connection_spinner.set_visible(connecting)

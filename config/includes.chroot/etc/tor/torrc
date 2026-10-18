@@ -14,3 +14,5 @@ SocksPolicy accept 127.0.0.1
 SocksPolicy reject *
 AutomapHostsOnResolve 1
 VirtualAddrNetworkIPv4 10.192.0.0/10
+
+%include /run/ph4ntxm-tor-connection/torrc

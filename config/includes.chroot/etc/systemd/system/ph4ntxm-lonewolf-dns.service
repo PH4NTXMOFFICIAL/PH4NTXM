@@ -10,6 +10,7 @@ ConditionPathExists=/run/ph4ntxm/mode-lonewolf
 [Service]
 Type=notify
 NotifyAccess=all
+ExecCondition=/usr/local/sbin/ph4ntxm-tor-connection-control verify
 ExecStartPre=/usr/sbin/dnsmasq --test --conf-file=/usr/lib/ph4ntxm/lonewolf/dnsmasq.conf
 ExecStart=/usr/lib/ph4ntxm/lonewolf/ph4ntxm-lonewolf-dns-bridge.sh
 Restart=always

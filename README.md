@@ -42,6 +42,8 @@ Windows uses a Windows-aligned identity profile with matching hardware details, 
 
 Lone Wolf uses an independent Linux-aligned identity profile with a dedicated Tor network configuration. The browser is Tor Browser. Supported application connections pass through Tor under PH4NTXM's dedicated firewall rules. DNS also passes through Tor.
 
+Each boot waits for a password-authenticated Direct Tor or obfs4 bridge choice in Boot Pilot. Bridge mode permits only the selected public IPv4 endpoints and never automatically falls back to direct Tor. Settings remain in RAM.
+
 Tor Browser opens after the protection and Tor readiness checks pass. If Tor becomes unavailable, the firewall blocks direct application connections. IPv6 and application UDP traffic are blocked outside the permitted connection-setup rules.
 
 ## [ DESKTOP TOOLS ]
