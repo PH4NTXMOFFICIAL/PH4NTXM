@@ -66,7 +66,7 @@ Opening an unmounted disk through the desktop requires the session password. Aft
 
 USB Guard optionally preserves current USB connections and blocks new devices pending approval. Net Guard optionally requires approval for each live-user process execution before outbound IP access. Both require the session password for Enable, Allow and Disable. Approvals are temporary.
 
-Session Guard optionally checks session consistency every 10 seconds and warns about detected failures. Enable and Disable require the session password. Lockdown remains an explicit action.
+Session Guard optionally checks generated identity consistency and protection readiness every 10 seconds. It warns about detected failures and monitored MAC changes. Enable and Disable require the session password. Lockdown remains an explicit action.
 
 Block networking or end the session:
 

@@ -157,7 +157,7 @@ Identity displays a snapshot of selected identifiers. Health collects resources,
 
 [USB Guard](docs/system/session/USB-GUARD.md) optionally preserves current USB connections and blocks new devices pending password-authenticated approval. [Net Guard](docs/system/session/NET-GUARD.md) optionally gates outbound live-user IP sockets through BPF LSM and cgroup egress checks, independently of nftables. Grants bind to exact process executions. Activation invalidates existing sockets and daemon failure retains denial. Both controls are off at boot and use temporary approvals.
 
-[Session Guard](docs/system/session/SESSION-GUARD.md) optionally checks protected identity evidence, service outcomes and guardian readiness every 10 seconds. A root service compares stable session values against its activation baseline without freezing dynamic randomization. It records incidents and offers explicit Lockdown through desktop notifications, with no automatic response.
+[Session Guard](docs/system/session/SESSION-GUARD.md) optionally checks generated persona consistency, exposed CPU/DMI views, adapter MACs, DHCP/network identity, service outcomes and guardian readiness every 10 seconds. Its root service pins stable evidence at activation and validates intentional Clock Fuzz changes within mode bounds. It records specific incidents and offers explicit Lockdown through desktop notifications, with no automatic response.
 
 The OpSec Suite provides Network, Kernel, Process, Radio, ConnWatch and Shredder. Each presents its own evidence, with confirmed actions where supported.
 

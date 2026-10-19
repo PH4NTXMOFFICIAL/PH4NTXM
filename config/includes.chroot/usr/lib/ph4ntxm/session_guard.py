@@ -17,6 +17,9 @@ import tempfile
 import time
 import uuid
 
+import session_guard_network
+import session_guard_persona
+
 RUNTIME = Path("/run/ph4ntxm-session-guard")
 PUBLIC = RUNTIME / "status.json"
 CONTROL = RUNTIME / "control.sock"
@@ -32,6 +35,10 @@ KERNEL_VALUES = frozenset((
 INTERVAL = 10
 MAX_HISTORY = 64
 MAX_INPUT = 4096
+MAX_PUBLIC = 262144
+MAX_STATE = 524288
+HOSTS = Path("/etc/hosts")
+DBUS_ID = Path("/var/lib/dbus/machine-id")
 READY_AGE = 30
 TRANSITION_AGE = 30
 SCHEMA = 1
@@ -54,6 +61,11 @@ COMMON_UNITS = {
     "ph4ntxm-arm-nuke.service": "oneshot"
 }
 NORMAL_UNITS = {
+    "ph4ntxm-hardware-randomization.service": "oneshot",
+    "ph4ntxm-gpu-randomization.service": "oneshot",
+    "ph4ntxm-cores-randomization.service": "oneshot",
+    "ph4ntxm-cpu-spoof.service": "oneshot",
+    "ph4ntxm-screen-randomization.service": "oneshot",
     "ph4ntxm-identity-randomization.service": "oneshot",
     "ph4ntxm-net-randomization.service": "oneshot",
     "ph4ntxm-dhcp-session-generator.service": "oneshot",
@@ -65,6 +77,11 @@ NORMAL_UNITS = {
     "ph4ntxm-firewall-guard.service": "continuous"
 }
 LONEWOLF_UNITS = {
+    "ph4ntxm-lonewolf-hardware-randomization.service": "oneshot",
+    "ph4ntxm-lonewolf-gpu-randomization.service": "oneshot",
+    "ph4ntxm-lonewolf-cores-randomization.service": "oneshot",
+    "ph4ntxm-lonewolf-cpu-spoof.service": "oneshot",
+    "ph4ntxm-lonewolf-screen-randomization.service": "oneshot",
     "ph4ntxm-lonewolf-identity-randomization.service": "oneshot",
     "ph4ntxm-lonewolf-net-randomization.service": "oneshot",
     "ph4ntxm-lonewolf-dhcp-session-generator.service": "oneshot",
@@ -100,6 +117,34 @@ CATALOG = {
     "packet_engine": (
         "Packet Transformation Engine readiness",
         "The Packet Transformation Engine guardian has no fresh, protected readiness record.",
+    ),
+    "name_resolution": (
+        "Local identity bindings",
+        "Hostname resolution or the D-Bus machine identity no longer matches this session.",
+    ),
+    "persona": (
+        "Hardware persona consistency",
+        "Generated hardware and CPU identity no longer matches this session.",
+    ),
+    "dmi": (
+        "DMI identity consistency",
+        "Generated or exposed DMI identity no longer matches this session.",
+    ),
+    "graphics": (
+        "Graphics identity consistency",
+        "Generated GPU or display identity no longer matches this session.",
+    ),
+    "mac": (
+        "Physical adapter MAC consistency",
+        "Physical adapter identity changed after monitoring was enabled.",
+    ),
+    "dhcp": (
+        "DHCP session identity",
+        "DHCP identity no longer matches the generated session configuration.",
+    ),
+    "network_profile": (
+        "Network persona settings",
+        "Network identity settings no longer match this session.",
     ),
     "observer": (
         "Session Guard observation",
@@ -200,14 +245,32 @@ def key_values(path):
     return result
 
 
-def fresh_ready(path, profiles, now, packet=False):
-    values = key_values(path)
-    stamp = int(values.get("UPTIME_SECONDS", "-1"))
-    if not 0 <= now - stamp <= READY_AGE or values.get("PROFILE") not in profiles:
-        return False
+def readiness_problems(path, profiles, now, packet=False):
+    try:
+        values = key_values(path)
+    except (OSError, ValueError, UnicodeError, GuardError):
+        return ["Readiness record is missing, unreadable, malformed or not trusted."]
+    problems = []
+    try:
+        stamp = int(values.get("UPTIME_SECONDS", "-1"))
+        if stamp < 0:
+            problems.append("Readiness timestamp is missing or invalid.")
+        elif now < stamp:
+            problems.append("Readiness timestamp is in the future.")
+        elif now - stamp > READY_AGE:
+            problems.append("Readiness record is older than 30 seconds.")
+    except ValueError:
+        problems.append("Readiness timestamp is missing or invalid.")
+    if values.get("PROFILE") not in profiles:
+        problems.append("Readiness policy profile does not match this session.")
     if packet:
-        return values.get("STATUS") == "ready" and values.get("INTERFACES", "").isdigit()
-    return bool(re.fullmatch("[0-9a-f]{64}", values.get("RULESET_SHA256", "")))
+        if values.get("STATUS") != "ready":
+            problems.append("Packet engine STATUS is not ready.")
+        if not values.get("INTERFACES", "").isdigit():
+            problems.append("Packet engine interface count is missing or invalid.")
+    elif not re.fullmatch("[0-9a-f]{64}", values.get("RULESET_SHA256", "")):
+        problems.append("Firewall ruleset digest is missing or invalid.")
+    return problems
 
 
 def readiness_lock(states, mode):
@@ -300,11 +363,14 @@ def unit_pending(state):
     return state.get("ActiveState") in ("activating", "reloading", "deactivating") or job != "0"
 
 
-def check_result(code, healthy, pending=False):
-    title, detail = CATALOG[code]
+def check_result(code, healthy, pending=False, detail=None):
+    title, fallback = CATALOG[code]
     status = "healthy" if healthy else "pending" if pending else "failed"
-    if pending:
-        detail = "A protection transition is in progress. Wait for it to finish."
+    if detail is None:
+        detail = (
+            "A protection transition is in progress. Wait for it to finish."
+            if pending else fallback
+        )
     return {
         "code": code,
         "title": title,
@@ -314,18 +380,107 @@ def check_result(code, healthy, pending=False):
     }
 
 
+def observed_text(path, label, problems, limit=MAX_INPUT, private=False):
+    try:
+        return read_text(path, limit, private)
+    except FileNotFoundError:
+        reason = " is missing."
+    except PermissionError:
+        reason = " cannot be read (permission denied)."
+    except GuardError:
+        reason = " failed ownership, permissions or file-type validation."
+    except UnicodeError:
+        reason = " is not valid ASCII text."
+    except ValueError:
+        reason = " has an invalid format."
+    except OSError:
+        reason = " could not be read."
+    problems.append(label + reason)
+    return None
+
+
+def service_problem(state, kind):
+    if not state:
+        return "status unavailable"
+    if state.get("LoadState") != "loaded":
+        return "unit is not loaded"
+    if state.get("Result") != "success":
+        status = state.get("ExecMainStatus", "")
+        return "last run failed" + (" with exit status " + status if status.isdigit() else "")
+    if state.get("ConditionResult") != "yes":
+        return "startup conditions were not met"
+    if state.get("ExecMainStatus") != "0":
+        return "last execution did not exit successfully"
+    if unit_pending(state):
+        return "service transition is in progress"
+    if kind == "continuous":
+        return "service is not running"
+    return "successful one-shot completion could not be verified"
+
+
+def binding_check(hostname, baseline=None):
+    problems = []
+    content = observed_text(HOSTS, "Local hosts file", problems, 65536)
+    if hostname is None:
+        problems.append("Local hostname bindings cannot be verified without the session hostname.")
+    elif content is not None:
+        names = []
+        for line in content.splitlines():
+            fields = line.partition("#")[0].split()
+            if fields and fields[0] == "127.0.1.1":
+                names.append(fields[1] if len(fields) > 1 else "")
+        if not names or any(name != hostname for name in names):
+            problems.append("The 127.0.1.1 hostname in /etc/hosts does not match this session.")
+    try:
+        protected_directory(DBUS_ID.parent)
+        if not DBUS_ID.is_symlink() or DBUS_ID.readlink() != Path("/etc/machine-id"):
+            problems.append("D-Bus machine ID no longer links to the system machine ID.")
+    except (OSError, GuardError):
+        problems.append("D-Bus machine-ID binding is missing or not trusted.")
+    evidence = {"hostname": digest(hostname)} if hostname is not None else {}
+    if baseline is not None and baseline != evidence:
+        problems.append("Local identity activation baseline is missing or no longer matches.")
+    return check_result("name_resolution", not problems, detail=" ".join(problems)), evidence
+
+
+def collect_generated(mode, seed, hostname, baseline=None):
+    previous = baseline if isinstance(baseline, dict) else {}
+    if mode not in ("linux", "windows", "lonewolf") or not isinstance(seed, str) or not re.fullmatch("[0-9a-f]{64}", seed):
+        codes = ("persona", "dmi", "graphics", "mac", "dhcp", "network_profile", "name_resolution")
+        return [check_result(
+            code, False,
+            detail="Generated identity cannot be verified until the session mode and seed are ready.",
+        ) for code in codes], {}
+    hardware_checks, hardware = session_guard_persona.collect(
+        mode, seed, None if baseline is None else previous.get("persona", {})
+    )
+    network_checks, network = session_guard_network.collect(
+        mode, seed, None if baseline is None else previous.get("network", {})
+    )
+    binding, bindings = binding_check(
+        hostname, None if baseline is None else previous.get("name_resolution", {})
+    )
+    return hardware_checks + network_checks + [binding], {
+        "persona": hardware,
+        "network": network,
+        "name_resolution": bindings,
+    }
+
+
 def collect(baseline=None):
     checks = []
     evidence = {}
     mode = "unknown"
-    try:
-        mode = read_text(IDENTITY / "mode", 16)
+    mode_problems = []
+    mode = observed_text(IDENTITY / "mode", "Boot mode record", mode_problems, 16)
+    if mode is not None:
         if mode not in ("linux", "windows", "lonewolf"):
-            raise GuardError("state")
-        evidence["mode"] = digest(mode)
-        checks.append(check_result("mode", baseline is None or evidence["mode"] == baseline.get("mode")))
-    except (OSError, ValueError, GuardError):
-        checks.append(check_result("mode", False))
+            mode_problems.append("Boot mode record contains an unsupported mode.")
+        else:
+            evidence["mode"] = digest(mode)
+            if baseline and evidence["mode"] != baseline.get("mode"):
+                mode_problems.append("Boot mode changed from the activation baseline.")
+    checks.append(check_result("mode", not mode_problems, detail=" ".join(mode_problems)))
     valid_mode = mode in ("linux", "windows", "lonewolf")
     if not valid_mode:
         mode = baseline["runtime_mode"] if baseline else "unknown"
@@ -349,74 +504,129 @@ def collect(baseline=None):
         services_ok = False
         services_pending = False
     service_check = check_result("services", services_ok, services_pending)
-    if not services_ok and not services_pending and states:
-        failed = [name for name, kind in units.items() if not unit_healthy(states.get(name, {}), kind)]
-        if failed:
-            service_check["detail"] = "Required protection services are not healthy: " + ", ".join(sorted(failed)) + "."
+    if not services_ok:
+        if states:
+            failed = [
+                name + ": " + service_problem(states.get(name, {}), kind)
+                for name, kind in sorted(units.items())
+                if not unit_healthy(states.get(name, {}), kind)
+                or unit_pending(states.get(name, {}))
+            ]
+            service_check["detail"] = ". ".join(failed) + "."
+        else:
+            service_check["detail"] = "Protection service status could not be read from systemd."
     checks.append(service_check)
-    try:
-        seed_name = "lonewolf_seed" if expected_mode == "lonewolf" else "persona_seed"
-        seed = read_text(IDENTITY / seed_name, 80, private=True)
-        ready = read_text(IDENTITY / "identity-ready", 16)
-        boot_mid = read_text(IDENTITY / "boot_machine_id", 40)
-        machine_id = read_text(Path("/etc/machine-id"), 40)
-        boot_host = read_text(IDENTITY / "boot_hostname", 80, private=True)
-        hostname = read_text(Path("/proc/sys/kernel/hostname"), 80)
-        stored_hostname = read_text(Path("/etc/hostname"), 80)
-        if (
-            not re.fullmatch("[0-9a-f]{64}", seed)
-            or not re.fullmatch("[0-9a-f]{32}", boot_mid)
-            or boot_mid == "0" * 32
-            or not re.fullmatch("[a-z0-9][a-z0-9-]{0,62}", boot_host)
-            or not valid_mode
-            or ready != mode
-            or machine_id != boot_mid
-            or hostname != boot_host
-            or stored_hostname != boot_host
+    identity_problems = []
+    seed_name = "lonewolf_seed" if expected_mode == "lonewolf" else "persona_seed"
+    fields = (
+        ("seed", IDENTITY / seed_name, "Session seed", 80, True),
+        ("ready", IDENTITY / "identity-ready", "Identity readiness record", 16, False),
+        ("boot_mid", IDENTITY / "boot_machine_id", "Boot machine ID", 40, False),
+        ("machine_id", Path("/etc/machine-id"), "System machine ID (/etc/machine-id)", 40, False),
+        ("boot_host", IDENTITY / "boot_hostname", "Boot hostname", 80, True),
+        ("hostname", Path("/proc/sys/kernel/hostname"), "Kernel hostname", 80, False),
+        ("stored_hostname", Path("/etc/hostname"), "Stored hostname (/etc/hostname)", 80, False),
+    )
+    values = {
+        key: observed_text(path, label, identity_problems, limit, private)
+        for key, path, label, limit, private in fields
+    }
+    for key, pattern, label in (
+        ("seed", "[0-9a-f]{64}", "Session seed"),
+        ("boot_mid", "[0-9a-f]{32}", "Boot machine ID"),
+        ("boot_host", "[a-z0-9][a-z0-9-]{0,62}", "Boot hostname"),
+    ):
+        value = values[key]
+        if value is not None and (
+            not re.fullmatch(pattern, value) or (key == "boot_mid" and value == "0" * 32)
         ):
-            raise GuardError("state")
-        identity_evidence = {
-            "seed": digest(seed),
-            "machine_id": digest(machine_id),
-            "hostname": digest(hostname),
-        }
-        evidence.update(identity_evidence)
-        identity_ok = baseline is None or all(baseline.get(key) == value for key, value in identity_evidence.items())
-    except (OSError, ValueError, UnicodeError, GuardError):
-        identity_ok = False
-    checks.append(check_result("identity", identity_ok))
+            identity_problems.append(label + " has an invalid format.")
+    if not valid_mode:
+        identity_problems.append("Identity cannot be matched to a valid boot mode.")
+    elif values["ready"] is not None and values["ready"] != mode:
+        identity_problems.append("Identity readiness mode does not match the boot mode.")
+    if baseline:
+        for key, label, baseline_key in (
+            ("seed", "Session seed", "seed"),
+            ("boot_mid", "Boot machine ID", "machine_id"),
+            ("machine_id", "System machine ID (/etc/machine-id)", "machine_id"),
+            ("boot_host", "Boot hostname", "hostname"),
+            ("hostname", "Kernel hostname", "hostname"),
+            ("stored_hostname", "Stored hostname (/etc/hostname)", "hostname"),
+        ):
+            value = values[key]
+            if value is not None and digest(value) != baseline.get(baseline_key):
+                identity_problems.append(label + " changed from the activation baseline.")
+    else:
+        for key, reference, label in (
+            ("machine_id", "boot_mid", "System machine ID does not match the boot machine ID."),
+            ("hostname", "boot_host", "Kernel hostname does not match the boot hostname."),
+            ("stored_hostname", "boot_host", "Stored hostname does not match the boot hostname."),
+        ):
+            if values[key] is not None and values[reference] is not None:
+                if values[key] != values[reference]:
+                    identity_problems.append(label)
+    if not identity_problems:
+        evidence.update({
+            "seed": digest(values["seed"]),
+            "machine_id": digest(values["machine_id"]),
+            "hostname": digest(values["hostname"]),
+        })
+    checks.append(check_result(
+        "identity", not identity_problems, detail=" ".join(identity_problems)
+    ))
+    clock_problems = []
+    clock_evidence = {}
     try:
         profile = key_values(IDENTITY / "clock-fuzz-profile")
-        clock_ok = profile.get("MODE") == expected_mode and profile.get("SKEW_APPLIED") == "1"
+        clock_problems.extend(session_guard_network.clock_problems(expected_mode, profile))
+        if not clock_problems:
+            clock_evidence = {
+                key: digest(value) for key, value in profile.items() if key != "CURRENT_TICK"
+            }
+            if baseline is not None:
+                previous_generated = baseline.get("generated_identity", {})
+                previous_clock = (
+                    previous_generated.get("clock_profile", {})
+                    if isinstance(previous_generated, dict) else {}
+                )
+                for key, value in clock_evidence.items():
+                    if not isinstance(previous_clock, dict) or previous_clock.get(key) != value:
+                        clock_problems.append("Clock Fuzz " + key + " changed or lacks a verified activation baseline.")
     except (OSError, ValueError, UnicodeError, GuardError):
-        clock_ok = False
-    checks.append(check_result("clock", clock_ok))
-    try:
-        nuke_ok = (
-            read_text(Path("/sys/kernel/kexec_crash_loaded"), 8) == "1"
-            and read_text(Path("/proc/sys/kernel/kexec_load_disabled"), 8) == "1"
-        )
-    except (OSError, ValueError, UnicodeError, GuardError):
-        nuke_ok = False
-    checks.append(check_result("nuke", nuke_ok))
+        clock_problems.append("Clock Fuzz profile is missing, unreadable, malformed or not trusted.")
+    checks.append(check_result("clock", not clock_problems, detail=" ".join(clock_problems)))
+    nuke_problems = []
+    for path, label, failure in (
+        (Path("/sys/kernel/kexec_crash_loaded"), "Crash-kernel status", "Nuke crash kernel is not loaded."),
+        (Path("/proc/sys/kernel/kexec_load_disabled"), "Kexec loader status", "Kexec loader is not locked."),
+    ):
+        value = observed_text(path, label, nuke_problems, 8)
+        if value is not None and value != "1":
+            nuke_problems.append(failure)
+    checks.append(check_result("nuke", not nuke_problems, detail=" ".join(nuke_problems)))
     lock_descriptor, firewall_pending = readiness_lock(states, expected_mode)
-    try:
-        profiles = ("lonewolf", "lockdown") if expected_mode == "lonewolf" else ("normal", "lockdown")
-        firewall_ok = fresh_ready(IDENTITY / "firewall-ready", profiles, boottime())
-    except (OSError, ValueError, UnicodeError, GuardError):
-        firewall_ok = False
-    checks.append(check_result("firewall", firewall_ok))
+    profiles = ("lonewolf", "lockdown") if expected_mode == "lonewolf" else ("normal", "lockdown")
+    firewall_problems = readiness_problems(IDENTITY / "firewall-ready", profiles, boottime())
+    checks.append(check_result(
+        "firewall", not firewall_problems, detail=" ".join(firewall_problems)
+    ))
     if expected_mode != "lonewolf":
-        try:
-            packet_ok = fresh_ready(IDENTITY / "packet-transformation-engine-guard-ready", ("normal", "lockdown"), boottime(), True)
-        except (OSError, ValueError, UnicodeError, GuardError):
-            packet_ok = False
-        checks.append(check_result("packet_engine", packet_ok))
+        packet_problems = readiness_problems(
+            IDENTITY / "packet-transformation-engine-guard-ready",
+            ("normal", "lockdown"), boottime(), True,
+        )
+        checks.append(check_result(
+            "packet_engine", not packet_problems, detail=" ".join(packet_problems)
+        ))
     if lock_descriptor is not None:
         os.close(lock_descriptor)
     if firewall_pending:
         checks = [
-            check_result(item["code"], False, True)
+            check_result(
+                item["code"], False, True,
+                detail="A firewall policy update holds the shared firewall lock.",
+            )
             if item["code"] in ("firewall", "packet_engine")
             else item
             for item in checks
@@ -431,7 +641,13 @@ def collect(baseline=None):
         "packet_engine": ("ph4ntxm-packet-transformation-engine.service", "ph4ntxm-packet-transformation-engine-guard.service"),
     }
     checks = [
-        check_result(item["code"], False, True)
+        check_result(
+            item["code"], False, True,
+            detail="Waiting for service transitions: " + ", ".join(
+                name for name in dependencies.get(item["code"], ())
+                if unit_pending(states.get(name, {}))
+            ) + ".",
+        )
         if not item["healthy"] and any(
             unit_pending(states.get(name, {}))
             for name in dependencies.get(item["code"], ())
@@ -439,6 +655,32 @@ def collect(baseline=None):
         else item
         for item in checks
     ]
+    generated_checks, generated = collect_generated(
+        expected_mode, values["seed"], values["boot_host"],
+        None if baseline is None else baseline.get("generated_identity", {}),
+    )
+    checks.extend(generated_checks)
+    generated["clock_profile"] = clock_evidence
+    evidence["generated_identity"] = generated
+    generated_dependencies = {
+        "persona": (prefix + "-hardware-randomization.service", prefix + "-cores-randomization.service", prefix + "-cpu-spoof.service"),
+        "dmi": (prefix + "-hardware-randomization.service",),
+        "graphics": (prefix + "-gpu-randomization.service", prefix + "-screen-randomization.service"),
+        "mac": (prefix + "-identity-randomization.service",),
+        "dhcp": (prefix + "-dhcp-session-generator.service",),
+        "network_profile": (prefix + "-net-randomization.service",),
+        "name_resolution": (prefix + "-identity-randomization.service",),
+    }
+    for item in generated_checks:
+        pending = [
+            name for name in generated_dependencies[item["code"]]
+            if unit_pending(states.get(name, {}))
+        ]
+        if not item["healthy"] and pending:
+            item.update(check_result(
+                item["code"], False, True,
+                detail="Waiting for service transitions: " + ", ".join(pending) + ".",
+            ))
     evidence["runtime_mode"] = mode
     return mode, checks, evidence
 
@@ -533,14 +775,16 @@ def advance(state, mode, checks, now):
             if now - started < TRANSITION_AGE:
                 continue
             check["status"] = "failed"
-            check["detail"] = "A required protection transition did not finish within 30 seconds."
+            check["detail"] += " The transition did not finish within 30 seconds."
         else:
             state["pending_since"].pop(code, None)
         if check["healthy"]:
             if active:
                 active["active"] = False
                 active["resolved_boottime"] = now
-        elif not active:
+        elif active:
+            active["detail"] = check["detail"]
+        else:
             title, detail = CATALOG[code]
             state["incidents"].append({
                 "id": uuid.uuid4().hex,
@@ -568,7 +812,7 @@ class Store:
         ensure_runtime()
         boot_id = read_text(BOOT_ID, 64)
         if STATE.exists() or STATE.is_symlink():
-            self.state = validate_state(json.loads(read_protected(STATE, 131072, private=True)), boot_id)
+            self.state = validate_state(json.loads(read_protected(STATE, MAX_STATE, private=True)), boot_id)
         else:
             self.state = new_state(boot_id)
         self.persist()
@@ -696,7 +940,7 @@ def entry():
             serve()
             return 0
         if sys.argv[1:] == ["status"]:
-            result = json.loads(read_protected(PUBLIC, 131072))
+            result = json.loads(read_protected(PUBLIC, MAX_PUBLIC))
         elif len(sys.argv) == 2 and sys.argv[1] in ("enable", "disable"):
             if os.geteuid() != 0:
                 raise GuardError("permission")
@@ -720,8 +964,8 @@ def entry():
                 client.sendall(json.dumps({"action": sys.argv[1], "generation": request["generation"]}).encode("ascii") + b"\n")
                 response = bytearray()
                 while b"\n" not in response:
-                    chunk = client.recv(131073 - len(response))
-                    if not chunk or len(response) + len(chunk) > 131072:
+                    chunk = client.recv(MAX_PUBLIC + 1 - len(response))
+                    if not chunk or len(response) + len(chunk) > MAX_PUBLIC:
                         raise GuardError("unavailable")
                     response.extend(chunk)
                 result = json.loads(response)

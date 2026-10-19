@@ -10,14 +10,18 @@ WINDOW=/usr/local/bin/ph4ntxm-session-guard
 MONITOR=/usr/local/bin/ph4ntxm-session-guard-monitor
 MODULE=/usr/lib/ph4ntxm/session_guard.py
 CLIENT=/usr/lib/ph4ntxm/session_guard_client.py
+PERSONA=/usr/lib/ph4ntxm/session_guard_persona.py
+NETWORK=/usr/lib/ph4ntxm/session_guard_network.py
 UNIT=/etc/systemd/system/ph4ntxm-session-guard.service
 DESKTOP=/usr/share/applications/ph4ntxm-session-guard.desktop
 AUTOSTART=/etc/xdg/autostart/ph4ntxm-session-guard-monitor.desktop
 
-chown root:root "$CONTROL" "$WINDOW" "$MONITOR" "$MODULE" "$CLIENT" "$UNIT" "$DESKTOP" "$AUTOSTART"
+chown root:root "$CONTROL" "$WINDOW" "$MONITOR" "$MODULE" "$CLIENT" "$PERSONA" "$NETWORK" "$UNIT" "$DESKTOP" "$AUTOSTART"
 chmod 0755 "$CONTROL" "$WINDOW" "$MONITOR"
-chmod 0644 "$MODULE" "$CLIENT" "$UNIT" "$DESKTOP" "$AUTOSTART"
+chmod 0644 "$MODULE" "$CLIENT" "$PERSONA" "$NETWORK" "$UNIT" "$DESKTOP" "$AUTOSTART"
 test -r /usr/share/icons/Lyra-blue-dark/apps/scalable/ph4ntxm-session-guard.svg
+python3 -B -I "$SOURCE/tests/test_session_guard_persona.py" "$PERSONA"
+python3 -B -I "$SOURCE/tests/test_session_guard_network.py"
 python3 -B -I "$SOURCE/tests/test_session_guard.py" "$MODULE"
 python3 -B -I "$SOURCE/tests/test-session-guard-gui.py"
 desktop-file-validate "$DESKTOP" "$AUTOSTART"

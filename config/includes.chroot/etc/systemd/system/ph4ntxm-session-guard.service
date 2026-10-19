@@ -1,6 +1,7 @@
 [Unit]
 Description=PH4NTXM Session Guard
-After=ph4ntxm-mode.service
+After=ph4ntxm-mode.service ph4ntxm-hardware-randomization.service ph4ntxm-lonewolf-hardware-randomization.service
+After=ph4ntxm-cpu-spoof.service ph4ntxm-lonewolf-cpu-spoof.service
 Requires=ph4ntxm-mode.service
 
 [Service]

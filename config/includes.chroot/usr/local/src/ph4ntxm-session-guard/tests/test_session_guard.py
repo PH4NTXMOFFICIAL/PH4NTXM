@@ -2,6 +2,7 @@
 # Licensed under the GNU General Public License v3.0.
 
 import importlib.util
+import copy
 import errno
 import json
 import os
@@ -12,9 +13,18 @@ import unittest
 from unittest.mock import Mock, patch
 
 MODULE = Path(sys.argv.pop(1)) if len(sys.argv) > 1 else Path("config/includes.chroot/usr/lib/ph4ntxm/session_guard.py")
+sys.path.insert(0, str(MODULE.parent))
 spec = importlib.util.spec_from_file_location("session_guard", MODULE)
 guard = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guard)
+
+
+def clock_profile(mode="linux", applied="1"):
+    low, high = {"linux": (9994, 10006), "windows": (9988, 10012), "lonewolf": (9985, 10015)}[mode]
+    return (
+        "MODE=" + mode + "\nOFFSET_SECONDS=0\nINITIAL_TICK=10000\nCURRENT_TICK=10000"
+        + "\nMIN_TICK=" + str(low) + "\nMAX_TICK=" + str(high) + "\nSKEW_APPLIED=" + applied
+    )
 
 
 def healthy_unit(kind="continuous"):
@@ -49,13 +59,14 @@ class GuardTests(unittest.TestCase):
         self.patches = [patch.object(guard, "RUNTIME", self.runtime), patch.object(guard, "STATE", self.runtime / "state.json"),
                         patch.object(guard, "PUBLIC", self.public), patch.object(guard, "BOOT_ID", self.boot_id),
                         patch.object(guard, "IDENTITY", self.identity)]
+        self.patches.append(patch.object(guard, "collect_generated", side_effect=lambda *args: ([], {})))
         for item in self.patches:
             item.start()
         self.fake = {
             "mode": "linux", "identity-ready": "linux", "persona_seed": "1" * 64,
             "boot_machine_id": "2" * 32, "machine-id": "2" * 32,
             "boot_hostname": "private-host", "hostname": "private-host",
-            "clock-fuzz-profile": "MODE=linux\nSKEW_APPLIED=1",
+            "clock-fuzz-profile": clock_profile(),
             "kexec_crash_loaded": "1", "kexec_load_disabled": "1",
             "firewall-ready": "PROFILE=normal\nRULESET_SHA256=" + "3" * 64 + "\nUPTIME_SECONDS=99",
             "packet-transformation-engine-guard-ready": "STATUS=ready\nPROFILE=normal\nINTERFACES=1\nUPTIME_SECONDS=99",
@@ -92,6 +103,104 @@ class GuardTests(unittest.TestCase):
                 self.assertFalse(next(item for item in checks if item["code"] == "identity")["healthy"])
                 self.fake.update(original)
 
+    def test_identity_details_name_only_changed_fields_without_values(self):
+        with self.reader, self.units, self.clock:
+            baseline = guard.collect()[2]
+            cases = (
+                (self.identity / "persona_seed", "f" * 64, "Session seed"),
+                (self.identity / "boot_machine_id", "4" * 32, "Boot machine ID"),
+                (Path("/etc/machine-id"), "5" * 32, "System machine ID (/etc/machine-id)"),
+                (self.identity / "boot_hostname", "changed-boot", "Boot hostname"),
+                (Path("/proc/sys/kernel/hostname"), "changed-kernel", "Kernel hostname"),
+                (Path("/etc/hostname"), "changed-stored", "Stored hostname (/etc/hostname)"),
+            )
+            for changed_path, changed_value, label in cases:
+                with self.subTest(field=label):
+                    guard.read_text.side_effect = lambda path, *args, **kwargs: (
+                        changed_value if path == changed_path else self.fake[path.name]
+                    )
+                    checks = guard.collect(baseline)[1]
+                    item = next(check for check in checks if check["code"] == "identity")
+                    self.assertEqual(item["status"], "failed")
+                    self.assertIn(label + " changed", item["detail"])
+                    self.assertNotIn(changed_value, item["detail"])
+                    self.assertNotIn("private-host", item["detail"])
+                    self.assertNotIn("1" * 64, item["detail"])
+                    self.assertLess(len(item["detail"]), 2048)
+
+    def test_unreadable_identity_field_is_named_without_falsely_claiming_change(self):
+        with self.reader, self.units, self.clock:
+            baseline = guard.collect()[2]
+
+            def read(path, *args, **kwargs):
+                if path == Path("/etc/machine-id"):
+                    raise PermissionError("private exception contents")
+                return self.fake[path.name]
+
+            guard.read_text.side_effect = read
+            item = next(check for check in guard.collect(baseline)[1] if check["code"] == "identity")
+            self.assertIn("System machine ID (/etc/machine-id) cannot be read (permission denied)", item["detail"])
+            self.assertNotIn("changed", item["detail"])
+            self.assertNotIn("private exception contents", item["detail"])
+            self.assertNotIn("hostname", item["detail"])
+
+    def test_services_clock_and_nuke_report_specific_causes(self):
+        with self.reader, self.units, self.clock:
+            states = {
+                name: healthy_unit(kind)
+                for name, kind in {**guard.COMMON_UNITS, **guard.NORMAL_UNITS}.items()
+            }
+            states["ph4ntxm-clock-fuzz.service"].update(
+                ActiveState="failed", Result="exit-code", ExecMainStatus="3"
+            )
+            states["unbound.service"]["LoadState"] = "not-found"
+            guard.unit_states.side_effect = lambda units: states
+            self.fake["clock-fuzz-profile"] = clock_profile("windows", "0")
+            self.fake["kexec_crash_loaded"] = "0"
+            self.fake["kexec_load_disabled"] = "0"
+            checks = {item["code"]: item for item in guard.collect()[1]}
+            self.assertIn("ph4ntxm-clock-fuzz.service: last run failed with exit status 3", checks["services"]["detail"])
+            self.assertIn("unbound.service: unit is not loaded", checks["services"]["detail"])
+            self.assertIn("profile mode does not match", checks["clock"]["detail"])
+            self.assertIn("SKEW_APPLIED", checks["clock"]["detail"])
+            self.assertIn("crash kernel is not loaded", checks["nuke"]["detail"])
+            self.assertIn("loader is not locked", checks["nuke"]["detail"])
+
+    def test_readiness_details_separate_age_profile_and_proof_failures(self):
+        with self.reader, self.units, self.clock:
+            self.fake["firewall-ready"] = "PROFILE=lonewolf\nRULESET_SHA256=invalid\nUPTIME_SECONDS=0"
+            self.fake["packet-transformation-engine-guard-ready"] = "PROFILE=normal\nSTATUS=failed\nINTERFACES=invalid\nUPTIME_SECONDS=101"
+            checks = {item["code"]: item for item in guard.collect()[1]}
+            self.assertIn("older than 30 seconds", checks["firewall"]["detail"])
+            self.assertIn("policy profile does not match", checks["firewall"]["detail"])
+            self.assertIn("ruleset digest is missing or invalid", checks["firewall"]["detail"])
+            self.assertIn("timestamp is in the future", checks["packet_engine"]["detail"])
+            self.assertIn("STATUS is not ready", checks["packet_engine"]["detail"])
+            self.assertIn("interface count is missing or invalid", checks["packet_engine"]["detail"])
+
+    def test_active_incident_details_follow_current_failures_without_new_episode(self):
+        with self.reader, self.units, self.clock:
+            baseline = guard.collect()[2]
+            state = guard.new_state("boot")
+            state["enabled"] = True
+            self.fake["persona_seed"] = "f" * 64
+            guard.advance(state, "linux", guard.collect(baseline)[1], 100)
+            incident = next(item for item in state["incidents"] if item["code"] == "identity")
+            incident_id = incident["id"]
+            self.assertIn("Session seed changed", incident["detail"])
+            self.fake["persona_seed"] = "1" * 64
+            self.fake["hostname"] = "changed-host"
+            guard.advance(state, "linux", guard.collect(baseline)[1], 110)
+            self.assertEqual(len(state["incidents"]), 1)
+            self.assertEqual(incident["id"], incident_id)
+            self.assertEqual(incident["first_seen_boottime"], 100)
+            self.assertIn("Kernel hostname changed", incident["detail"])
+            self.assertNotIn("Session seed changed", incident["detail"])
+            self.fake["hostname"] = "private-host"
+            guard.advance(state, "linux", guard.collect(baseline)[1], 120)
+            self.assertFalse(incident["active"])
+            self.assertIn("Kernel hostname changed", incident["detail"])
+
     def test_lockdown_and_offline_lonewolf_are_healthy(self):
         with self.reader, self.units, self.clock:
             self.fake["firewall-ready"] = self.fake["firewall-ready"].replace("normal", "lockdown")
@@ -101,7 +210,7 @@ class GuardTests(unittest.TestCase):
                 "mode": "lonewolf",
                 "identity-ready": "lonewolf",
                 "lonewolf_seed": "5" * 64,
-                "clock-fuzz-profile": "MODE=lonewolf\nSKEW_APPLIED=1",
+                "clock-fuzz-profile": clock_profile("lonewolf"),
             })
             checks = guard.collect()[1]
             self.assertTrue(all(item["healthy"] for item in checks))
@@ -191,7 +300,7 @@ class GuardTests(unittest.TestCase):
             states = {name: healthy_unit(kind) for name, kind in {**guard.COMMON_UNITS, **guard.NORMAL_UNITS}.items()}
             states["ph4ntxm-clock-fuzz.service"]["ActiveState"] = "activating"
             self.units.target.unit_states.side_effect = lambda units: states
-            self.fake["clock-fuzz-profile"] = "MODE=linux\nSKEW_APPLIED=0"
+            self.fake["clock-fuzz-profile"] = clock_profile("linux", "0")
             self.fake["kexec_crash_loaded"] = "0"
             checks = {item["code"]: item for item in guard.collect()[1]}
             self.assertEqual(checks["clock"]["status"], "pending")
@@ -255,10 +364,50 @@ class GuardTests(unittest.TestCase):
 
     def test_stale_future_and_unsupported_ready_records(self):
         with self.reader:
-            self.assertTrue(guard.fresh_ready(self.identity / "firewall-ready", ("normal", "lockdown"), 100))
-            self.assertFalse(guard.fresh_ready(self.identity / "firewall-ready", ("normal",), 140))
-            self.assertFalse(guard.fresh_ready(self.identity / "firewall-ready", ("normal",), 90))
-            self.assertFalse(guard.fresh_ready(self.identity / "firewall-ready", ("lonewolf",), 100))
+            self.assertFalse(guard.readiness_problems(self.identity / "firewall-ready", ("normal", "lockdown"), 100))
+            self.assertTrue(guard.readiness_problems(self.identity / "firewall-ready", ("normal",), 140))
+            self.assertTrue(guard.readiness_problems(self.identity / "firewall-ready", ("normal",), 90))
+            self.assertTrue(guard.readiness_problems(self.identity / "firewall-ready", ("lonewolf",), 100))
+
+    def test_dynamic_tick_allowed_but_initial_clock_identity_is_pinned(self):
+        with self.reader, self.units, self.clock:
+            baseline = guard.collect()[2]
+            self.fake["clock-fuzz-profile"] = clock_profile().replace("CURRENT_TICK=10000", "CURRENT_TICK=10001")
+            check = next(item for item in guard.collect(baseline)[1] if item["code"] == "clock")
+            self.assertTrue(check["healthy"])
+            for original, changed, field in (
+                ("OFFSET_SECONDS=0", "OFFSET_SECONDS=1", "OFFSET_SECONDS"),
+                ("INITIAL_TICK=10000", "INITIAL_TICK=10001", "INITIAL_TICK"),
+            ):
+                self.fake["clock-fuzz-profile"] = clock_profile().replace(original, changed)
+                check = next(item for item in guard.collect(baseline)[1] if item["code"] == "clock")
+                self.assertFalse(check["healthy"])
+                self.assertIn(field + " changed", check["detail"])
+            self.assertNotIn("CURRENT_TICK", baseline["generated_identity"]["clock_profile"])
+
+    def test_malformed_extended_baseline_reports_missing_evidence_without_exception(self):
+        with self.reader, self.units, self.clock:
+            baseline = guard.collect()[2]
+            baseline["generated_identity"] = []
+            checks = guard.collect(baseline)[1]
+            clock = next(item for item in checks if item["code"] == "clock")
+            self.assertFalse(clock["healthy"])
+            self.assertIn("activation baseline", clock["detail"])
+
+    def test_upgrade_does_not_adopt_new_evidence_during_poll(self):
+        with self.reader, self.units, self.clock:
+            baseline = guard.collect()[2]
+            baseline.pop("generated_identity")
+            store = guard.Store.__new__(guard.Store)
+            store.state = guard.new_state("boot")
+            store.state.update(enabled=True, baseline=copy.deepcopy(baseline), mode="linux")
+            store.persist = Mock()
+            store.poll()
+            self.assertEqual(store.state["baseline"], baseline)
+            self.assertNotIn("generated_identity", store.state["baseline"])
+            clock = next(item for item in store.state["checks"] if item["code"] == "clock")
+            self.assertFalse(clock["healthy"])
+            self.assertIn("activation baseline", clock["detail"])
 
     def test_root_owned_atomic_store_and_restart_republishes_private_authority(self):
         if os.geteuid() != 0:
@@ -312,6 +461,57 @@ class GuardTests(unittest.TestCase):
         connection.recv.return_value = b'{"action":"disable","generation":"a"}\ntrailing'
         with self.assertRaises(guard.GuardError):
             guard.receive(connection)
+
+
+class GeneratedIntegrationTests(unittest.TestCase):
+    def test_generated_groups_receive_explicit_baselines_and_capture_private_evidence(self):
+        evidence = {"persona": {"opaque": "a" * 64}, "network": {"opaque": "b" * 64}, "name_resolution": {"opaque": "c" * 64}}
+        with (
+            patch.object(guard.session_guard_persona, "collect", return_value=([], evidence["persona"])) as persona,
+            patch.object(guard.session_guard_network, "collect", return_value=([], evidence["network"])) as network,
+            patch.object(guard, "binding_check", return_value=(guard.check_result("name_resolution", True), evidence["name_resolution"])) as bindings,
+        ):
+            checks, captured = guard.collect_generated("linux", "1" * 64, "fixture", None)
+            self.assertEqual(captured, evidence)
+            self.assertIsNone(persona.call_args.args[2])
+            self.assertIsNone(network.call_args.args[2])
+            guard.collect_generated("linux", "1" * 64, "fixture", {})
+            self.assertEqual(persona.call_args.args[2], {})
+            self.assertEqual(network.call_args.args[2], {})
+            self.assertEqual(bindings.call_args.args[1], {})
+            guard.collect_generated("linux", "1" * 64, "fixture", evidence)
+            self.assertEqual(persona.call_args.args[2], evidence["persona"])
+            self.assertEqual(network.call_args.args[2], evidence["network"])
+
+    def test_unready_core_identity_never_crashes_generated_checks(self):
+        with patch.object(guard.session_guard_persona, "collect") as persona:
+            checks, evidence = guard.collect_generated("unknown", None, None)
+        persona.assert_not_called()
+        self.assertEqual(len(checks), 7)
+        self.assertTrue(all(not item["healthy"] for item in checks))
+        self.assertEqual(evidence, {})
+
+    def test_local_bindings_are_specific_and_ignore_unrelated_hosts_entries(self):
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / "machine-id"
+            target.symlink_to("/etc/machine-id")
+            with (
+                patch.object(guard, "DBUS_ID", target),
+                patch.object(guard, "protected_directory"),
+                patch.object(guard, "read_text", return_value="127.0.0.1 localhost\n127.0.1.1 fixture alias\n") as read,
+            ):
+                check, baseline = guard.binding_check("fixture")
+                self.assertTrue(check["healthy"])
+                read.return_value = "127.0.1.1 changed\n"
+                check, _ = guard.binding_check("fixture", baseline)
+                self.assertFalse(check["healthy"])
+                self.assertIn("127.0.1.1 hostname", check["detail"])
+                self.assertNotIn("changed", check["detail"])
+                target.unlink()
+                target.symlink_to("/wrong")
+                read.return_value = "127.0.1.1 fixture\n"
+                check, _ = guard.binding_check("fixture", baseline)
+                self.assertIn("D-Bus machine ID", check["detail"])
 
 
 if __name__ == "__main__":
