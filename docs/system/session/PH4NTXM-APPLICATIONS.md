@@ -24,6 +24,8 @@ Applications share the PH4NTXM interface and call underlying services or helpers
 
 [USB Guard](USB-GUARD.md) optionally preserves existing USB connections and blocks new ones pending review. [Net Guard](NET-GUARD.md) optionally blocks outbound IP access until the exact running process is approved. Enable, Allow and Disable require fresh passwords. Closing either window leaves enforcement running.
 
+[Session Guard](SESSION-GUARD.md) optionally checks session consistency every 10 seconds. Notifications offer details, dismissal and explicit Lockdown. Enable and Disable require fresh passwords. Closing the window leaves monitoring running.
+
 [Document Airlock](DOCUMENT-AIRLOCK.md) previews and exports raster PDFs from an offline guest. [Archive Airlock](ARCHIVE-AIRLOCK.md) lists archives and opens selected files through isolated viewers. [Media Viewers](MEDIA-VIEWERS.md) play original files read-only in offline sandboxes.
 
 [App Airlock](APP-AIRLOCK.md) runs applications and scripts in an offline private desktop. Explicit imports enter a RAM workspace, and outputs can be exported after execution stops.
@@ -49,6 +51,7 @@ Trace findings to the relevant helper, service or isolation prerequisite. A disp
 [ph4ntxm-dead-man-switch](../../../config/includes.chroot/usr/local/bin/ph4ntxm-dead-man-switch)\
 [ph4ntxm-usb-guard](../../../config/includes.chroot/usr/local/bin/ph4ntxm-usb-guard)\
 [ph4ntxm-net-guard](../../../config/includes.chroot/usr/local/bin/ph4ntxm-net-guard)\
+[ph4ntxm-session-guard](../../../config/includes.chroot/usr/local/bin/ph4ntxm-session-guard)\
 [ph4ntxm-document-airlock](../../../config/includes.chroot/usr/local/bin/ph4ntxm-document-airlock)\
 [ph4ntxm-archive-airlock](../../../config/includes.chroot/usr/local/bin/ph4ntxm-archive-airlock)\
 [ph4ntxm-media](../../../config/includes.chroot/usr/local/bin/ph4ntxm-media)\

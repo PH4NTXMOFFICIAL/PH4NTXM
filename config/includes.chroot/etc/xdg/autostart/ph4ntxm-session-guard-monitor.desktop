@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Session Guard Monitor
+Comment=Notify about session consistency warnings
+Exec=/usr/local/bin/ph4ntxm-session-guard-monitor
+Icon=ph4ntxm-session-guard
+Terminal=false
+OnlyShowIn=XFCE;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true

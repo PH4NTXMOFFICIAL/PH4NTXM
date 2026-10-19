@@ -1,0 +1,551 @@
+#!/usr/bin/python3 -I
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+import os
+import sys
+import threading
+
+sys.path.insert(0, "/usr/lib/ph4ntxm")
+from session_guard_client import (
+    HelperCall,
+    LockdownCall,
+    POLL_INTERVAL_MS,
+    display_text,
+    notification_icon,
+)
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, Gio, GLib, Gtk, Pango
+
+CSS_FILE = "/usr/share/ph4ntxm/ph4ntxm-ui.css"
+MODE_LABELS = {"linux": "Linux", "windows": "Windows", "lonewolf": "Lone Wolf"}
+
+
+def add_class(widget, name):
+    widget.get_style_context().add_class(name)
+    return widget
+
+
+def label(text, style=None):
+    widget = Gtk.Label(label=text, xalign=0)
+    widget.set_line_wrap(True)
+    widget.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+    widget.set_max_width_chars(94)
+    return add_class(widget, style) if style else widget
+
+
+def check_text(item):
+    text = f"{item['title']}: {item['status'].capitalize()}"
+    return text if item["status"] == "healthy" else text + " — " + item["detail"]
+
+
+class SessionGuardWindow(Gtk.ApplicationWindow):
+    def __init__(self, application):
+        super().__init__(application=application, title="PH4NTXM Session Guard")
+        width, height = 900, 600
+        display = Gdk.Display.get_default()
+        monitor = (
+            (display.get_primary_monitor() or display.get_monitor(0))
+            if display
+            else None
+        )
+        if monitor:
+            area = monitor.get_workarea()
+            width, height = min(width, max(480, area.width - 40)), min(
+                height, max(360, area.height - 40)
+            )
+        self.set_default_size(width, height)
+        self.set_size_request(min(640, width), min(420, height))
+        self.set_position(Gtk.WindowPosition.CENTER)
+        self.set_icon_name(notification_icon())
+        self.set_wmclass("ph4ntxm-session-guard", "PH4NTXM Session Guard")
+        if os.path.isfile(CSS_FILE):
+            provider = Gtk.CssProvider()
+            provider.load_from_path(CSS_FILE)
+            Gtk.StyleContext.add_provider_for_screen(
+                self.get_screen(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            )
+        add_class(self, "ph4ntxm-window")
+        self.snapshot = None
+        self.lockdown_state = None
+        self.snapshot_job = None
+        self.action_job = None
+        self.awaiting_action = None
+        self.confirming = False
+        self.closed = False
+        self.incidents = {}
+        self.password_dialog = None
+        self.connect("delete-event", self.on_close)
+        self.connect("destroy", self.on_destroy)
+        self.build()
+        self.poll_source = GLib.timeout_add(POLL_INTERVAL_MS, self.poll)
+        self.initial_source = GLib.idle_add(self.initial_refresh)
+
+    def build(self):
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.add(root)
+        header = add_class(Gtk.Box(spacing=16), "top-panel")
+        headings = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        headings.pack_start(label("PH4NTXM Session Guard", "title"), False, False, 0)
+        headings.pack_start(label("Session consistency monitoring", "subtitle"), False, False, 0)
+        header.pack_start(headings, True, True, 0)
+        self.mode_label = add_class(Gtk.Label(label="Mode unavailable"), "status-pill")
+        self.mode_label.set_valign(Gtk.Align.CENTER)
+        header.pack_end(self.mode_label, False, False, 0)
+        root.pack_start(header, False, False, 0)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        content.set_border_width(16)
+        body_scroll = Gtk.ScrolledWindow()
+        body_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        body_scroll.add(content)
+        root.pack_start(body_scroll, True, True, 0)
+        status = add_class(Gtk.Box(spacing=12), "section")
+        summary = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.status_label = label("Checking monitoring", "section-title")
+        self.status_message = label("Reading Session Guard status…", "subtitle")
+        summary.pack_start(self.status_label, False, False, 0)
+        summary.pack_start(self.status_message, False, False, 0)
+        status.pack_start(summary, True, True, 0)
+        self.monitoring_button = Gtk.Button(label="Enable Monitoring")
+        self.monitoring_button.set_valign(Gtk.Align.CENTER)
+        self.monitoring_button.connect("clicked", self.on_monitoring)
+        status.pack_end(self.monitoring_button, False, False, 0)
+        content.pack_start(status, False, False, 0)
+        content.pack_start(
+            label(
+                "Warning only. Checks run every 10 seconds. "
+                "Session Guard never enables Lockdown automatically.",
+                "subtitle",
+            ),
+            False,
+            False,
+            0,
+        )
+        self.checks_summary = label("", "subtitle")
+        content.pack_start(self.checks_summary, False, False, 0)
+        self.checks_label = label("", "subtitle")
+        check_details = Gtk.Expander(label="Check details")
+        check_details.add(self.checks_label)
+        content.pack_start(check_details, False, False, 0)
+        self.store = Gtk.ListStore(str, str, str)
+        self.tree = Gtk.TreeView(model=self.store)
+        self.tree.set_enable_search(False)
+        for heading, position, minimum, expand in [
+            ("Incident", 1, 260, True),
+            ("State", 2, 100, False),
+        ]:
+            renderer = Gtk.CellRendererText()
+            renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
+            column = Gtk.TreeViewColumn(heading, renderer, text=position)
+            column.set_min_width(minimum)
+            column.set_expand(expand)
+            column.set_resizable(True)
+            self.tree.append_column(column)
+        self.tree.get_selection().connect("changed", self.on_selection)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_min_content_height(90)
+        scroll.add(self.tree)
+        content.pack_start(scroll, True, True, 0)
+        self.details = label("Select an incident to review its explanation.", "subtitle")
+        self.details.set_selectable(True)
+        self.details.set_lines(4)
+        self.details.set_ellipsize(Pango.EllipsizeMode.END)
+        content.pack_start(self.details, False, False, 0)
+        actions = Gtk.Box(spacing=10)
+        self.lockdown_button = Gtk.Button(label="Enable Lockdown")
+        self.lockdown_button.connect("clicked", self.on_lockdown)
+        self.disable_lockdown_button = Gtk.Button(label="Disable Lockdown")
+        self.disable_lockdown_button.connect("clicked", self.on_disable_lockdown)
+        actions.pack_end(self.disable_lockdown_button, False, False, 0)
+        actions.pack_end(self.lockdown_button, False, False, 0)
+        content.pack_start(actions, False, False, 0)
+        content.pack_start(
+            label(
+                "Enable and Disable monitoring require your password each time. "
+                "Closing this window leaves monitoring running. "
+                "An action already started may still complete. "
+                "Disabling Lockdown also requires your password.",
+                "subtitle",
+            ),
+            False,
+            False,
+            0,
+        )
+        footer = Gtk.Box(spacing=10)
+        self.spinner = Gtk.Spinner()
+        footer.pack_start(self.spinner, False, False, 0)
+        self.notice = label("", "subtitle")
+        footer.pack_start(self.notice, True, True, 0)
+        close = Gtk.Button(label="Close")
+        close.connect("clicked", self.on_close)
+        self.refresh_button = Gtk.Button(label="Refresh")
+        self.refresh_button.connect("clicked", self.refresh)
+        footer.pack_end(close, False, False, 0)
+        footer.pack_end(self.refresh_button, False, False, 0)
+        content.pack_start(footer, False, False, 0)
+        self.update_controls()
+
+    def update_controls(self):
+        busy = self.action_job is not None or self.confirming or self.awaiting_action is not None
+        self.monitoring_button.set_sensitive(
+            not self.closed
+            and not busy
+            and self.snapshot is not None
+            and self.snapshot["available"]
+        )
+        self.lockdown_button.set_sensitive(
+            not self.closed and not busy and self.lockdown_state is not True
+        )
+        self.disable_lockdown_button.set_sensitive(
+            not self.closed and not busy and self.lockdown_state is True
+        )
+        self.refresh_button.set_sensitive(
+            not self.closed and self.snapshot_job is None and not busy
+        )
+        if self.snapshot_job is not None or self.action_job is not None:
+            self.spinner.start()
+        else:
+            self.spinner.stop()
+
+    def set_status(self, title, style):
+        self.status_label.set_text(title)
+        context = self.status_label.get_style_context()
+        for name in ("status-disabled", "status-active", "status-warning", "status-danger"):
+            context.remove_class(name)
+        context.add_class(style)
+
+    def apply_snapshot(self, snapshot):
+        selected = self.selected_incident()
+        selected_id = selected["id"] if selected else None
+        self.snapshot = snapshot
+        self.incidents = {item["id"]: item for item in snapshot["incidents"]}
+        self.store.clear()
+        selected_iter = None
+        for item in sorted(
+            snapshot["incidents"],
+            key=lambda current: (not current["active"], -current["first_seen_boottime"]),
+        ):
+            iterator = self.store.append(
+                (item["id"], item["title"], "Active" if item["active"] else "Resolved")
+            )
+            if item["id"] == selected_id:
+                selected_iter = iterator
+        if selected_iter is not None:
+            self.tree.get_selection().select_iter(selected_iter)
+        active = sum(item["active"] for item in snapshot["incidents"])
+        failed = sum(item["status"] == "failed" for item in snapshot["checks"])
+        if not snapshot["available"]:
+            self.set_status("Monitoring unavailable", "status-warning")
+        elif not snapshot["enabled"]:
+            self.set_status("Monitoring disabled", "status-disabled")
+        elif active or failed:
+            self.set_status("Session needs attention", "status-warning")
+        else:
+            self.set_status("Monitoring enabled", "status-active")
+        mode = MODE_LABELS.get(snapshot["mode"])
+        self.mode_label.set_text("Mode " + mode if mode else "Mode unavailable")
+        self.status_message.set_text(
+            f"{active} active incident{'s' if active != 1 else ''}. "
+            "Checks run every 10 seconds."
+            if snapshot["enabled"]
+            else "Enable monitoring to check this session for consistency problems."
+        )
+        self.monitoring_button.set_label(
+            "Disable Monitoring" if snapshot["enabled"] else "Enable Monitoring"
+        )
+        healthy = sum(item["status"] == "healthy" for item in snapshot["checks"])
+        pending = sum(item["status"] == "pending" for item in snapshot["checks"])
+        self.checks_summary.set_text(
+            f"Checks: {healthy} healthy · {failed} failed · {pending} pending"
+        )
+        self.checks_label.set_text(
+            "\n".join(
+                check_text(item)
+                for item in snapshot["checks"]
+            )
+        )
+        self.on_selection()
+
+    def selected_incident(self):
+        model, iterator = self.tree.get_selection().get_selected()
+        return self.incidents.get(model[iterator][0]) if iterator is not None else None
+
+    def on_selection(self, *_):
+        item = self.selected_incident()
+        text = (
+            f"{item['title']}\n{item['detail']}\n"
+            f"{'Active' if item['active'] else 'Resolved'}"
+            if item
+            else "Select an incident to review its explanation."
+        )
+        self.details.set_text(text)
+        self.details.set_tooltip_text(text if item else None)
+
+    def start_job(self, job, callback):
+        application = self.get_application()
+        application.hold()
+
+        def finish(result):
+            try:
+                if not self.closed:
+                    callback(job, result)
+            finally:
+                application.release()
+            return False
+
+        def worker():
+            try:
+                result = job.run()
+            except Exception:
+                result = {"ok": False, "error": "Session Guard could not complete the request."}
+            GLib.idle_add(finish, result)
+
+        try:
+            threading.Thread(target=worker, daemon=False).start()
+        except (RuntimeError, OSError):
+            job.cancel()
+            if isinstance(job, (HelperCall, LockdownCall)) and job.input is not None:
+                job.input[:] = b"\x00" * len(job.input)
+                job.input = None
+            finish({"ok": False, "error": "Session Guard request could not start."})
+
+    def refresh(self, *_):
+        if (
+            self.closed
+            or self.snapshot_job is not None
+            or self.action_job is not None
+            or self.confirming
+        ):
+            return False
+        self.snapshot_job = HelperCall()
+        self.update_controls()
+        self.start_job(self.snapshot_job, self.finish_snapshot)
+        return False
+
+    def finish_snapshot(self, job, result):
+        if self.snapshot_job is not job:
+            return
+        self.snapshot_job = None
+        state = result.get("lockdown_enabled")
+        self.lockdown_state = state if type(state) is bool else None
+        if result.get("ok") is True:
+            self.apply_snapshot(result)
+        else:
+            self.snapshot = None
+            self.set_status("Monitoring status unavailable", "status-warning")
+            self.status_message.set_text(
+                display_text(result.get("error") or "Refresh to check monitoring status.")
+            )
+        if self.awaiting_action is not None:
+            expected = self.awaiting_action == "enable"
+            verified = result.get("ok") is True and result["enabled"] == expected
+            self.notice.set_text(
+                ("Monitoring enabled." if expected else "Monitoring disabled.")
+                if verified
+                else "The requested monitoring state could not be verified. "
+                "Refresh to check its state."
+            )
+            self.awaiting_action = None
+        self.update_controls()
+
+    def request_password(self, title, prompt, confirm_label):
+        self.confirming = True
+        if self.snapshot_job is not None:
+            self.snapshot_job.cancel()
+            self.snapshot_job = None
+        self.update_controls()
+        dialog = Gtk.Dialog(
+            title=title,
+            transient_for=self,
+            modal=True,
+            destroy_with_parent=True,
+        )
+        self.password_dialog = dialog
+        dialog.set_resizable(False)
+        box = dialog.get_content_area()
+        box.set_spacing(10)
+        box.set_border_width(16)
+        box.pack_start(
+            label(prompt),
+            False,
+            False,
+            0,
+        )
+        entry = Gtk.Entry()
+        entry.set_visibility(False)
+        entry.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+        entry.set_max_length(512)
+        entry.set_activates_default(True)
+        box.pack_start(entry, False, False, 0)
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.add_button(
+            confirm_label,
+            Gtk.ResponseType.OK,
+        )
+        area = dialog.get_action_area()
+        area.set_layout(Gtk.ButtonBoxStyle.END)
+        area.get_style_context().remove_class("linked")
+        area.set_border_width(12)
+        for button in area.get_children():
+            area.set_child_non_homogeneous(button, True)
+            button.set_halign(Gtk.Align.END)
+        dialog.set_default_response(Gtk.ResponseType.OK)
+        dialog.show_all()
+        entry.grab_focus()
+        response = dialog.run()
+        password = entry.get_text() if response == Gtk.ResponseType.OK else None
+        entry.set_text("")
+        dialog.destroy()
+        self.password_dialog = None
+        self.confirming = False
+        return password
+
+    def on_monitoring(self, *_):
+        if (
+            self.closed
+            or self.snapshot is None
+            or self.action_job is not None
+            or self.confirming
+            or self.awaiting_action is not None
+        ):
+            return
+        action = "disable" if self.snapshot["enabled"] else "enable"
+        generation = self.snapshot["generation"]
+        password = self.request_password(
+            "Authorize monitoring",
+            f"Enter your session password to {action} Session Guard monitoring.",
+            "Enable Monitoring" if action == "enable" else "Disable Monitoring",
+        )
+        if password is not None and not self.closed:
+            try:
+                self.action_job = HelperCall(action, generation, password)
+                self.notice.set_text("Authorizing monitoring change…")
+                self.start_job(self.action_job, self.finish_action)
+            except (ValueError, UnicodeError):
+                self.notice.set_text("Enter a valid session password to authorize monitoring.")
+        password = ""
+        self.update_controls()
+
+    def finish_action(self, job, result):
+        if self.action_job is not job:
+            return
+        self.action_job = None
+        if isinstance(job, HelperCall):
+            if result.get("ok") is True:
+                self.awaiting_action = job.action
+                self.notice.set_text("Verifying monitoring state…")
+            else:
+                self.notice.set_text(
+                    display_text(
+                        result.get("error")
+                        or "Authorization failed. Monitoring state was not confirmed."
+                    )
+                )
+            self.refresh()
+        else:
+            self.lockdown_state = None
+            self.notice.set_text(
+                display_text(
+                    result.get("message")
+                    or result.get("error")
+                    or "Lockdown could not be verified."
+                )
+            )
+            self.refresh()
+        self.update_controls()
+
+    def on_disable_lockdown(self, *_):
+        self.on_lockdown(action="disable")
+
+    def on_lockdown(self, *_, action="enable"):
+        if (
+            self.closed
+            or self.action_job is not None
+            or self.confirming
+            or self.awaiting_action is not None
+        ):
+            return
+        if action == "disable" and self.lockdown_state is not True:
+            return
+        if action == "enable" and self.lockdown_state is True:
+            return
+        password = None
+        if action == "disable":
+            password = self.request_password(
+                "Authorize Lockdown",
+                "Enter your session password to disable Lockdown "
+                "and restore your mode's network policy.",
+                "Disable Lockdown",
+            )
+            if password is None or self.closed:
+                self.update_controls()
+                return
+        try:
+            self.action_job = LockdownCall(action, password)
+        except (ValueError, UnicodeError):
+            self.notice.set_text("Enter a valid session password to disable Lockdown.")
+            self.update_controls()
+            return
+        finally:
+            password = ""
+        self.notice.set_text(
+            "Enabling Lockdown…" if action == "enable" else "Authorizing Lockdown removal…"
+        )
+        self.update_controls()
+        self.start_job(self.action_job, self.finish_action)
+
+    def initial_refresh(self):
+        self.initial_source = 0
+        return self.refresh()
+
+    def poll(self):
+        if self.closed:
+            return False
+        self.refresh()
+        return True
+
+    def on_close(self, *_):
+        self.destroy()
+        return True
+
+    def on_destroy(self, *_):
+        if self.closed:
+            return
+        self.closed = True
+        if self.password_dialog is not None:
+            self.password_dialog.response(Gtk.ResponseType.CANCEL)
+        for name in ("poll_source", "initial_source"):
+            source = getattr(self, name, 0)
+            if source:
+                GLib.source_remove(source)
+                setattr(self, name, 0)
+        if self.snapshot_job is not None:
+            self.snapshot_job.cancel()
+
+
+class SessionGuardApplication(Gtk.Application):
+    def __init__(self):
+        super().__init__(
+            application_id="org.ph4ntxm.SessionGuard",
+            flags=Gio.ApplicationFlags.FLAGS_NONE,
+        )
+        self.window = None
+
+    def do_activate(self):
+        if self.window is None or self.window.closed:
+            self.window = SessionGuardWindow(self)
+        self.window.show_all()
+        self.window.present()
+
+
+def main():
+    return SessionGuardApplication().run(sys.argv)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

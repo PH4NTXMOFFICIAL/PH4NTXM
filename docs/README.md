@@ -96,6 +96,7 @@ Run session checks in the live environment. For one-shot services, inspect the c
 [DISK ACCESS](system/session/DISK-ACCESS.md)\
 [USB GUARD](system/session/USB-GUARD.md)\
 [NET GUARD](system/session/NET-GUARD.md)\
+[SESSION GUARD](system/session/SESSION-GUARD.md)\
 [PH4NTXM OPSEC SUITE](system/session/PH4NTXM-OPSEC-SUITE.md)  
 
 ## [ CONTAINMENT AND TERMINATION ]

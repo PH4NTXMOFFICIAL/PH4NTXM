@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Session Guard
+Comment=Review session consistency warnings
+Exec=/usr/local/bin/ph4ntxm-session-guard
+Icon=ph4ntxm-session-guard
+Terminal=false
+Categories=System;X-PH4NTXMApps;
+StartupNotify=false

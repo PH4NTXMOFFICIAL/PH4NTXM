@@ -1,0 +1,42 @@
+[Unit]
+Description=PH4NTXM Session Guard
+After=ph4ntxm-mode.service
+Requires=ph4ntxm-mode.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/ph4ntxm-session-guard-control daemon
+Restart=on-failure
+RestartSec=2
+UMask=0077
+RuntimeDirectory=ph4ntxm-session-guard
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ReadOnlyPaths=/run
+ReadWritePaths=/run/ph4ntxm-session-guard
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+SystemCallFilter=~sethostname setdomainname
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+LockPersonality=yes
+RestrictRealtime=yes
+Nice=10
+TasksMax=16
+MemoryMax=128M
+LimitNOFILE=64
+
+[Install]
+WantedBy=multi-user.target

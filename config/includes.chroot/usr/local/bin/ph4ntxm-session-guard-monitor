@@ -1,0 +1,257 @@
+#!/usr/bin/python3 -I
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+import secrets
+import signal
+import sys
+import threading
+import time
+
+sys.path.insert(0, "/usr/lib/ph4ntxm")
+from session_guard_client import (
+    BoundedProcess,
+    EpisodeTracker,
+    HelperCall,
+    LockdownCall,
+    POLL_INTERVAL_MS,
+    notification_icon,
+)
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib
+
+GUI = "/usr/local/bin/ph4ntxm-session-guard"
+
+
+class NotificationCall(BoundedProcess):
+    def __init__(self, episodes=None, result=None):
+        super().__init__()
+        self.episodes = set(episodes or {})
+        self.incidents = list((episodes or {}).values())
+        self.result = result
+
+    def run(self):
+        command = [
+            "/usr/bin/notify-send",
+            "--app-name=PH4NTXM Session Guard",
+            "--icon=" + notification_icon(),
+            "--urgency=normal",
+            "--transient",
+            "--expire-time=15000",
+        ]
+        if self.result is None:
+            count = len(self.incidents)
+            command.extend(
+                [
+                    "--action=lockdown=Enable Lockdown",
+                    "--action=details=View Details",
+                    "--action=dismiss=Dismiss",
+                    "--wait",
+                    "--",
+                    "Session consistency warning",
+                    f"{count} active incident{'s' if count != 1 else ''}. "
+                    "Open Session Guard for details. Monitoring is warning only.",
+                ]
+            )
+        else:
+            command.extend(["--", "Session Guard: Lockdown", self.result])
+        try:
+            code, output = self.run_process(command, 20, maximum=64)
+            action = output.strip()
+            return {
+                "ok": code == 0,
+                "action": (
+                    action.decode("ascii")
+                    if code == 0 and action in {b"lockdown", b"details", b"dismiss"}
+                    else ""
+                ),
+            }
+        except Exception:
+            return {"ok": False, "action": ""}
+
+
+class SessionGuardMonitor:
+    def __init__(self, application):
+        self.application = application
+        self.stopping = False
+        self.quitting = False
+        self.snapshot_job = None
+        self.notification_jobs = set()
+        self.lockdown_job = None
+        self.result_job = None
+        self.tracker = EpisodeTracker()
+        self.last_enabled_snapshot = None
+        self.unavailable_id = None
+        self.unavailable_since = None
+        self.poll_source = GLib.timeout_add(POLL_INTERVAL_MS, self.poll)
+        self.initial_source = GLib.idle_add(self.initial_poll)
+
+    def initial_poll(self):
+        self.initial_source = 0
+        self.poll()
+        return False
+
+    def start(self, job, callback):
+        def worker():
+            try:
+                result = job.run()
+            except Exception:
+                result = {"ok": False}
+            GLib.idle_add(callback, job, result)
+
+        try:
+            threading.Thread(target=worker, daemon=False).start()
+        except (RuntimeError, OSError):
+            callback(job, {"ok": False})
+
+    def poll(self):
+        if self.stopping:
+            return False
+        if self.snapshot_job is None:
+            self.snapshot_job = HelperCall()
+            self.start(self.snapshot_job, self.finish_snapshot)
+        return True
+
+    def finish_snapshot(self, job, result):
+        if self.snapshot_job is not job:
+            return False
+        self.snapshot_job = None
+        if self.stopping:
+            self.maybe_quit()
+            return False
+        if result.get("ok") is True:
+            self.last_enabled_snapshot = result if result["enabled"] else None
+            self.unavailable_id = None
+            self.unavailable_since = None
+            self.tracker.update(result)
+            self.show_notification()
+        elif self.last_enabled_snapshot is not None:
+            now = time.clock_gettime(time.CLOCK_BOOTTIME)
+            if now - self.last_enabled_snapshot["last_poll_boottime"] > 30:
+                if self.unavailable_id is None:
+                    self.unavailable_id = secrets.token_hex(16)
+                    self.unavailable_since = now
+                unavailable = {
+                    "id": self.unavailable_id,
+                    "code": "backend-unavailable",
+                    "title": "Session Guard status unavailable",
+                    "detail": (
+                        "Session Guard has not provided a fresh status for more than "
+                        "30 seconds. Monitoring cannot be verified."
+                    ),
+                    "active": True,
+                    "first_seen_boottime": self.unavailable_since,
+                }
+                self.tracker.update(
+                    {
+                        **self.last_enabled_snapshot,
+                        "incidents": [
+                            *self.last_enabled_snapshot["incidents"], unavailable
+                        ],
+                    }
+                )
+                self.show_notification()
+        return False
+
+    def show_notification(self):
+        if self.stopping or len(self.notification_jobs) >= 3:
+            return
+        incidents = self.tracker.take()
+        if incidents:
+            job = NotificationCall(incidents)
+            self.notification_jobs.add(job)
+            self.start(job, self.finish_notification)
+
+    def finish_notification(self, job, result):
+        if job not in self.notification_jobs:
+            return False
+        self.notification_jobs.discard(job)
+        self.tracker.finish(job.episodes, result.get("ok") is True)
+        if self.stopping:
+            self.maybe_quit()
+            return False
+        if result.get("ok") is True:
+            if result.get("action") == "details":
+                try:
+                    pid, _, _, _ = GLib.spawn_async([GUI], flags=GLib.SpawnFlags.DEFAULT)
+                    GLib.spawn_close_pid(pid)
+                except GLib.Error:
+                    pass
+            elif result.get("action") == "lockdown" and self.lockdown_job is None:
+                self.lockdown_job = LockdownCall()
+                self.start(self.lockdown_job, self.finish_lockdown)
+        return False
+
+    def finish_lockdown(self, job, result):
+        if self.lockdown_job is not job:
+            return False
+        self.lockdown_job = None
+        if self.stopping:
+            self.maybe_quit()
+            return False
+        if self.result_job is None:
+            message = (
+                "Lockdown enabled and verified."
+                if result.get("ok") is True
+                else "Lockdown could not be verified. Check the firewall status."
+            )
+            self.result_job = NotificationCall(result=message)
+            self.start(self.result_job, self.finish_result)
+        return False
+
+    def finish_result(self, job, result):
+        if self.result_job is job:
+            self.result_job = None
+        if self.stopping:
+            self.maybe_quit()
+        return False
+
+    def close(self, *_):
+        if not self.stopping:
+            self.stopping = True
+            for name in ("poll_source", "initial_source"):
+                source = getattr(self, name, 0)
+                if source:
+                    GLib.source_remove(source)
+                    setattr(self, name, 0)
+            for job in (self.snapshot_job, self.result_job, *self.notification_jobs):
+                if job is not None:
+                    job.cancel()
+        self.maybe_quit()
+
+    def maybe_quit(self):
+        if (
+            self.stopping
+            and not self.notification_jobs
+            and all(
+                job is None
+                for job in (self.snapshot_job, self.lockdown_job, self.result_job)
+            )
+            and not self.quitting
+        ):
+            self.quitting = True
+            self.application.quit()
+
+
+def main():
+    application = Gio.Application(application_id="org.ph4ntxm.SessionGuardMonitor")
+    monitor = None
+
+    def activate(current):
+        nonlocal monitor
+        if monitor is None:
+            current.hold()
+            monitor = SessionGuardMonitor(current)
+            signal.signal(signal.SIGTERM, monitor.close)
+            signal.signal(signal.SIGINT, monitor.close)
+            current.connect("shutdown", monitor.close)
+
+    application.connect("activate", activate)
+    return application.run(sys.argv)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

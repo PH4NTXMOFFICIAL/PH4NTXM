@@ -92,6 +92,7 @@ PH4NTXM Health and Boot Pilot expose failed runtime chains instead of treating m
 - Desktop disk mount authorization requires the live user's session password. It does not encrypt media or restrict existing mounts, raw-device access, root operations or manual fstab mounts.
 - USB Guard requires explicit activation. Approvals are temporary, the kernel still parses descriptors, and root/kernel compromise can bypass enforcement.
 - Net Guard requires explicit activation and covers outbound live-user IP sockets. Other UIDs, approved IPC proxies and pre-existing privileged packet rings remain outside its process-approval boundary. Approval preserves the existing firewall/Tor policy.
+- Session Guard is an optional sampled observer of selected runtime invariants. It warns without automatically containing traffic and cannot attest the host against root or kernel compromise. Changes between samples can go undetected.
 - RAM seeding supplies synthetic noise, not encryption or concealment of secrets. Memory scrub and file overwrite remain best effort.
 
 ## [ OUT OF SCOPE ]

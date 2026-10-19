@@ -1,0 +1,29 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+SOURCE=/usr/local/src/ph4ntxm-session-guard
+CONTROL=/usr/local/sbin/ph4ntxm-session-guard-control
+WINDOW=/usr/local/bin/ph4ntxm-session-guard
+MONITOR=/usr/local/bin/ph4ntxm-session-guard-monitor
+MODULE=/usr/lib/ph4ntxm/session_guard.py
+CLIENT=/usr/lib/ph4ntxm/session_guard_client.py
+UNIT=/etc/systemd/system/ph4ntxm-session-guard.service
+DESKTOP=/usr/share/applications/ph4ntxm-session-guard.desktop
+AUTOSTART=/etc/xdg/autostart/ph4ntxm-session-guard-monitor.desktop
+
+chown root:root "$CONTROL" "$WINDOW" "$MONITOR" "$MODULE" "$CLIENT" "$UNIT" "$DESKTOP" "$AUTOSTART"
+chmod 0755 "$CONTROL" "$WINDOW" "$MONITOR"
+chmod 0644 "$MODULE" "$CLIENT" "$UNIT" "$DESKTOP" "$AUTOSTART"
+test -r /usr/share/icons/Lyra-blue-dark/apps/scalable/ph4ntxm-session-guard.svg
+python3 -B -I "$SOURCE/tests/test_session_guard.py" "$MODULE"
+python3 -B -I "$SOURCE/tests/test-session-guard-gui.py"
+desktop-file-validate "$DESKTOP" "$AUTOSTART"
+visudo -c -f /etc/sudoers.d/ph4ntxm
+systemctl enable ph4ntxm-session-guard.service
+systemctl is-enabled --quiet ph4ntxm-session-guard.service
+update-desktop-database
+gtk-update-icon-cache -f /usr/share/icons/Lyra-blue-dark
+rm -rf "$SOURCE"
