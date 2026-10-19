@@ -516,6 +516,7 @@ def apply(request):
         lonewolf()
         previous = load_state()
         if request["generation"] != previous["generation"]:
+            atomic(PUBLIC, encoded(public_state(previous)), 0o644)
             raise ConnectionError("Connection settings changed. Refresh and try again.")
         state = new_state(request["mode"], bridges)
         try:

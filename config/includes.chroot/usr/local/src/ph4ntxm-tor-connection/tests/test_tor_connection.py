@@ -297,6 +297,62 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual(connection.snapshot(), selected)
         self.assertFalse(self.calls)
 
+    def test_torn_publication_repairs_snapshot_but_rejects_stale_approval(self):
+        for mode, bridges in (("obfs4", BRIDGE), ("direct", "")):
+            with self.subTest(mode=mode):
+                request = self.request(mode, bridges)
+                original_atomic = connection.atomic
+
+                def interrupted(path, data, mode, group=0):
+                    if path == connection.PUBLIC:
+                        raise SystemExit("Interrupted publication")
+                    return original_atomic(path, data, mode, group)
+
+                with self.transport_owner(), patch.object(
+                    connection, "atomic", side_effect=interrupted
+                ), self.assertRaises(SystemExit):
+                    connection.apply(request)
+                state = connection.load_state()
+                self.assertNotEqual(
+                    connection.snapshot()["generation"], state["generation"]
+                )
+                unchanged = {
+                    path: path.read_bytes()
+                    for path in (connection.STATE, connection.TORRC, connection.EXPECTATION)
+                }
+                self.calls.clear()
+                with self.transport_owner(), self.assertRaises(connection.ConnectionError):
+                    connection.apply(request)
+                self.assertEqual(connection.snapshot(), connection.public_state(state))
+                self.assertFalse(self.calls)
+                for path, contents in unchanged.items():
+                    self.assertEqual(path.read_bytes(), contents)
+                self.assertEqual(stat.S_IMODE(connection.PUBLIC.stat().st_mode), 0o644)
+                self.assertNotIn(CERT, connection.PUBLIC.read_text())
+                with self.transport_owner(), self.assertRaises(connection.ConnectionError):
+                    connection.apply(request)
+                with self.transport_owner():
+                    result = connection.apply(self.request(mode, bridges))
+                self.assertEqual((result["mode"], result["phase"]), (mode, "connecting"))
+                connection.verify()
+
+    def test_snapshot_recovery_write_failure_does_not_change_connection(self):
+        state = connection.new_state("obfs4", [BRIDGE])
+        connection.atomic(connection.STATE, connection.encoded(state), 0o600)
+        unchanged = {
+            path: path.read_bytes()
+            for path in (
+                connection.STATE, connection.PUBLIC, connection.TORRC, connection.EXPECTATION
+            )
+        }
+        with patch.object(
+            connection, "atomic", side_effect=OSError("Unavailable storage")
+        ), self.assertRaises(OSError):
+            connection.apply(self.request("direct", ""))
+        self.assertFalse(self.calls)
+        for path, contents in unchanged.items():
+            self.assertEqual(path.read_bytes(), contents)
+
     def test_failed_verify_or_start_retains_target_blocked(self):
         for failure in (lambda args: args[0] == "/usr/bin/tor", lambda args: "start" in args):
             with self.subTest(failure=failure):
