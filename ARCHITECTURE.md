@@ -63,7 +63,9 @@ Command-line inventory wrappers run native tools with generated reporting files,
 
 ## [ GRAPHICS, SCREEN, FONTS AND BROWSER ]
 
-GPU generation exports the selected vendor/renderer profile for participating environment settings and the GL identity shim. Screen stages produce nominal display metadata, refresh rate, pixel ratio and viewport data. The generated values feed the desktop and browser reporting paths.
+GPU generation exports the selected vendor/renderer profile for participating environment settings and the GL identity shim.
+
+Screen stages produce nominal display metadata, refresh rate, pixel ratio and viewport data. The generated values feed the desktop and browser reporting paths.
 
 Font setup builds the active Fontconfig profile by selecting complete families on each run, independently of the hardware seed. Windows includes the installed Microsoft fonts and available Cascadia Code/Mono families. The generated font set and the browser environment must be present before the normal browser wrapper launches.
 
@@ -91,7 +93,9 @@ Inbound queue 1 runs before connection tracking. Outbound queue 2 runs after des
 
 Unbound listens locally and forwards DNS over authenticated TLS, with mode-specific upstream lists and no ordinary recursive fallback. Firefox policy disables its separate DoH path. Resolver configuration readiness and successful external resolution are distinct checks.
 
-After connection setup, Network Drift periodically replaces eligible routed interfaces' root qdiscs with bounded netem delay, loss, duplication and reordering. Ghost Stack creates optional local dummy/bridge topology. The RTT map stores locally generated delay metadata. The virtual interfaces use documentation address ranges with `noprefixroute`.
+After connection setup, Network Drift periodically replaces eligible routed interfaces' root qdiscs with bounded netem delay, loss, duplication and reordering.
+
+Ghost Stack creates optional local dummy/bridge topology. The RTT map stores locally generated delay metadata. The virtual interfaces use documentation address ranges with `noprefixroute`.
 
 See [Packet Transformation Engine](docs/system/session/PACKET-TRANSFORMATION-ENGINE.md), [DHCP](docs/system/session/DHCP-SESSION-GENERATOR.md) and [Unbound](docs/system/session/UNBOUND-RANDOMIZATION.md).
 
@@ -151,11 +155,15 @@ See [Document Airlock](docs/system/session/DOCUMENT-AIRLOCK.md), [Archive Airloc
 
 Boot Pilot combines identity, network and system readiness before enabling Continue. Browser launch also requires its launcher gates. It provides Wi-Fi controls using volatile NetworkManager profiles that preserve the prepared MAC and disable autoconnect.
 
-Identity displays a snapshot of selected identifiers. Health collects resources, guardian state and termination prerequisites. Critical findings force Unsafe / Not Ready. Its separate Browser Check uses a local Firefox comparison page in normal modes and local Tor Browser evidence in Lone Wolf, without changing browser policy.
+Identity displays a snapshot of selected identifiers.
+
+Health collects resources, guardian state and termination prerequisites. Critical findings force Unsafe / Not Ready. Its separate Browser Check uses a local Firefox comparison page in normal modes and local Tor Browser evidence in Lone Wolf, without changing browser policy.
 
 [Disk access](docs/system/session/DISK-ACCESS.md) uses a narrow UDisks Polkit rule to require the live user's password for each ordinary desktop filesystem mount. Authentication is not retained between mounts. USB hardware authorization remains independent.
 
-[USB Guard](docs/system/session/USB-GUARD.md) optionally preserves current USB connections and blocks new devices pending password-authenticated approval. [Net Guard](docs/system/session/NET-GUARD.md) optionally gates outbound live-user IP sockets through BPF LSM and cgroup egress checks, independently of nftables. Grants bind to exact process executions. Activation invalidates existing sockets and daemon failure retains denial. Both controls are off at boot and use temporary approvals.
+[USB Guard](docs/system/session/USB-GUARD.md) optionally preserves current USB connections and blocks new devices pending password-authenticated approval. It is off at boot and uses temporary approvals.
+
+[Net Guard](docs/system/session/NET-GUARD.md) optionally gates outbound live-user IP sockets through BPF LSM and cgroup egress checks, independently of nftables. Grants bind to exact process executions. Activation invalidates existing sockets and daemon failure retains denial. It is off at boot and uses temporary approvals.
 
 [Session Guard](docs/system/session/SESSION-GUARD.md) optionally checks generated persona consistency, exposed CPU/DMI views, adapter MACs, DHCP/network identity, service outcomes and guardian readiness every 10 seconds. Its root service pins stable evidence at activation and validates intentional Clock Fuzz changes within mode bounds. It records specific incidents and offers explicit Lockdown through desktop notifications, with no automatic response.
 
@@ -171,7 +179,9 @@ Normal termination targets invoke the common Nuke preparation: request Lockdown,
 
 The first emergency initramfs reconstructs the memory map and loads the next kernel with `memtest=17`. The following init performs another allocatable-memory scrub and attempts poweroff, with fallback termination requests if the preferred path returns. Several containment steps are best effort so one failure does not prevent later attempts.
 
-Panic Button requires confirmation. USB Nuke triggers the same backend on any matching whole USB storage removal, including boot media. A shared lock and per-attempt tokens protect Arm, Disarm and restoration from stale callbacks.
+Panic Button requires confirmation.
+
+USB Nuke triggers the same backend on any matching whole USB storage removal, including boot media. A shared lock and per-attempt tokens protect Arm, Disarm and restoration from stale callbacks.
 
 [Dead Man's Switch](docs/system/session/DEAD-MAN-SWITCH.md) keeps an optional root-owned countdown in RAM using boot time, including suspension. Fresh password authorization controls Arm, Renew and Disarm. Expiry requests Panic without confirmation, notifications or tray indicators. Systemd restarts failed or frozen userspace monitoring without resetting the deadline.
 

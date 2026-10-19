@@ -10,23 +10,33 @@ Applications share the PH4NTXM interface and call underlying services or helpers
 
 ## [ RUNTIME ]
 
-[Boot Pilot](BOOT-PILOT.md) refreshes protection checks, offers Wi-Fi controls and gates Continue/browser launch. [Identity](IDENTITY.md) snapshots current identifiers. Its tray is a launcher, not an audit indicator.
+[Boot Pilot](BOOT-PILOT.md) refreshes protection checks, offers Wi-Fi controls and gates Continue/browser launch.
+
+[Identity](IDENTITY.md) snapshots current identifiers. Its tray is a launcher, not an audit indicator.
 
 [Health](HEALTH.md) provides grouped findings, a searchable full report and mode-aware Browser Check. The menu, Pilot and Identity open GTK. The terminal report remains available.
 
 [Lockdown](LOCKDOWN.md) requests restrictive networking or restores the selected mode. Its status icon records control state. Guardian readiness verifies enforcement.
 
-[USB Nuke](USB-NUKE.md) arms matching storage-removal triggers without selecting a drive serial. [Panic](PANIC.md) requests the same emergency backend after confirmation.
+[USB Nuke](USB-NUKE.md) arms matching storage-removal triggers without selecting a drive serial.
+
+[Panic](PANIC.md) requests the same emergency backend after confirmation.
 
 [Dead Man's Switch](DEAD-MAN-SWITCH.md) arms a silent countdown with password-authenticated Arm, Renew and Disarm. Its root service continues after the window closes and requests Panic at expiry.
 
 [Disk access](DISK-ACCESS.md) requires the session password when mounting an unmounted filesystem through the desktop. Unmount to require authentication again. The existing authentication dialog handles the request.
 
-[USB Guard](USB-GUARD.md) optionally preserves existing USB connections and blocks new ones pending review. [Net Guard](NET-GUARD.md) optionally blocks outbound IP access until the exact running process is approved. Enable, Allow and Disable require fresh passwords. Closing either window leaves enforcement running.
+[USB Guard](USB-GUARD.md) optionally preserves existing USB connections and blocks new ones pending review. Enable, Allow and Disable require fresh passwords. Closing the window leaves enforcement running.
+
+[Net Guard](NET-GUARD.md) optionally blocks outbound IP access until the exact running process is approved. Enable, Allow and Disable require fresh passwords. Closing the window leaves enforcement running.
 
 [Session Guard](SESSION-GUARD.md) optionally checks session consistency every 10 seconds. Notifications offer details, dismissal and explicit Lockdown. Enable and Disable require fresh passwords. Closing the window leaves monitoring running.
 
-[Document Airlock](DOCUMENT-AIRLOCK.md) previews and exports raster PDFs from an offline guest. [Archive Airlock](ARCHIVE-AIRLOCK.md) lists archives and opens selected files through isolated viewers. [Media Viewers](MEDIA-VIEWERS.md) play original files read-only in offline sandboxes.
+[Document Airlock](DOCUMENT-AIRLOCK.md) previews and exports raster PDFs from an offline guest.
+
+[Archive Airlock](ARCHIVE-AIRLOCK.md) lists archives and opens selected files through isolated viewers.
+
+[Media Viewers](MEDIA-VIEWERS.md) play original files read-only in offline sandboxes.
 
 [App Airlock](APP-AIRLOCK.md) runs applications and scripts in an offline private desktop. Explicit imports enter a RAM workspace, and outputs can be exported after execution stops.
 

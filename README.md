@@ -50,13 +50,25 @@ Tor Browser opens after the protection and Tor readiness checks pass. If Tor bec
 
 Check your system:
 
-Boot Pilot shows readiness, connects to Wi-Fi and opens your mode's browser. Identity displays current identifiers. Health provides detailed reports and a mode-aware Browser Check. The OpSec Suite adds network, kernel, process and radio inspection, connection monitoring and file shredding.
+Boot Pilot shows readiness, connects to Wi-Fi and opens your mode's browser.
+
+Identity displays current identifiers.
+
+Health provides detailed reports and a mode-aware Browser Check.
+
+The OpSec Suite adds network, kernel, process and radio inspection, connection monitoring and file shredding.
 
 Open documents, archives and media:
 
-Document Airlock converts supported documents into a previewable raster PDF. Archive Airlock inspects archives and opens selected files through isolated viewers. Supported encrypted documents and ZIP entries unlock inside the offline guest. Image and media viewers provide separate offline sandboxes.
+Document Airlock converts supported documents into a previewable raster PDF. Supported encrypted documents unlock inside the offline guest.
 
-Vault keeps explicitly selected files in private RAM and exports encrypted `.ph4vault` copies for manual use in a later session. Metadata Cleaner compares supported metadata before and after offline cleaning, then exports a separate copy.
+Archive Airlock inspects archives and opens selected files through isolated viewers. Supported encrypted ZIP entries unlock inside the offline guest.
+
+Image and media viewers provide separate offline sandboxes.
+
+Vault keeps explicitly selected files in private RAM and exports encrypted `.ph4vault` copies for manual use in a later session.
+
+Metadata Cleaner compares supported metadata before and after offline cleaning, then exports a separate copy.
 
 App Airlock runs applications and scripts offline with selected files in a private RAM workspace. Stop execution before explicitly exporting results.
 
@@ -64,13 +76,19 @@ Review devices and application networking:
 
 Opening an unmounted disk through the desktop requires the session password. After unmounting, the next mount asks again. Mounted files remain accessible.
 
-USB Guard optionally preserves current USB connections and blocks new devices pending approval. Net Guard optionally requires approval for each live-user process execution before outbound IP access. Both require the session password for Enable, Allow and Disable. Approvals are temporary.
+USB Guard optionally preserves current USB connections and blocks new devices pending approval. Enable, Allow and Disable require the session password. Approvals are temporary.
+
+Net Guard optionally requires approval for each live-user process execution before outbound IP access. Enable, Allow and Disable require the session password. Approvals are temporary.
 
 Session Guard optionally checks generated identity consistency and protection readiness every 10 seconds. It warns about detected failures and monitored MAC changes. Enable and Disable require the session password. Lockdown remains an explicit action.
 
 Block networking or end the session:
 
-Lockdown blocks network traffic. Disabling it restores your mode's rules. Panic Button requests emergency termination after confirmation. Armed USB Nuke triggers the same sequence when matching storage is removed.
+Lockdown blocks network traffic. Disabling it restores your mode's rules.
+
+Panic Button requests emergency termination after confirmation.
+
+Armed USB Nuke triggers the same sequence when matching storage is removed.
 
 Dead Man's Switch optionally requests Panic when an authenticated countdown expires. Arm, Renew and Disarm require the session password. The silent timer continues after closing its window or locking the screen.
 
