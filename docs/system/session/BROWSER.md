@@ -22,6 +22,8 @@ The active Fontconfig directory and configuration are exported before launching 
 
 Lone Wolf follows a different lifecycle: a verified Tor Browser bundle, current firewall/Tor readiness and a fresh temporary home. Its launcher deliberately starts from a restricted environment instead of importing the normal Firefox persona variables.
 
+For additional file and desktop isolation, launch the optional [Browser Airlock](BROWSER-AIRLOCK.md) application from PH4NTXM Apps. It uses a separate profile and does not replace this launcher.
+
 ## [ CHECKS ]
 
 For launch failures, inspect the wrapper's terminal message and identify whether mode, lock, state files, version detection, fonts or template substitution failed.

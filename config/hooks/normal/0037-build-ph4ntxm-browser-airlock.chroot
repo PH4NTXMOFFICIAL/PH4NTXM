@@ -1,0 +1,37 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+SOURCE=/usr/local/src/ph4ntxm-browser-airlock
+RUNTIME=/usr/local/lib/ph4ntxm-browser-airlock
+HELPERS=/usr/local/libexec/ph4ntxm-browser-airlock
+install -d -m 0755 "$RUNTIME" "$HELPERS"
+cc -std=c11 -O2 -Wall -Wextra -Werror -Wpedantic \
+    -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fPIE \
+    "$SOURCE/guard.c" -pie -Wl,-z,relro,-z,now -o "$HELPERS/guard"
+cc -std=c11 -O2 -Wall -Wextra -Werror -Wpedantic \
+    -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fPIE \
+    "$SOURCE/bootstrap.c" -pie -Wl,-z,relro,-z,now -o "$HELPERS/bootstrap"
+install -m 0755 /usr/bin/bwrap "$HELPERS/bwrap"
+chown root:root "$HELPERS/guard" "$HELPERS/bwrap" "$HELPERS/bootstrap"
+chmod 0755 "$HELPERS/guard" "$HELPERS/bwrap"
+chmod 4755 "$HELPERS/bootstrap"
+for name in browser_airlock browser_profiles browser_controller browser_display; do
+    install -m 0644 "$SOURCE/$name.py" "$RUNTIME/$name.py"
+done
+chmod 0755 /usr/local/bin/ph4ntxm-browser-airlock
+python3 -B -I "$SOURCE/tests/test_browser_guard.py" "$HELPERS/guard"
+python3 -B -I "$SOURCE/tests/test_browser_bootstrap.py"
+python3 -B -I "$SOURCE/tests/test_browser_profiles.py" "$SOURCE/browser_profiles.py" /
+python3 -B -I "$SOURCE/tests/test_browser_airlock.py"
+python3 -B -I "$SOURCE/tests/test_browser_controller.py"
+python3 -B -I "$SOURCE/tests/test_browser_display.py"
+python3 -B -I "$SOURCE/tests/test_tor_browser_airlock.py"
+python3 -B -I - <<'VERIFY'
+from pathlib import Path
+path = Path("/usr/local/bin/ph4ntxm-browser-airlock")
+compile(path.read_text(), str(path), "exec")
+VERIFY
+rm -rf "$SOURCE"

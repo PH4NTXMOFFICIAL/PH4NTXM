@@ -87,6 +87,7 @@ Run session checks in the live environment. For one-shot services, inspect the c
 [IDENTITY](system/session/IDENTITY.md)  
 [DOCUMENT AIRLOCK](system/session/DOCUMENT-AIRLOCK.md)  
 [ARCHIVE AIRLOCK](system/session/ARCHIVE-AIRLOCK.md)\
+[BROWSER AIRLOCK](system/session/BROWSER-AIRLOCK.md)\
 [APP AIRLOCK](system/session/APP-AIRLOCK.md)\
 [METADATA CLEANER](system/session/METADATA-CLEANER.md)\
 [VAULT](system/session/VAULT.md)\

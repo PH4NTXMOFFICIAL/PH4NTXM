@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Browser Airlock
+Comment=Browse with isolated files and desktop access using the current network mode
+Exec=/usr/local/bin/ph4ntxm-browser-airlock
+Icon=ph4ntxm-browser-airlock
+Terminal=false
+Categories=Utility;X-PH4NTXMApps;
+StartupNotify=true
+StartupWMClass=ph4ntxm-browser-airlock

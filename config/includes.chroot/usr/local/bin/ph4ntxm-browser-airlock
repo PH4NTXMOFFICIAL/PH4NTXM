@@ -1,0 +1,10 @@
+#!/usr/bin/python3 -I
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+import sys
+
+sys.path.insert(0, "/usr/local/lib/ph4ntxm-browser-airlock")
+from browser_controller import main
+
+raise SystemExit(main())

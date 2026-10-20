@@ -24,6 +24,8 @@ The browser and children run in a separate process group. The wrapper retains th
 
 Exit or handled signals request group termination, wait up to five seconds, then request forced termination if needed. Cleanup removes the owned directory only after confirming no live browser processes remain. Otherwise it retains the directory and reports an error. An uncatchable kill cannot run cleanup.
 
+For additional file and desktop isolation, launch the optional [Browser Airlock](BROWSER-AIRLOCK.md) application from PH4NTXM Apps. It uses a separate profile and does not replace this launcher.
+
 ## [ CHECKS ]
 
 Use the printed failure reason to distinguish stale readiness, inactive services, missing listeners, an integrity mismatch or an existing session lock.

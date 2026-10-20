@@ -18,6 +18,7 @@ METADATA = Path("/usr/lib/ph4ntxm/browser-mode")
 BROWSER = Path("/opt/ph4ntxm/tor-browser/Browser")
 PROC_DIRECTORY = Path("/proc")
 RUNTIME_DIRECTORY = Path("/run/user")
+TEMP_DIRECTORY = Path("/tmp")
 
 
 def read_bounded(path, limit, owner=None):
@@ -128,12 +129,44 @@ def private_directory(path, owner, strict=False):
         raise ValueError("The temporary browser directory is not private")
 
 
+def valid_session_home(home, runtime):
+    if home.name != "home":
+        return False
+    if home.parent.parent == runtime:
+        return re.fullmatch(r"ph4ntxm-tor-browser\.[A-Za-z0-9]{6}", home.parent.name) is not None
+    return (
+        home.parent.parent == TEMP_DIRECTORY
+        and re.fullmatch(r"ph4ntxm-browser-airlock\.[A-Za-z0-9_-]{8}", home.parent.name) is not None
+    )
+
+
+def session_directories(runtime):
+    for base, pattern in (
+        (runtime, r"ph4ntxm-tor-browser\.[A-Za-z0-9]{6}"),
+        (TEMP_DIRECTORY, r"ph4ntxm-browser-airlock\.[A-Za-z0-9_-]{8}"),
+    ):
+        if base == TEMP_DIRECTORY:
+            metadata = base.lstat()
+            if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid != 0 or not metadata.st_mode & stat.S_ISVTX:
+                raise ValueError("The temporary browser filesystem is unavailable")
+        for index, directory in enumerate(base.iterdir()):
+            if index >= 4096:
+                raise ValueError("The browser directory snapshot exceeds the size limit")
+            if re.fullmatch(pattern, directory.name):
+                yield directory
+
+
 def held_session_lock(runtime, owner):
-    metadata = (runtime / "ph4ntxm-tor-browser.lock").lstat()
-    if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != owner:
-        raise ValueError("The browser lock file is unavailable")
+    identities = set()
+    for name in ("ph4ntxm-browser-airlock.lock", "ph4ntxm-tor-browser.lock"):
+        try:
+            metadata = (runtime / name).lstat()
+        except FileNotFoundError:
+            continue
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != owner:
+            raise ValueError("The browser lock file is unavailable")
+        identities.add((os.major(metadata.st_dev), os.minor(metadata.st_dev), metadata.st_ino))
     content = read_bounded(PROC_DIRECTORY / "locks", 1024 * 1024).decode("ascii")
-    identity = (os.major(metadata.st_dev), os.minor(metadata.st_dev), metadata.st_ino)
     for line in content.splitlines():
         parts = line.split()
         if len(parts) < 8 or parts[1:4] != ["FLOCK", "ADVISORY", "WRITE"]:
@@ -141,7 +174,7 @@ def held_session_lock(runtime, owner):
         device = parts[5].split(":")
         if len(device) == 3:
             found = (int(device[0], 16), int(device[1], 16), int(device[2]))
-            if found == identity:
+            if found in identities:
                 return True
     return False
 
@@ -220,10 +253,12 @@ def locked_runtime_session(runtime, owner):
             locks[identity] = parts[4]
     matches = []
     visited = 0
-    for index, directory in enumerate(runtime.iterdir()):
-        if index >= 4096:
-            raise ValueError("The runtime directory snapshot exceeds the size limit")
-        if not re.fullmatch(r"ph4ntxm-tor-browser\.[A-Za-z0-9]{6}", directory.name):
+    for directory in session_directories(runtime):
+        try:
+            metadata = directory.lstat()
+        except FileNotFoundError:
+            continue
+        if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid != owner:
             continue
         home = directory / "home"
         browser_home = home / ".tor-browser"
@@ -344,12 +379,8 @@ def active_session(owner):
                 raise ValueError(
                     "The packaged browser home does not match the launcher"
                 )
-            if home.name != "home" or home.parent.parent != runtime:
+            if not valid_session_home(home, runtime):
                 raise ValueError("The active browser is outside its temporary home")
-            if not re.fullmatch(
-                r"ph4ntxm-tor-browser\.[A-Za-z0-9]{6}", home.parent.name
-            ):
-                raise ValueError("The active browser temporary home is invalid")
             private_directory(home.parent, owner, strict=True)
             private_directory(home, owner, strict=True)
             private_directory(browser_home, owner, strict=True)

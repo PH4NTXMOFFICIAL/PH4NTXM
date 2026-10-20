@@ -82,6 +82,7 @@ PH4NTXM Health and Boot Pilot expose failed runtime chains instead of treating m
 
 - Hardware personas cover selected reporting surfaces, not complete hardware emulation.
 - Browser wrappers configure participating launches. Accounts, extensions and direct executable access remain operator-controlled.
+- Browser Airlock optionally isolates browsers launched through its own application from host files, desktop IPC and abstract Unix sockets. Default browser shortcuts do not apply this additional boundary. Its root-owned setuid bootstrap and kernel namespace implementation are part of the trusted boundary. The bootstrap drops privileges before starting Bubblewrap or the browser. It shares the host kernel and existing network namespace, including localhost access. Kernel/display-server escapes, host compromise and explicitly exported content remain outside its guarantees.
 - Packet transformation covers supported layouts. TLS, HTTP, traffic correlation and application identifiers require separate assessment.
 - Document Airlock parses in an offline KVM guest and exports validated pixels. Visible sensitive content, direct host opening, hypervisor escapes and host compromise remain outside its guarantees.
 - Archive Airlock isolates parsing and bounds listings/file streams before handing selected files to viewers. Unpacking does not sanitize content. Unrestricted extraction and automatic execution are unsupported. Hypervisor escapes and host compromise remain outside this boundary.

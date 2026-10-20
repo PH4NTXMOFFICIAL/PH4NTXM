@@ -58,6 +58,10 @@ Health provides detailed reports and a mode-aware Browser Check.
 
 The OpSec Suite adds network, kernel, process and radio inspection, connection monitoring and file shredding.
 
+Browse with controlled file access:
+
+Browser Airlock optionally runs Firefox or Tor Browser with isolated file and desktop access. Open it from PH4NTXM Apps, import selected files and explicitly export downloads from private RAM. The usual browser shortcuts keep their existing behavior.
+
 Open documents, archives and media:
 
 Document Airlock converts supported documents into a previewable raster PDF. Supported encrypted documents unlock inside the offline guest.

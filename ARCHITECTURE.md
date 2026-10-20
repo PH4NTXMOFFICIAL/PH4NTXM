@@ -73,7 +73,9 @@ Linux and Windows use Firefox ESR through a diverted command wrapper. It validat
 
 Lone Wolf's browser gate verifies the Tor Browser installation and restricts the ordinary Firefox path. Its launcher checks browser integrity state, current firewall/Tor readiness and loopback listeners, then creates a fresh temporary home. It starts with an explicitly built environment and system Tor at `127.0.0.1:9050`, without the normal Firefox persona overrides. Safest is the default security level, and browser restarts retain the temporary session until the browser closes.
 
-See [Browser](docs/system/session/BROWSER.md), [Browser Mode](docs/system/session/BROWSER-MODE.md) and [Tor Browser](docs/system/session/TOR-BROWSER.md).
+The optional Browser Airlock application has its own controller and profile, separate from the default browser launchers. It uses a fixed native setuid bootstrap to create private process/mount namespaces and restore the protected CPU identity before permanently dropping privileges. Unprivileged Bubblewrap then creates the remaining filesystem/user isolation. Browser Airlock combines private filesystem/process namespaces, a nested Xephyr display and Landlock IPC scopes while preserving Firefox's native sandbox. It retains the selected network path and localhost access. Explicit imports are read-only and downloads stay in RAM until export.
+
+See [Browser Airlock](docs/system/session/BROWSER-AIRLOCK.md), [Browser](docs/system/session/BROWSER.md), [Browser Mode](docs/system/session/BROWSER-MODE.md) and [Tor Browser](docs/system/session/TOR-BROWSER.md).
 
 ## [ NORMAL NETWORK PATH ]
 

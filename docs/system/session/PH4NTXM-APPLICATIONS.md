@@ -32,6 +32,8 @@ Applications share the PH4NTXM interface and call underlying services or helpers
 
 [Session Guard](SESSION-GUARD.md) optionally checks session consistency every 10 seconds. Notifications offer details, dismissal and explicit Lockdown. Enable and Disable require fresh passwords. Closing the window leaves monitoring running.
 
+[Browser Airlock](BROWSER-AIRLOCK.md) is a separate optional application in PH4NTXM Apps. It runs Firefox in Linux/Windows and Tor Browser in Lone Wolf inside an isolated desktop. Import Files supplies selected copies and Downloads supports explicit export after stopping. Usual browser shortcuts remain unchanged.
+
 [Document Airlock](DOCUMENT-AIRLOCK.md) previews and exports raster PDFs from an offline guest.
 
 [Archive Airlock](ARCHIVE-AIRLOCK.md) lists archives and opens selected files through isolated viewers.
