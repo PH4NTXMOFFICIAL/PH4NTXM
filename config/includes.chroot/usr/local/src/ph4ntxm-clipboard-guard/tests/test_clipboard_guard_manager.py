@@ -278,7 +278,6 @@ class ClipmanManagerTest(unittest.TestCase):
         self.pidfd_open.assert_not_called()
         self.send_signal.assert_not_called()
 
-
     def test_xfce_replacement_disables_only_clipboard_in_child_environment(self):
         with patch.object(manager.subprocess, "run") as run:
             self.assertEqual(manager.disable_xfce_clipboard(self.pid), 1)

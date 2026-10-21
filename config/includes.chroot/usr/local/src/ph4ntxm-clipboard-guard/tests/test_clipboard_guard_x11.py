@@ -63,7 +63,10 @@ class X11BackendTest(unittest.TestCase):
     def test_success_zero_maps_owner_and_frees_results(self):
         worker = self.make_backend([44, 44, 0])
         resource = Resource()
-        with patch.object(backend.ctypes, "CDLL", return_value=resource), patch.object(backend, "pause_clipman", return_value=1) as pause:
+        with (
+            patch.object(backend.ctypes, "CDLL", return_value=resource),
+            patch.object(backend, "pause_clipman", return_value=1) as pause,
+        ):
             worker.pause_manager()
         pause.assert_called_once_with(4242)
         resource.XResClientIdsDestroy.assert_called_once()
@@ -77,7 +80,10 @@ class X11BackendTest(unittest.TestCase):
             with self.subTest(status=status, count=count, pid=pid):
                 worker = self.make_backend([44, 44])
                 resource = Resource(status, count, pid)
-                with patch.object(backend.ctypes, "CDLL", return_value=resource), patch.object(backend, "pause_clipman") as pause:
+                with (
+                    patch.object(backend.ctypes, "CDLL", return_value=resource),
+                    patch.object(backend, "pause_clipman") as pause,
+                ):
                     with self.assertRaises(backend.GuardError):
                         worker.pause_manager()
                 pause.assert_not_called()
@@ -86,7 +92,10 @@ class X11BackendTest(unittest.TestCase):
     def test_owner_change_refuses_without_signaling(self):
         worker = self.make_backend([44, 45])
         resource = Resource()
-        with patch.object(backend.ctypes, "CDLL", return_value=resource), patch.object(backend, "pause_clipman") as pause:
+        with (
+            patch.object(backend.ctypes, "CDLL", return_value=resource),
+            patch.object(backend, "pause_clipman") as pause,
+        ):
             with self.assertRaises(backend.GuardError):
                 worker.pause_manager()
         pause.assert_not_called()
@@ -102,7 +111,11 @@ class X11BackendTest(unittest.TestCase):
     def test_unknown_process_is_refused(self):
         worker = self.make_backend([44, 44])
         resource = Resource()
-        with patch.object(backend.ctypes, "CDLL", return_value=resource), patch.object(backend, "pause_clipman", return_value=0) as pause, patch.object(backend, "disable_xfce_clipboard", return_value=0):
+        with (
+            patch.object(backend.ctypes, "CDLL", return_value=resource),
+            patch.object(backend, "pause_clipman", return_value=0) as pause,
+            patch.object(backend, "disable_xfce_clipboard", return_value=0),
+        ):
             with self.assertRaises(backend.GuardError):
                 worker.pause_manager()
         pause.assert_called_once_with(4242)
@@ -110,7 +123,10 @@ class X11BackendTest(unittest.TestCase):
 
     def test_missing_resource_library_refuses_without_helper(self):
         worker = self.make_backend([44])
-        with patch.object(backend.ctypes, "CDLL", side_effect=OSError()), patch.object(backend, "pause_clipman") as pause:
+        with (
+            patch.object(backend.ctypes, "CDLL", side_effect=OSError()),
+            patch.object(backend, "pause_clipman") as pause,
+        ):
             with self.assertRaises(backend.GuardError):
                 worker.pause_manager()
         pause.assert_not_called()
@@ -131,16 +147,25 @@ class X11BackendTest(unittest.TestCase):
                 worker.callback.assert_called_once()
                 self.assertIn("error", worker.callback.call_args.args[0])
 
-
     def test_xfce_replacement_waits_for_manager_release(self):
         worker = self.make_backend([44, 44, 44, 0, 0])
-        with patch.object(backend.ctypes, "CDLL", return_value=Resource()), patch.object(backend, "pause_clipman", return_value=0), patch.object(backend, "disable_xfce_clipboard", return_value=1) as disable, patch.object(backend.time, "sleep"):
+        with (
+            patch.object(backend.ctypes, "CDLL", return_value=Resource()),
+            patch.object(backend, "pause_clipman", return_value=0),
+            patch.object(backend, "disable_xfce_clipboard", return_value=1) as disable,
+            patch.object(backend.time, "sleep"),
+        ):
             worker.pause_manager()
         disable.assert_called_once_with(4242)
 
     def test_xfce_replacement_without_release_reports_failure(self):
         worker = self.make_backend([44, 44, 44])
-        with patch.object(backend.ctypes, "CDLL", return_value=Resource()), patch.object(backend, "pause_clipman", return_value=0), patch.object(backend, "disable_xfce_clipboard", return_value=1), patch.object(backend.time, "monotonic", side_effect=[0, 3]):
+        with (
+            patch.object(backend.ctypes, "CDLL", return_value=Resource()),
+            patch.object(backend, "pause_clipman", return_value=0),
+            patch.object(backend, "disable_xfce_clipboard", return_value=1),
+            patch.object(backend.time, "monotonic", side_effect=[0, 3]),
+        ):
             with self.assertRaises(backend.GuardError):
                 worker.pause_manager()
 

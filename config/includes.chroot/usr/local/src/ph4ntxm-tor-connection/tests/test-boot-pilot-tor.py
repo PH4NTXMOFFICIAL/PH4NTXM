@@ -327,7 +327,6 @@ class TorDialogTests(unittest.TestCase):
         self.assertTrue(dialog.apply_button.get_sensitive())
 
 
-
 class TorControlTests(unittest.TestCase):
     def test_fresh_auth_uses_only_stdin(self):
         command = module["TOR_CONTROL"]
@@ -374,14 +373,18 @@ class TorControlTests(unittest.TestCase):
 
     def test_snapshot_is_unprivileged_and_strips_extra_secrets(self):
         state = dict(snapshot(), bridges="secret cert")
-        with patch.object(subprocess, "run", return_value=types.SimpleNamespace(returncode=0, stdout=json.dumps(state))) as run:
+        with patch.object(
+            subprocess,
+            "run",
+            return_value=types.SimpleNamespace(returncode=0, stdout=json.dumps(state)),
+        ) as run:
             result = module["tor_control"]()
         self.assertEqual(run.call_args.args[0], [module["TOR_CONTROL"], "snapshot"])
         self.assertNotIn("bridges", result)
         self.assertEqual(run.call_args.kwargs["stdin"], subprocess.DEVNULL)
 
     def test_malformed_response_auth_failure_and_timeout(self):
-        for value in ('[]', '{}', '{"ok":true}', 'secret-cert'):
+        for value in ("[]", "{}", '{"ok":true}', "secret-cert"):
             with patch.object(subprocess, "run", return_value=types.SimpleNamespace(returncode=0, stdout=value)):
                 self.assertFalse(module["tor_control"]()["ok"])
         with patch.object(subprocess, "run", side_effect=subprocess.TimeoutExpired("sudo", 90)):
@@ -452,7 +455,10 @@ class TorRefreshTests(unittest.TestCase):
             return Mock()
         control = Mock(return_value={"ok": True})
         glib.idle_add.reset_mock()
-        with patch.dict(module, {"read": lambda *_: "lonewolf", "tor_control": control}), patch.object(module["threading"], "Thread", side_effect=thread):
+        with (
+            patch.dict(module, {"read": lambda *_: "lonewolf", "tor_control": control}),
+            patch.object(module["threading"], "Thread", side_effect=thread),
+        ):
             BootPilot.apply_tor_connection(pilot, dialog, "obfs4", "confidential cert", "password")
         self.assertTrue(pilot.tor_action_active)
         self.assertFalse(pilot.browser_ready)

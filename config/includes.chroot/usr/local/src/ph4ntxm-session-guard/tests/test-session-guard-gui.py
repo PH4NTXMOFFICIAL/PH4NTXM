@@ -145,9 +145,9 @@ class ClientTests(unittest.TestCase):
         for code, output in (
             (0, b'{"ok":true,"ok":false}'),
             (0, b'{"ok":1}'),
-            (0, b'[]'),
+            (0, b"[]"),
             (1, b'{"ok":true}'),
-            (0, b'\xff'),
+            (0, b"\xff"),
         ):
             call = client.HelperCall("enable", "a" * 32, "password")
             with (

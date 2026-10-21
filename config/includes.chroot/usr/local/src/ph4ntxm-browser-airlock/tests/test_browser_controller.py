@@ -78,6 +78,7 @@ class FakeGtk:
         self.after_question = None
         self.settings = {"gtk-theme-name": "PH4NTXM-Ghost", "gtk-icon-theme-name": "Lyra-blue-dark", "gtk-font-name": "Sans 10"}
         environment = self
+
         class Widget:
             def __init__(self, *args, **kwargs):
                 self.events = {}
@@ -90,24 +91,34 @@ class FakeGtk:
                 self.can_focus = False
                 self.focused = False
                 environment.widgets.append(self)
+
             def connect(self, name, callback):
                 self.events[name] = callback
+
             def get_screen(self):
                 return self
+
             def get_system_visual(self):
                 return "preferred-visual"
+
             def set_visual(self, visual):
                 self.visual = visual
+
             def get_primary_monitor(self):
                 return 0
+
             def get_monitor_workarea(self, *_):
                 return types.SimpleNamespace(width=1280, height=900)
+
             def get_allocation(self):
                 return types.SimpleNamespace(width=1084, height=680)
+
             def get_id(self):
                 return 42
+
             def get_content_area(self):
                 return self
+
             def show_all(self):
                 if self is environment.window:
                     for widget in list(environment.widgets):
@@ -116,33 +127,45 @@ class FakeGtk:
                             assert widget.can_focus
                             assert all(not button.focus_on_click for button in environment.widgets if button.text in ("Import Files", "Downloads", "Resume"))
                             widget.events["realize"](widget)
+
             def set_can_focus(self, value):
                 self.can_focus = value
+
             def grab_focus(self):
                 assert self.can_focus
                 self.focused = True
+
             def set_focus_on_click(self, value):
                 self.focus_on_click = value
+
             def set_sensitive(self, value):
                 self.sensitive = value
+
             def set_visible(self, value):
                 self.visible = value
+
             def set_text(self, value):
                 self.text = value
                 if "notify::label" in self.events:
                     self.events["notify::label"](self, None)
+
             def get_text(self):
                 return self.text
+
             def set_tooltip_text(self, value):
                 self.tooltip = value
+
             def set_ellipsize(self, value):
                 self.ellipsize = value
+
             def __getattr__(self, name):
                 return lambda *args, **kwargs: None
+
         class Window(Widget):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
                 environment.window = self
+
         class Dialog(Widget):
             def run(self):
                 response = environment.responses.pop(0) if environment.responses else 0
@@ -150,8 +173,10 @@ class FakeGtk:
                     callback, environment.after_question = environment.after_question, None
                     environment.idle_add(callback)
                 return response
+
             def add_button(self, *args):
                 return Widget()
+
         self.Gtk = types.SimpleNamespace(
             Window=Window, Box=Widget, Button=Widget, Socket=Widget, Label=Widget,
             MessageDialog=Dialog, Dialog=Dialog, WindowPosition=types.SimpleNamespace(CENTER=0),
@@ -184,13 +209,16 @@ class FakeGtk:
     def modules(self):
         gi = types.ModuleType("gi")
         versions = {}
+
         def require_version(namespace, version):
             versions[namespace] = version
+
         class Repository(types.ModuleType):
             def __getattribute__(self, name):
                 if name in ("Gtk", "Gdk", "GdkX11") and versions.get(name) != "3.0":
                     raise ValueError("GTK and Gdk must select version 3.0 before import")
                 return super().__getattribute__(name)
+
         gi.require_version = require_version
         repository = Repository("gi.repository")
         repository.Gtk = self.Gtk
@@ -204,6 +232,7 @@ class FakeGtk:
 class FakeBroker:
     def listen(self, handler):
         self.handler = handler
+
     def close(self):
         pass
 
@@ -302,7 +331,10 @@ class ControllerTest(unittest.TestCase):
 
     def lifecycle(self, session, environment, ready=None):
         backend = types.SimpleNamespace(Session=lambda: session)
-        with patch.dict("sys.modules", environment.modules()), patch.object(controller, "root_visual", return_value="root-x11-visual"):
+        with (
+            patch.dict("sys.modules", environment.modules()),
+            patch.object(controller, "root_visual", return_value="root-x11-visual"),
+        ):
             return controller.desktop(backend, FakeBroker(), request(["https://initial.example"]), ready)
 
     def test_startup_cancel_stops_cleans_and_never_acknowledges(self):
@@ -420,7 +452,10 @@ class ControllerTest(unittest.TestCase):
             threading.Thread(target=relay, daemon=True).start()
             time.sleep(0.03)
         session.before_start = starting
-        with patch.dict("sys.modules", environment.modules()), patch.object(controller, "root_visual", return_value="root-x11-visual"):
+        with (
+            patch.dict("sys.modules", environment.modules()),
+            patch.object(controller, "root_visual", return_value="root-x11-visual"),
+        ):
             result = controller.desktop(types.SimpleNamespace(Session=lambda: session), broker, request(["https://first.example"]), None)
         self.assertEqual(result, 0)
         self.assertEqual(relay_results, [{"ok": True, "error": ""}])

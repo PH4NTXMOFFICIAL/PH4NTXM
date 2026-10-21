@@ -135,7 +135,11 @@ class ClipboardGuardWindow(Gtk.ApplicationWindow):
         content.pack_start(actions, False, False, 0)
         content.pack_start(
             label(
-                "Enable Protection or Clear Now disables Xfce clipboard persistence for this session and stops standalone Clipman if active. Other managers must be closed manually. Existing cached clipboard content may be lost. Copies already retained by applications cannot be revoked.",
+                "Enable Protection or Clear Now disables Xfce clipboard persistence "
+                "for this session and stops standalone Clipman if active. "
+                "Other managers must be closed manually. "
+                "Existing cached clipboard content may be lost. "
+                "Copies already retained by applications cannot be revoked.",
                 "subtitle",
             ),
             False,

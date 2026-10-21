@@ -256,7 +256,6 @@ class BoundedProcess:
                 self.process = None
 
 
-
 class HelperCall(BoundedProcess):
     def __init__(self, action="status", generation=None, password=None):
         super().__init__()

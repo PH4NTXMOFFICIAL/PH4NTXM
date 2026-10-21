@@ -70,7 +70,7 @@ class HelperTests(unittest.TestCase):
 
     def test_malformed_and_duplicate_json_is_not_success(self):
         call = gui.HelperCall("arm", "", 15)
-        for output in (b'{"ok":true,"ok":false}', b'{"ok":1}', b'[]', b'not json', b'\xff'):
+        for output in (b'{"ok":true,"ok":false}', b'{"ok":1}', b"[]", b"not json", b"\xff"):
             with self.subTest(output=output), patch.object(call, "run_process", return_value=(0, output)):
                 self.assertFalse(call.run()["ok"])
 

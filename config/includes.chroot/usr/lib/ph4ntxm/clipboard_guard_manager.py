@@ -97,7 +97,10 @@ def pause_clipman(pid):
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise GuardError("Clipman did not stop within one second. Close it manually before enabling protection.")
+                raise GuardError(
+                    "Clipman did not stop within one second. "
+                    "Close it manually before enabling protection."
+                )
             timeout = max(0, math.floor(remaining * 1000))
             events = watcher.poll(timeout)
             for descriptor, flags in events:
@@ -110,7 +113,10 @@ def pause_clipman(pid):
                 if flags & select.POLLERR:
                     raise GuardError("The clipboard manager process could not be observed safely.")
             if timeout == 0:
-                raise GuardError("Clipman did not stop within one second. Close it manually before enabling protection.")
+                raise GuardError(
+                    "Clipman did not stop within one second. "
+                    "Close it manually before enabling protection."
+                )
     except (FileNotFoundError, ProcessLookupError):
         return 0
     except OSError as error:

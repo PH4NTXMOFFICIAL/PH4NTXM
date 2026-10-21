@@ -59,7 +59,11 @@ class Guard:
     def start(self, seconds, include_primary):
         if self.enabled:
             raise GuardError("Disable protection before changing its settings.")
-        if type(seconds) is not int or not 1 <= seconds <= 86400 or type(include_primary) is not bool:
+        if (
+            type(seconds) is not int
+            or not 1 <= seconds <= 86400
+            or type(include_primary) is not bool
+        ):
             raise GuardError("Choose a whole number of seconds between 1 and 86400.")
         try:
             self.backend = self.backend_factory()
@@ -91,16 +95,29 @@ class Guard:
         name = event["selection"]
         if name == "MANAGER":
             if event["owner"]:
-                self.fail(GuardError("A clipboard history manager appeared. Protection stopped. Close that manager before enabling Clipboard Guard again."))
+                self.fail(
+                    GuardError(
+                        "A clipboard history manager appeared. Protection stopped. "
+                        "Close that manager before enabling Clipboard Guard again."
+                    )
+                )
             return
-        if name not in ("CLIPBOARD", "PRIMARY") or name == "PRIMARY" and not self.include_primary:
+        if (
+            name not in ("CLIPBOARD", "PRIMARY")
+            or name == "PRIMARY" and not self.include_primary
+        ):
             return
         self.forget(name)
         if not event["owner"]:
             return
         self.generation += 1
         generation = self.generation
-        lease = {"owner": event["owner"], "timestamp": event["timestamp"], "generation": generation, "source": None}
+        lease = {
+            "owner": event["owner"],
+            "timestamp": event["timestamp"],
+            "generation": generation,
+            "source": None,
+        }
         self.leases[name] = lease
         lease["source"] = self.scheduler.after(self.seconds, lambda: self.expire(name, generation))
 
@@ -119,7 +136,11 @@ class Guard:
             if result["cleared"]:
                 if lease is None or lease["generation"] == generation:
                     self.forget(selection)
-                    self.message = "Clipboard cleared." if selection == "CLIPBOARD" else "Selected text cleared for middle-click paste."
+                    self.message = (
+                        "Clipboard cleared."
+                        if selection == "CLIPBOARD"
+                        else "Selected text cleared for middle-click paste."
+                    )
                     self.changed()
                 return False
             if lease is None or lease["generation"] != generation:
@@ -127,7 +148,12 @@ class Guard:
             if result.get("retry"):
                 lease["source"] = self.scheduler.after(0.01, lambda: self.expire(selection, generation))
             else:
-                self.fail(GuardError("Clipboard ownership changed without a usable notification. Protection stopped. Enable it again to take a fresh snapshot."))
+                self.fail(
+                    GuardError(
+                        "Clipboard ownership changed without a usable notification. "
+                        "Protection stopped. Enable it again to take a fresh snapshot."
+                    )
+                )
         except GuardError as error:
             self.fail(error)
         return False
@@ -153,7 +179,11 @@ class Guard:
             if was_enabled and not self.enabled:
                 raise GuardError(self.error or "Clipboard protection stopped.")
             self.error = ""
-            self.message = "Clipboard cleared." if result["cleared"] else "The selected clipboard areas are already empty."
+            self.message = (
+                "Clipboard cleared."
+                if result["cleared"]
+                else "The selected clipboard areas are already empty."
+            )
             self.changed()
         except GuardError as error:
             if self.enabled or self.error != str(error):
