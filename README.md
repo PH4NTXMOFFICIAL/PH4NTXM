@@ -16,7 +16,7 @@ Codename: Most Wanted.
 
 ## [ OVERVIEW ]
 
-PH4NTXM is a Debian-based Linux operating system that runs live from USB. Once the system has fully loaded into RAM, you can safely remove the boot media.
+PH4NTXM is a Debian-based Linux operating system that runs live from USB. Once the system has fully loaded into RAM, the boot media is no longer needed to run it.
 
 ## [ DISPOSABLE SESSIONS ]
 
@@ -62,13 +62,13 @@ Browse with controlled file access:
 
 Browser Airlock optionally runs Firefox or Tor Browser with isolated file and desktop access. Open it from PH4NTXM Apps, import selected files and explicitly export downloads from private RAM. The usual browser shortcuts keep their existing behavior.
 
-Open documents, archives and media:
+Work with files and applications:
 
 Document Airlock converts supported documents into a previewable raster PDF. Supported encrypted documents unlock inside the offline guest.
 
 Archive Airlock inspects archives and opens selected files through isolated viewers. Supported encrypted ZIP entries unlock inside the offline guest.
 
-Image and media viewers provide separate offline sandboxes.
+Media Viewers open local images and media in separate offline sandboxes.
 
 Vault keeps explicitly selected files in private RAM and exports encrypted `.ph4vault` copies for manual use in a later session.
 
@@ -76,9 +76,7 @@ Metadata Cleaner compares supported metadata before and after offline cleaning, 
 
 App Airlock runs applications and scripts offline with selected files in a private RAM workspace. Stop execution before explicitly exporting results.
 
-Clipboard Guard optionally clears copied content after a chosen timeout, with separate coverage for middle-click selections. It starts disabled, reads only ownership metadata and keeps no clipboard history. Closing its controls leaves enabled protection running.
-
-Review devices and application networking:
+Review devices and session protection:
 
 Opening an unmounted disk through the desktop requires the session password. After unmounting, the next mount asks again. Mounted files remain accessible.
 
@@ -87,6 +85,8 @@ USB Guard optionally preserves current USB connections and blocks new devices pe
 Net Guard optionally requires approval for each live-user process execution before outbound IP access. Enable, Allow and Disable require the session password. Approvals are temporary.
 
 Session Guard optionally checks generated identity consistency and protection readiness every 10 seconds. It warns about detected failures and monitored MAC changes. Enable and Disable require the session password. Lockdown remains an explicit action.
+
+Clipboard Guard optionally clears copied content after a chosen timeout, with separate coverage for middle-click selections. It starts disabled, reads only ownership metadata and keeps no clipboard history. Closing its controls leaves enabled protection running.
 
 Block networking or end the session:
 
@@ -112,13 +112,18 @@ The edition is selected when building the ISO. See [Build Editions](docs/build/B
 
 ## [ GETTING STARTED ]
 
-Build your edition on Debian 13 `trixie` amd64:
+The ISO targets Debian 13 `trixie` amd64. On a Debian build host:
 
 ```bash
 sudo apt update
 sudo apt install git live-build
 git clone https://github.com/PH4NTXMOFFICIAL/PH4NTXM.git
 cd PH4NTXM
+```
+
+Verify the selected source revision using [DISTRIBUTION.md](DISTRIBUTION.md), then build your edition:
+
+```bash
 sudo ./build.sh --edition abyss
 ```
 
@@ -128,7 +133,9 @@ Your completed ISO and checksum appear under `build/<edition>/`. Follow [INSTALL
 
 On your first boot, start with Boot Pilot and follow the protection checks before opening the browser.
 
-PH4NTXM is intended to boot directly on a physical computer. Virtual machines are useful for development and functional checks. Document and Archive Airlock additionally need hardware virtualization enabled and access to KVM, Linux's virtualization support.
+PH4NTXM is intended to boot directly on a physical computer. Virtual machines are useful for development and functional checks.
+
+Document Airlock, Archive Airlock and opening or reviewing existing vaults require hardware virtualization enabled and access to KVM. Browser Airlock and App Airlock use process isolation.
 
 ## [ DOCUMENTATION ]
 

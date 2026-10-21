@@ -2,14 +2,15 @@
 
 Technical documentation for PH4NTXM's builds, runtime components and operation.
 
-Start with the active mode, then follow the component involved. Session pages share OVERVIEW, STARTUP, RUNTIME, CHECKS and SOURCE sections so related components can be read side by side. Runtime paths refer to the booted live system. Source links point to the files used to build it.
+For a first build, follow Installation and source verification below. In the live session, start with the active mode, then follow the component involved. Session pages share OVERVIEW, STARTUP, RUNTIME, CHECKS and SOURCE sections so related components can be read side by side. Runtime paths refer to the booted live system. Source links point to the files used to build it.
 
 Run session checks in the live environment. For one-shot services, inspect the completion result as well as the generated state. An exited process can be expected after successful setup. Long-running services and fresh readiness records need checking during operation.
 
 ## [ BUILD AND APPEARANCE ]
 
-[BUILD EDITIONS](build/BUILD-EDITIONS.md)  
-[INSTALLATION](../INSTALLATION.md)
+[INSTALLATION](../INSTALLATION.md)\
+[SOURCE VERIFICATION](../DISTRIBUTION.md)\
+[BUILD EDITIONS](build/BUILD-EDITIONS.md)
 
 ## [ MODES ]
 
@@ -85,13 +86,13 @@ Run session checks in the live environment. For one-shot services, inspect the c
 [BOOT PILOT](system/session/BOOT-PILOT.md)  
 [HEALTH](system/session/HEALTH.md)  
 [IDENTITY](system/session/IDENTITY.md)  
-[DOCUMENT AIRLOCK](system/session/DOCUMENT-AIRLOCK.md)  
-[ARCHIVE AIRLOCK](system/session/ARCHIVE-AIRLOCK.md)\
 [BROWSER AIRLOCK](system/session/BROWSER-AIRLOCK.md)\
-[APP AIRLOCK](system/session/APP-AIRLOCK.md)\
-[METADATA CLEANER](system/session/METADATA-CLEANER.md)\
+[DOCUMENT AIRLOCK](system/session/DOCUMENT-AIRLOCK.md)\
+[ARCHIVE AIRLOCK](system/session/ARCHIVE-AIRLOCK.md)\
+[MEDIA VIEWERS](system/session/MEDIA-VIEWERS.md)\
 [VAULT](system/session/VAULT.md)\
-[MEDIA VIEWERS](system/session/MEDIA-VIEWERS.md)  
+[METADATA CLEANER](system/session/METADATA-CLEANER.md)\
+[APP AIRLOCK](system/session/APP-AIRLOCK.md)\
 [WIFI CONTROL](system/session/WIFI-CONTROL.md)  
 [OPERATIONAL TOOLS](system/session/OPERATIONAL-TOOLS.md)  
 [DISK ACCESS](system/session/DISK-ACCESS.md)\
