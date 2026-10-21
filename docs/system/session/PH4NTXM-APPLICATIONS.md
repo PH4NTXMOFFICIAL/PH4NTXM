@@ -32,6 +32,8 @@ Applications share the PH4NTXM interface and call underlying services or helpers
 
 [Session Guard](SESSION-GUARD.md) optionally checks session consistency every 10 seconds. Notifications offer details, dismissal and explicit Lockdown. Enable and Disable require fresh passwords. Closing the window leaves monitoring running.
 
+[Clipboard Guard](CLIPBOARD-GUARD.md) optionally expires copied content after a chosen timeout. The clipboard is protected by default, with a separate option for selected text pasted through middle-click. Enable, Disable and Clear Now run without root or a password. Closing the window leaves enabled protection running. Startup disables the verified native Xfce clipboard component through a runtime xfsettingsd replacement that preserves its other settings functions. It can also stop this display's verified standalone Clipman instance. Cached clipboard content may be lost. Other managers must be closed manually. Existing history and autostart settings are unchanged, and Clipman is not restarted automatically.
+
 [Browser Airlock](BROWSER-AIRLOCK.md) is a separate optional application in PH4NTXM Apps. It runs Firefox in Linux/Windows and Tor Browser in Lone Wolf inside an isolated desktop. Import Files supplies selected copies and Downloads supports explicit export after stopping. Usual browser shortcuts remain unchanged.
 
 [Document Airlock](DOCUMENT-AIRLOCK.md) previews and exports raster PDFs from an offline guest.
@@ -64,6 +66,7 @@ Trace findings to the relevant helper, service or isolation prerequisite. A disp
 [ph4ntxm-usb-guard](../../../config/includes.chroot/usr/local/bin/ph4ntxm-usb-guard)\
 [ph4ntxm-net-guard](../../../config/includes.chroot/usr/local/bin/ph4ntxm-net-guard)\
 [ph4ntxm-session-guard](../../../config/includes.chroot/usr/local/bin/ph4ntxm-session-guard)\
+[ph4ntxm-clipboard-guard](../../../config/includes.chroot/usr/local/bin/ph4ntxm-clipboard-guard)\
 [ph4ntxm-document-airlock](../../../config/includes.chroot/usr/local/bin/ph4ntxm-document-airlock)\
 [ph4ntxm-archive-airlock](../../../config/includes.chroot/usr/local/bin/ph4ntxm-archive-airlock)\
 [ph4ntxm-media](../../../config/includes.chroot/usr/local/bin/ph4ntxm-media)\

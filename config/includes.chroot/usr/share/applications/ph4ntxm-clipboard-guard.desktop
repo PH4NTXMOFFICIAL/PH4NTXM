@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PH4NTXM Clipboard Guard
+Comment=Automatically expire copied content without keeping clipboard history
+Exec=/usr/local/bin/ph4ntxm-clipboard-guard
+Icon=ph4ntxm-clipboard-guard
+Terminal=false
+Categories=Utility;X-PH4NTXMApps;
+StartupNotify=false

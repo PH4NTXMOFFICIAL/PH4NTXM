@@ -76,6 +76,8 @@ Metadata Cleaner compares supported metadata before and after offline cleaning, 
 
 App Airlock runs applications and scripts offline with selected files in a private RAM workspace. Stop execution before explicitly exporting results.
 
+Clipboard Guard optionally clears copied content after a chosen timeout, with separate coverage for middle-click selections. It starts disabled, reads only ownership metadata and keeps no clipboard history. Closing its controls leaves enabled protection running.
+
 Review devices and application networking:
 
 Opening an unmounted disk through the desktop requires the session password. After unmounting, the next mount asks again. Mounted files remain accessible.

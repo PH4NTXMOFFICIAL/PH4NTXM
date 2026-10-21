@@ -1,0 +1,32 @@
+#!/bin/sh
+# Copyright (C) PH4NTXM
+# Licensed under the GNU General Public License v3.0.
+
+set -eu
+
+SOURCE=/usr/local/src/ph4ntxm-clipboard-guard
+WINDOW=/usr/local/bin/ph4ntxm-clipboard-guard
+MODULE=/usr/lib/ph4ntxm/clipboard_guard.py
+X11=/usr/lib/ph4ntxm/clipboard_guard_x11.py
+GUI=/usr/lib/ph4ntxm/clipboard_guard_gui.py
+MANAGER=/usr/lib/ph4ntxm/clipboard_guard_manager.py
+DESKTOP=/usr/share/applications/ph4ntxm-clipboard-guard.desktop
+
+chown root:root "$WINDOW" "$MODULE" "$X11" "$GUI" "$MANAGER" "$DESKTOP"
+chmod 0755 "$WINDOW"
+chmod 0644 "$MODULE" "$X11" "$GUI" "$MANAGER" "$DESKTOP"
+test -r /usr/share/icons/Lyra-blue-dark/apps/scalable/ph4ntxm-clipboard-guard.svg
+python3 -B -I "$SOURCE/tests/test_clipboard_guard.py"
+python3 -B -I "$SOURCE/tests/test_clipboard_guard_manager.py"
+python3 -B -I "$SOURCE/tests/test_clipboard_guard_x11.py"
+python3 -B -I - "$MODULE" "$X11" "$GUI" "$MANAGER" "$WINDOW" <<'PY'
+import pathlib
+import sys
+
+for name in sys.argv[1:]:
+    compile(pathlib.Path(name).read_bytes(), name, "exec")
+PY
+desktop-file-validate "$DESKTOP"
+update-desktop-database
+gtk-update-icon-cache -f /usr/share/icons/Lyra-blue-dark
+rm -rf "$SOURCE"
