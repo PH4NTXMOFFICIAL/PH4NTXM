@@ -3,12 +3,14 @@
 # Licensed under the GNU General Public License v3.0.
 
 set -eu
+umask 022
 
 SOURCE=/usr/local/src/ph4ntxm-media
 RUNTIME=/usr/local/lib/ph4ntxm-media
 HELPERS=/usr/local/libexec/ph4ntxm-media
 install -d -m 0755 "$RUNTIME" "$HELPERS"
 cc -std=c11 -O2 -Wall -Wextra -Werror "$SOURCE/filter.c" -o "$HELPERS/filter"
+chmod 0755 "$HELPERS/filter"
 python3 "$SOURCE/tests/test-media.py" "$HELPERS/filter"
 install -m 0644 "$SOURCE/media.py" "$RUNTIME/media.py"
 install -m 0755 /usr/bin/bwrap "$HELPERS/bwrap"
