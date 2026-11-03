@@ -92,8 +92,21 @@ import sys
 import zipfile
 
 browser = pathlib.Path(sys.argv[1])
-with zipfile.ZipFile(browser / "omni.ja") as archive:
-    source = archive.read("modules/SecurityLevel.sys.mjs").decode("utf-8")
+sources = set()
+for archive_path in sorted(browser.rglob("*.ja")):
+    try:
+        with zipfile.ZipFile(archive_path) as archive:
+            for member in archive.infolist():
+                if pathlib.PurePosixPath(member.filename).name != "SecurityLevel.sys.mjs":
+                    continue
+                candidate = archive.read(member).decode("utf-8")
+                if "SecurityLevels" in candidate and "kSecuritySettings" in candidate:
+                    sources.add(candidate)
+    except (OSError, zipfile.BadZipFile):
+        continue
+if len(sources) != 1:
+    raise SystemExit("Tor Browser security-level module is missing or ambiguous")
+source = sources.pop()
 
 levels = re.search(r"SecurityLevels:\s*Object\.freeze\(\{(.*?)\}\)", source, re.S)
 table = re.search(r"const kSecuritySettings\s*=\s*\{(.*?)^\};", source, re.S | re.M)
