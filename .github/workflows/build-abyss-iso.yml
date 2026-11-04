@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Signed release tag to build (for example v3.5.2)
+        description: Signed release tag to build (vMAJOR.MINOR.PATCH)
         required: true
         type: string
 
@@ -36,7 +36,7 @@ jobs:
           SOURCEFORGE_SSH_PASSPHRASE: ${{ secrets.SOURCEFORGE_SSH_PASSPHRASE }}
         run: |
           set -euo pipefail
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Expected a release tag such as v3.5.2." >&2; exit 1; }
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Expected a release tag in vMAJOR.MINOR.PATCH format." >&2; exit 1; }
           test -n "$SOURCEFORGE_SSH_PRIVATE_KEY" || { echo "Missing SOURCEFORGE_SSH_PRIVATE_KEY." >&2; exit 1; }
           test -n "$SOURCEFORGE_SSH_PASSPHRASE" || { echo "Missing SOURCEFORGE_SSH_PASSPHRASE." >&2; exit 1; }
           export GNUPGHOME
