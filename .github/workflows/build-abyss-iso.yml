@@ -9,7 +9,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: official-abyss-${{ inputs.release_tag }}
@@ -91,7 +91,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Publish official ISO to SourceForge
+      - name: Publish Official ISO to SourceForge
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
           SOURCEFORGE_SSH_PRIVATE_KEY: ${{ secrets.SOURCEFORGE_SSH_PRIVATE_KEY }}
@@ -141,3 +141,34 @@ jobs:
           rsync -rtp --chmod=F644 -e "ssh -F $ssh_dir/config" \
             build/abyss/SHA256SUMS "$destination"
           printf 'Official ISO: https://sourceforge.net/projects/ph4ntxmofficial/files/%s/abyss/\n' "$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create GitHub release draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if release_url=$(gh release view "$RELEASE_TAG" --json url --jq .url 2>/dev/null); then
+            printf 'Release already exists: %s\n' "$release_url" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          notes=$(mktemp "$RUNNER_TEMP/ph4ntxm-release-notes.XXXXXX")
+          trap 'rm -f "$notes"' EXIT
+          download_url="https://sourceforge.net/projects/ph4ntxmofficial/files/$RELEASE_TAG/abyss"
+          printf '%s\n' \
+            '## Downloads' \
+            '' \
+            "- [PH4NTXM Abyss Edition ISO]($download_url/ph4ntxm-abyss-amd64.hybrid.iso/download)" \
+            "- [SHA256SUMS]($download_url/SHA256SUMS/download)" \
+            '' \
+            'Download both files into the same directory and run `sha256sum --check SHA256SUMS` before preparing live media.' \
+            '' > "$notes"
+          gh release create "$RELEASE_TAG" \
+            --verify-tag \
+            --draft \
+            --title "PH4NTXM $RELEASE_TAG" \
+            --generate-notes \
+            --notes-file "$notes"
+          release_url=$(gh release view "$RELEASE_TAG" --json url --jq .url)
+          printf 'Review and publish the release draft: %s\n' "$release_url" >> "$GITHUB_STEP_SUMMARY"

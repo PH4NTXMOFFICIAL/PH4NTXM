@@ -112,6 +112,8 @@ The edition is selected when building the ISO. See [Build Editions](docs/build/B
 
 ## [ GETTING STARTED ]
 
+Official PH4NTXM Abyss Edition ISOs are available on [SourceForge](https://sourceforge.net/projects/ph4ntxmofficial/files/).
+
 The ISO targets Debian 13 `trixie` amd64. On a Debian build host:
 
 ```bash
