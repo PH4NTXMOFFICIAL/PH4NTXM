@@ -89,7 +89,7 @@
       <property name="recent-items-max" type="int" value="10"/>
       <property name="confirm-session-command" type="bool" value="true"/>
       <property name="favorites-in-recent" type="bool" value="false"/>
-      <property name="show-command-switchuser" type="bool" value="true"/>
+      <property name="show-command-switchuser" type="bool" value="false"/>
       <property name="show-command-logoutuser" type="bool" value="true"/>
       <property name="show-command-restart" type="bool" value="true"/>
       <property name="show-command-shutdown" type="bool" value="true"/>
