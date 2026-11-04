@@ -4,8 +4,9 @@
 
 PH4NTXM is distributed as source through [PH4NTXMOFFICIAL/PH4NTXM](https://github.com/PH4NTXMOFFICIAL/PH4NTXM).
 
-We do not provide official pre-built binaries or signed ISO releases. Automated Abyss test ISOs may be available through GitHub Actions for testing and convenience. They are not release images.  
-Operators who require independent verification should build their own images with Debian live-build.
+Official Abyss ISOs are published to [SourceForge](https://sourceforge.net/projects/ph4ntxmofficial/files/) under `<release-tag>/abyss/`, alongside `SHA256SUMS`. Download both files into the same directory and run `sha256sum --check SHA256SUMS` before preparing live media. The checksum detects transfer errors. It is not a signature of the ISO.
+
+Operators who require independent verification should verify the source signatures below and build their own images with Debian live-build.
 
 Package archives and external downloads can change between builds.  
 The same source revision does not guarantee a byte-identical ISO.
