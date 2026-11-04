@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: official-abyss-${{ inputs.release_tag }}
+  group: official-release-${{ inputs.release_tag }}
   cancel-in-progress: false
 
 jobs:
@@ -142,33 +142,81 @@ jobs:
             build/abyss/SHA256SUMS "$destination"
           printf 'Official ISO: https://sourceforge.net/projects/ph4ntxmofficial/files/%s/abyss/\n' "$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Create GitHub release draft
+      - name: Create or update GitHub release draft
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_EDITION: abyss
         run: |
-          set -euo pipefail
-          if release_url=$(gh release view "$RELEASE_TAG" --json url --jq .url 2>/dev/null); then
-            printf 'Release already exists: %s\n' "$release_url" >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          notes=$(mktemp "$RUNNER_TEMP/ph4ntxm-release-notes.XXXXXX")
-          trap 'rm -f "$notes"' EXIT
-          download_url="https://sourceforge.net/projects/ph4ntxmofficial/files/$RELEASE_TAG/abyss"
-          printf '%s\n' \
-            '## Downloads' \
-            '' \
-            "- [PH4NTXM Abyss Edition ISO]($download_url/ph4ntxm-abyss-amd64.hybrid.iso/download)" \
-            "- [SHA256SUMS]($download_url/SHA256SUMS/download)" \
-            '' \
-            'Download both files into the same directory and run `sha256sum --check SHA256SUMS` before preparing live media.' \
-            '' > "$notes"
-          gh release create "$RELEASE_TAG" \
-            --verify-tag \
-            --draft \
-            --title "PH4NTXM $RELEASE_TAG" \
-            --generate-notes \
-            --notes-file "$notes"
-          release_url=$(gh release view "$RELEASE_TAG" --json url --jq .url)
-          printf 'Review and publish the release draft: %s\n' "$release_url" >> "$GITHUB_STEP_SUMMARY"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          import tempfile
+
+          tag = os.environ["RELEASE_TAG"]
+          edition = os.environ["RELEASE_EDITION"]
+          base = f"https://sourceforge.net/projects/ph4ntxmofficial/files/{tag}/{edition}"
+          iso_url = f"{base}/ph4ntxm-{edition}-amd64.hybrid.iso/download"
+          checksum_url = f"{base}/SHA256SUMS/download"
+          downloads = (
+              f"### {edition.title()} Edition\n\n"
+              f"- [PH4NTXM {edition.title()} Edition ISO]({iso_url})\n"
+              f"- [SHA256SUMS]({checksum_url})\n\n"
+              "Download both files into the same directory and run "
+              "`sha256sum --check SHA256SUMS` before preparing live media."
+          )
+          result = subprocess.run(
+              ["gh", "release", "view", tag, "--json", "body,isDraft,url"],
+              capture_output=True, text=True,
+          )
+          with tempfile.TemporaryDirectory(dir=os.environ["RUNNER_TEMP"]) as directory:
+              notes = Path(directory) / "notes.md"
+              if result.returncode == 0:
+                  release = json.loads(result.stdout)
+                  if not release["isDraft"]:
+                      message = (
+                          f"Published release already exists: {release['url']}. "
+                          f"Add the {edition.title()} download links manually: {base}/"
+                      )
+                  else:
+                      body = release["body"] or ""
+                      if iso_url not in body or checksum_url not in body:
+                          heading = re.search(r"(?m)^## Downloads[ \t]*$", body)
+                          if heading:
+                              boundary = re.search(
+                                  r"(?m)^(?:## |\*\*Full Changelog\*\*)",
+                                  body[heading.end():],
+                              )
+                              position = heading.end() + boundary.start() if boundary else len(body)
+                              body = (
+                                  body[:position].rstrip() + "\n\n" + downloads
+                                  + ("\n\n" + body[position:] if position < len(body) else "\n")
+                              )
+                          else:
+                              body = body.rstrip() + "\n\n## Downloads\n\n" + downloads + "\n"
+                          notes.write_text(body)
+                          subprocess.run(
+                              ["gh", "release", "edit", tag, "--notes-file", str(notes)],
+                              check=True,
+                          )
+                      message = f"Review and publish the release draft: {release['url']}"
+              else:
+                  notes.write_text("## Downloads\n\n" + downloads)
+                  subprocess.run(
+                      ["gh", "release", "create", tag, "--verify-tag", "--draft",
+                       "--title", f"PH4NTXM {tag}", "--generate-notes",
+                       "--notes-file", str(notes)],
+                      check=True,
+                  )
+                  url = subprocess.check_output(
+                      ["gh", "release", "view", tag, "--json", "url", "--jq", ".url"],
+                      text=True,
+                  ).strip()
+                  message = f"Review and publish the release draft: {url}"
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as summary:
+              summary.write(message + "\n")
+          PY

@@ -1,0 +1,222 @@
+name: PH4NTXM Ghost Edition Official ISO
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Signed release tag to build (for example v3.5.2)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: official-release-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  build-ghost:
+    if: github.ref == 'refs/heads/main'
+    environment: sourceforge-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify release source and upload configuration
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SOURCEFORGE_SSH_PRIVATE_KEY: ${{ secrets.SOURCEFORGE_SSH_PRIVATE_KEY }}
+          SOURCEFORGE_SSH_PASSPHRASE: ${{ secrets.SOURCEFORGE_SSH_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Expected a release tag such as v3.5.2." >&2; exit 1; }
+          test -n "$SOURCEFORGE_SSH_PRIVATE_KEY" || { echo "Missing SOURCEFORGE_SSH_PRIVATE_KEY." >&2; exit 1; }
+          test -n "$SOURCEFORGE_SSH_PASSPHRASE" || { echo "Missing SOURCEFORGE_SSH_PASSPHRASE." >&2; exit 1; }
+          export GNUPGHOME
+          GNUPGHOME=$(mktemp -d)
+          trap 'rm -rf "$GNUPGHOME"' EXIT
+          fingerprint=$(gpg --show-keys --with-colons ph4ntxm-public-key.asc | awk -F: '$1 == "fpr" {print $10; exit}')
+          test "$fingerprint" = "673E98A65A905B7237455C6A7FA9BAE506F90406"
+          gpg --batch --import ph4ntxm-public-key.asc
+          git verify-tag "$RELEASE_TAG"
+          git verify-commit "$RELEASE_TAG^{commit}"
+          git checkout --detach "$RELEASE_TAG^{commit}"
+
+      - name: Show source revision
+        run: |
+          git rev-parse HEAD
+          git status --short
+
+      - name: Build Ghost on Debian 13
+        run: |
+          docker run --rm --privileged \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            debian:13 \
+            bash -lc '
+              set -euo pipefail
+
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                git \
+                live-build \
+                python3 \
+                util-linux \
+                ca-certificates
+
+              ./build.sh --edition ghost
+              chmod a+r build/ghost/ph4ntxm-ghost-amd64.* build/ghost/SHA256SUMS
+            '
+
+      - name: Show build outputs
+        run: |
+          ls -lh build/ghost/ph4ntxm-ghost-amd64.* build/ghost/SHA256SUMS
+          cd build/ghost
+          sha256sum --check SHA256SUMS
+
+      - name: Upload PH4NTXM Ghost Edition Official ISO
+        uses: actions/upload-artifact@v7
+        with:
+          name: ph4ntxm-ghost-official-${{ inputs.release_tag }}
+          path: |
+            build/ghost/ph4ntxm-ghost-amd64.*
+            build/ghost/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish Official ISO to SourceForge
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SOURCEFORGE_SSH_PRIVATE_KEY: ${{ secrets.SOURCEFORGE_SSH_PRIVATE_KEY }}
+          SOURCEFORGE_SSH_PASSPHRASE: ${{ secrets.SOURCEFORGE_SSH_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          umask 077
+          ssh_dir=$(mktemp -d "$RUNNER_TEMP/sourceforge-ssh.XXXXXX")
+          cleanup() {
+            ssh-agent -k >/dev/null 2>&1 || true
+            rm -rf "$ssh_dir"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SOURCEFORGE_SSH_PRIVATE_KEY" > "$ssh_dir/key"
+          unset SOURCEFORGE_SSH_PRIVATE_KEY
+          printf '#!/bin/sh\nprintf "%%s\n" "$SOURCEFORGE_SSH_PASSPHRASE"\n' > "$ssh_dir/askpass"
+          chmod 700 "$ssh_dir/askpass"
+          ssh-keyscan -T 30 -t ed25519 frs.sourceforge.net > "$ssh_dir/known_hosts"
+          fingerprint=$(ssh-keygen -lf "$ssh_dir/known_hosts" -E sha256 | awk '{print $2}' | sort -u)
+          test "$fingerprint" = "SHA256:209BDmH3jsRyO9UeGPPgLWPSegKmYCBIya0nR/AWWCY"
+          eval "$(ssh-agent -s)"
+          DISPLAY=:0 SSH_ASKPASS_REQUIRE=force SSH_ASKPASS="$ssh_dir/askpass" ssh-add "$ssh_dir/key" < /dev/null
+          unset SOURCEFORGE_SSH_PASSPHRASE
+          rm -f "$ssh_dir/key" "$ssh_dir/askpass"
+          cat > "$ssh_dir/config" <<EOF
+          Host frs.sourceforge.net
+            User ph4ntxmofficial
+            BatchMode yes
+            StrictHostKeyChecking yes
+            HostKeyAlgorithms ssh-ed25519
+            UserKnownHostsFile $ssh_dir/known_hosts
+            GlobalKnownHostsFile /dev/null
+            ConnectTimeout 30
+            ServerAliveInterval 30
+            ServerAliveCountMax 6
+          EOF
+          sftp -F "$ssh_dir/config" -b - frs.sourceforge.net <<EOF
+          cd /home/frs/project/ph4ntxmofficial
+          -mkdir $RELEASE_TAG
+          cd $RELEASE_TAG
+          -mkdir ghost
+          cd ghost
+          EOF
+          destination="ph4ntxmofficial@frs.sourceforge.net:/home/frs/project/ph4ntxmofficial/$RELEASE_TAG/ghost/"
+          rsync -rtp --partial --chmod=F644 -e "ssh -F $ssh_dir/config" \
+            build/ghost/ph4ntxm-ghost-amd64.hybrid.iso "$destination"
+          rsync -rtp --chmod=F644 -e "ssh -F $ssh_dir/config" \
+            build/ghost/SHA256SUMS "$destination"
+          printf 'Official ISO: https://sourceforge.net/projects/ph4ntxmofficial/files/%s/ghost/\n' "$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create or update GitHub release draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_EDITION: ghost
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          import tempfile
+
+          tag = os.environ["RELEASE_TAG"]
+          edition = os.environ["RELEASE_EDITION"]
+          base = f"https://sourceforge.net/projects/ph4ntxmofficial/files/{tag}/{edition}"
+          iso_url = f"{base}/ph4ntxm-{edition}-amd64.hybrid.iso/download"
+          checksum_url = f"{base}/SHA256SUMS/download"
+          downloads = (
+              f"### {edition.title()} Edition\n\n"
+              f"- [PH4NTXM {edition.title()} Edition ISO]({iso_url})\n"
+              f"- [SHA256SUMS]({checksum_url})\n\n"
+              "Download both files into the same directory and run "
+              "`sha256sum --check SHA256SUMS` before preparing live media."
+          )
+          result = subprocess.run(
+              ["gh", "release", "view", tag, "--json", "body,isDraft,url"],
+              capture_output=True, text=True,
+          )
+          with tempfile.TemporaryDirectory(dir=os.environ["RUNNER_TEMP"]) as directory:
+              notes = Path(directory) / "notes.md"
+              if result.returncode == 0:
+                  release = json.loads(result.stdout)
+                  if not release["isDraft"]:
+                      message = (
+                          f"Published release already exists: {release['url']}. "
+                          f"Add the {edition.title()} download links manually: {base}/"
+                      )
+                  else:
+                      body = release["body"] or ""
+                      if iso_url not in body or checksum_url not in body:
+                          heading = re.search(r"(?m)^## Downloads[ \t]*$", body)
+                          if heading:
+                              boundary = re.search(
+                                  r"(?m)^(?:## |\*\*Full Changelog\*\*)",
+                                  body[heading.end():],
+                              )
+                              position = heading.end() + boundary.start() if boundary else len(body)
+                              body = (
+                                  body[:position].rstrip() + "\n\n" + downloads
+                                  + ("\n\n" + body[position:] if position < len(body) else "\n")
+                              )
+                          else:
+                              body = body.rstrip() + "\n\n## Downloads\n\n" + downloads + "\n"
+                          notes.write_text(body)
+                          subprocess.run(
+                              ["gh", "release", "edit", tag, "--notes-file", str(notes)],
+                              check=True,
+                          )
+                      message = f"Review and publish the release draft: {release['url']}"
+              else:
+                  notes.write_text("## Downloads\n\n" + downloads)
+                  subprocess.run(
+                      ["gh", "release", "create", tag, "--verify-tag", "--draft",
+                       "--title", f"PH4NTXM {tag}", "--generate-notes",
+                       "--notes-file", str(notes)],
+                      check=True,
+                  )
+                  url = subprocess.check_output(
+                      ["gh", "release", "view", tag, "--json", "url", "--jq", ".url"],
+                      text=True,
+                  ).strip()
+                  message = f"Review and publish the release draft: {url}"
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as summary:
+              summary.write(message + "\n")
+          PY
