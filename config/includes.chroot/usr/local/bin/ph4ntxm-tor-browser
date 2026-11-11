@@ -187,7 +187,10 @@ trap 'exit 129' HUP
 
 SESSION_DIR=$(mktemp -d "$RUNTIME_BASE/ph4ntxm-tor-browser.XXXXXX")
 SESSION_HOME=$SESSION_DIR/home
-mkdir -m 0700 "$SESSION_HOME"
+mkdir -m 0700 "$SESSION_HOME" "$SESSION_HOME/.tor-browser"
+PROFILE_DIR=$SESSION_HOME/.tor-browser/profile
+/usr/bin/python3 -I /usr/local/lib/ph4ntxm-browser-airlock/browser_zoom.py \
+    "$PROFILE_DIR" /opt/ph4ntxm/tor-browser/Browser/TorBrowser/Data/Browser/profile.default
 
 IFS=: read -r USER_NAME _ PASSWD_UID _ _ USER_HOME _ < <(getent passwd "$USER_ID")
 [[ "$PASSWD_UID" == "$USER_ID" && -n "$USER_NAME" ]] || fail 'UNABLE TO RESOLVE LOCAL USER'
@@ -224,7 +227,7 @@ set +m
     if [[ -n "$LAUNCH_READY_FD" ]]; then
         exec {LAUNCH_READY_FD}>&-
     fi
-    exec env -i "${ENVIRONMENT[@]}" /usr/bin/setsid "$START_BROWSER" "$@"
+    exec env -i "${ENVIRONMENT[@]}" /usr/bin/setsid "$START_BROWSER" -profile "$PROFILE_DIR" "$@"
 ) &
 BROWSER_PID=$!
 trap 'exit 130' INT

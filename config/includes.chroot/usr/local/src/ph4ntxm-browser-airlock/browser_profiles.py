@@ -16,6 +16,8 @@ import stat
 import subprocess
 import time
 
+from browser_zoom import initialize_profile
+
 STATE = Path("/run/ph4ntxm")
 METADATA = Path("/usr/lib/ph4ntxm/browser-mode")
 TEMPLATES = Path("/etc/firefox-esr/mode")
@@ -473,10 +475,12 @@ def prepare_browser(home_directory, sandbox_home="/home/ph4ntxm", username=None,
         (browser_home / "TorBrowser").mkdir(mode=0o700)
         tor_directory.mkdir(mode=0o700)
         (tor_directory / "tor").touch(mode=0o600)
+        profile = browser_home / "profile"
+        initialize_profile(profile, TOR_BROWSER / "Browser/TorBrowser/Data/Browser/profile.default")
         environment["PATH"] = "/run/ph4ntxm-browser-tools:" + environment["PATH"]
         environment.update({"TOR_PROVIDER": "none", "TOR_SOCKS_HOST": "127.0.0.1", "TOR_SOCKS_PORT": "9050"})
         digests = source_digests((METADATA / "tor-browser.sha256", METADATA / "tor-browser.version"))
-        return BrowserPlan(mode, (str(TOR_BROWSER / "Browser/start-tor-browser"),), environment, (str(TOR_BROWSER),), None, digests)
+        return BrowserPlan(mode, (str(TOR_BROWSER / "Browser/start-tor-browser"), "-profile", str(profile)), environment, (str(TOR_BROWSER),), None, digests)
     private_profile = str(home_directory.absolute() / "profile")
     expected_cache = str(CACHE_DIRECTORY / f"ph4ntxm-firefox-{os.getuid()}-{mode}" / "profile")
     if profile_path is not None and profile_path not in (private_profile, expected_cache):
@@ -507,6 +511,7 @@ def prepare_browser(home_directory, sandbox_home="/home/ph4ntxm", username=None,
         atomic_preferences(directory, preferences)
     finally:
         os.close(directory)
+    initialize_profile(profile_path)
     environment.update(browser)
     environment.update(cores)
     environment.update(gpu)

@@ -24,7 +24,7 @@ Scoring starts at 100: warnings subtract 2, errors 6 and critical errors 15, wit
 
 This on-demand tab is separate from the Health score. Linux/Windows open a local Firefox tab comparing HTTP/JavaScript user agents, platform, logical CPUs, languages and disabled WebGL/WebRTC/Web Audio against the persona. Timezone, display values and at most 24 font candidates add context.
 
-Display results depend on scaling, window size and zoom. Compare at 100%. Firefox's concurrency cap may report fewer threads than the persona. Font sampling is not a full inventory.
+Display results depend on scaling, window size and zoom. Compare at the default 80% page zoom. Firefox's concurrency cap may report fewer threads than the persona. Font sampling is not a full inventory.
 
 The desktop-user checker uses IPv4 loopback and a unique URL, without external resources or preference changes. Completion, cancellation, timeout or closing Health stops it while leaving Firefox open. Results remain in window memory. Copy Browser Report copies them, and Copy Report includes them.
 

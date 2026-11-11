@@ -6,9 +6,11 @@ from pathlib import Path
 import hashlib
 import os
 import shlex
+import sqlite3
 import stat
 import sys
 import tempfile
+import traceback
 import unittest
 from unittest.mock import patch
 
@@ -98,8 +100,9 @@ class BrowserProfilesTest(unittest.TestCase):
             "Browser/start-tor-browser", "Browser/firefox", "Browser/firefox.real",
             "Browser/TorBrowser/Tor/tor", "Browser/is-packaged-app",
             "Browser/browser/chrome/icons/default/default128.png",
+            "Browser/TorBrowser/Data/Browser/profile.default/extensions/noscript.xpi",
         ):
-            mode = 0o644 if relative.endswith(("is-packaged-app", ".png")) else 0o755
+            mode = 0o644 if relative.endswith(("is-packaged-app", ".png", ".xpi")) else 0o755
             self.write(self.bundle / relative, "fixture\n", mode)
         manifest = "".join(
             f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(self.bundle.parent).as_posix()}\n"
@@ -142,6 +145,10 @@ class BrowserProfilesTest(unittest.TestCase):
                 self.assertEqual(plan.environment["MOZ_DBUS_REMOTE"], "1")
                 self.assertEqual(plan.command[-1], plan.profile_path)
                 self.assertEqual(stat.S_IMODE((self.home / "profile/user.js").stat().st_mode), 0o600)
+                database = self.home / "profile/content-prefs.sqlite"
+                with sqlite3.connect(database) as connection:
+                    self.assertEqual(connection.execute("SELECT value FROM prefs WHERE groupID IS NULL").fetchone(), (0.8,))
+                database.unlink()
                 (self.home / "profile/user.js").unlink()
                 (self.home / "profile").rmdir()
 
@@ -203,25 +210,47 @@ class BrowserProfilesTest(unittest.TestCase):
     def test_tor_plan_keeps_fresh_home_and_excludes_normal_persona(self):
         digest = self.tor_fixture()
         self.ready_fixture(digest)
-        uid = os.getuid() or 1000
+
+        def check_plan():
+            with patch.object(profiles, "validate_tor_readiness") as readiness:
+                plan = profiles.prepare_browser(self.home, username="ph4ntxm")
+            readiness.assert_called_once_with(digest)
+            self.assertEqual([path.name for path in self.home.iterdir()], [".tor-browser"])
+            tor = self.home / ".tor-browser/TorBrowser/Tor/tor"
+            self.assertTrue(tor.is_file())
+            self.assertFalse(tor.is_symlink())
+            self.assertEqual(tor.read_bytes(), b"")
+            self.assertEqual(stat.S_IMODE(tor.stat().st_mode), 0o600)
+            for directory in (tor.parent, tor.parent.parent, self.home / ".tor-browser"):
+                self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o700)
+            self.assertTrue(plan.environment["PATH"].startswith("/run/ph4ntxm-browser-tools:"))
+            self.assertEqual(plan.environment["TOR_SOCKS_PORT"], "9050")
+            self.assertEqual(plan.environment["TOR_PROVIDER"], "none")
+            self.assertEqual(plan.command, (str(self.bundle / "Browser/start-tor-browser"), "-profile", str(self.home / ".tor-browser/profile")))
+            self.assertFalse(any(key.startswith(("PH4", "MESA", "LD_", "FONTCONFIG")) for key in plan.environment))
+            profile = self.home / ".tor-browser/profile"
+            self.assertEqual((profile / "extensions/noscript.xpi").read_text(), "fixture\n")
+            with sqlite3.connect(profile / "content-prefs.sqlite") as connection:
+                self.assertEqual(connection.execute("SELECT value FROM prefs WHERE groupID IS NULL").fetchone(), (0.8,))
+
         if os.getuid() == 0:
-            os.chown(self.home, uid, -1)
-        with patch.object(profiles.os, "getuid", return_value=uid), patch.object(profiles, "validate_tor_readiness") as readiness:
-            plan = profiles.prepare_browser(self.home, username="ph4ntxm")
-        readiness.assert_called_once_with(digest)
-        self.assertEqual([path.name for path in self.home.iterdir()], [".tor-browser"])
-        tor = self.home / ".tor-browser/TorBrowser/Tor/tor"
-        self.assertTrue(tor.is_file())
-        self.assertFalse(tor.is_symlink())
-        self.assertEqual(tor.read_bytes(), b"")
-        self.assertEqual(stat.S_IMODE(tor.stat().st_mode), 0o600)
-        for directory in (tor.parent, tor.parent.parent, self.home / ".tor-browser"):
-            self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o700)
-        self.assertTrue(plan.environment["PATH"].startswith("/run/ph4ntxm-browser-tools:"))
-        self.assertEqual(plan.environment["TOR_SOCKS_PORT"], "9050")
-        self.assertEqual(plan.environment["TOR_PROVIDER"], "none")
-        self.assertEqual(plan.command, (str(self.bundle / "Browser/start-tor-browser"),))
-        self.assertFalse(any(key.startswith(("PH4", "MESA", "LD_", "FONTCONFIG")) for key in plan.environment))
+            self.root.chmod(0o755)
+            os.chown(self.home, 1000, 1000)
+            process = os.fork()
+            if process == 0:
+                try:
+                    os.setgroups([])
+                    os.setgid(1000)
+                    os.setuid(1000)
+                    check_plan()
+                except BaseException:
+                    traceback.print_exc()
+                    os._exit(1)
+                os._exit(0)
+            _, status = os.waitpid(process, 0)
+            self.assertEqual(os.waitstatus_to_exitcode(status), 0)
+        else:
+            check_plan()
 
     def test_tor_plan_rejects_root(self):
         self.write(self.state / "mode", "lonewolf\n")
@@ -340,6 +369,41 @@ class BrowserProfilesTest(unittest.TestCase):
             profiles.check_age({"UPTIME_SECONDS": "107"}, 106)
         with self.assertRaises(profiles.ProfileError):
             profiles.render_preferences("{{UNKNOWN}}", {"PH4_DEVICE_PIXEL_RATIO": "1"}, {"PH4_REPORTED_CORES": "8", "PH4_CPU_ARCHITECTURE": "x86_64"}, "Firefox 140.1")
+
+    def test_zoom_initialization_preserves_global_and_site_choices(self):
+        profiles.initialize_profile(self.home)
+        database = self.home / "content-prefs.sqlite"
+        self.assertEqual(stat.S_IMODE(database.stat().st_mode), 0o600)
+        with sqlite3.connect(database) as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone(), (6,))
+            self.assertEqual(connection.execute("PRAGMA quick_check").fetchone(), ("ok",))
+            self.assertEqual(connection.execute("SELECT name FROM settings").fetchall(), [("browser.content.full-zoom",)])
+            self.assertEqual(connection.execute("SELECT groupID, value, typeof(value) FROM prefs").fetchall(), [(None, 0.8, "real")])
+            connection.execute("UPDATE prefs SET value = 0.9 WHERE groupID IS NULL")
+            connection.execute("INSERT INTO groups (id, name) VALUES (1, 'example.invalid')")
+            connection.execute("INSERT INTO prefs (groupID, settingID, value) VALUES (1, 1, 1.2)")
+        before = database.read_bytes()
+        profiles.initialize_profile(self.home)
+        self.assertEqual(database.read_bytes(), before)
+        self.assertEqual(list(self.home.glob(".content-prefs.*")), [])
+
+    def test_zoom_rejects_shared_profiles_and_unsafe_databases(self):
+        self.home.chmod(0o755)
+        with self.assertRaises(OSError):
+            profiles.initialize_profile(self.home)
+        self.home.chmod(0o700)
+        database = self.home / "content-prefs.sqlite"
+        target = self.root / "outside.sqlite"
+        target.write_bytes(b"unchanged")
+        database.symlink_to(target)
+        with self.assertRaises(OSError):
+            profiles.initialize_profile(self.home)
+        self.assertEqual(target.read_bytes(), b"unchanged")
+        database.unlink()
+        database.write_bytes(b"unsafe")
+        database.chmod(0o666)
+        with self.assertRaises(OSError):
+            profiles.initialize_profile(self.home)
 
 
 if __name__ == "__main__":

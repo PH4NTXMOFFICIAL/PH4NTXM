@@ -115,6 +115,8 @@ mv -f "\$USERJS_TMP" "\$PROFILE_DIR/user.js"
 USERJS_TMP=
 trap - EXIT
 
+/usr/bin/python3 -I /usr/local/lib/ph4ntxm-browser-airlock/browser_zoom.py "\$PROFILE_DIR"
+
 export FONTCONFIG_PATH="\$FONT_DIR"
 export FONTCONFIG_FILE="\$FONT_CONF"
 

@@ -10,6 +10,8 @@ The root one-shot follows local filesystems and mode selection, before the displ
 
 ## [ RUNTIME ]
 
+New Firefox and Tor Browser profiles start with 80% page zoom, including Browser Airlock. This is separate from the generated display scaling. Later zoom choices in a retained profile are preserved. Firefox Browser Check compares pixel ratio at the default 80% zoom.
+
 Masking bind-mounts an empty directory and verifies `ro,nosuid,nodev,noexec`. Linux/Windows expose `/usr/lib/firefox-esr`. Lone Wolf exposes `/opt/ph4ntxm/tor-browser`.
 
 Lone Wolf checks launchers, executables, metadata and icon. The tree must be root-owned with expected permissions and no symlinks, special files or writable entries. A sorted SHA256 inventory must match the protected manifest, including unexpected-file detection.

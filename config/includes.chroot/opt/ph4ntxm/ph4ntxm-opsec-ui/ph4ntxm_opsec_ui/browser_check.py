@@ -451,19 +451,20 @@ def compare_observed(expected, observed, request_headers=None):
     )
     screen = observed["screen"]
     actual_dpr = screen["devicePixelRatio"]
+    default_dpr = round(expected["dpr"] * 0.8, 4)
     dpr_status = "unavailable"
     if actual_dpr is not None:
         dpr_status = (
             "match"
-            if math.isclose(actual_dpr, expected["dpr"], abs_tol=0.02)
+            if math.isclose(actual_dpr, default_dpr, abs_tol=0.02)
             else "info"
         )
     add(
         "Pixel ratio",
-        expected["dpr"],
+        default_dpr,
         actual_dpr,
         dpr_status,
-        "Page zoom can change this value. Compare at 100% zoom.",
+        "Page zoom can change this value. Compare at the default 80% zoom.",
     )
     for label, width, height, wanted, detail in (
         (
